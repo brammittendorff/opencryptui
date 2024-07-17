@@ -8,6 +8,8 @@ OpenCryptUI is a Qt-based graphical user interface application for file and fold
 - Support for multiple encryption algorithms: AES-256-CBC, AES-256-GCM, AES-256-CTR, ChaCha20-Poly1305, Twofish, Serpent, Blowfish, Camellia, and AES-128-CBC.
 - Support for multiple key derivation functions: PBKDF2, Argon2, and Scrypt.
 - Option to enable HMAC integrity check.
+- Memory encryption: Encrypts the in-memory keys used during encryption operations to protect against memory dump attacks.
+- Keyfile support: Keyfiles can be used to provide an additional layer of security, ensuring that access requires both the correct password and one or multiple keyfiles.
 
 ## Dependencies
 
@@ -61,6 +63,7 @@ To build the project, follow these steps:
    - Choose the encryption algorithm and key derivation function.
    - Set the number of iterations.
    - (Optional) Enable HMAC integrity check.
+   - (Optional) Add one or multiple keyfiles.
    - Click "Encrypt" or "Decrypt".
 
 3. Use the "Folder Encryption" tab to encrypt or decrypt entire folders:
@@ -69,6 +72,7 @@ To build the project, follow these steps:
    - Choose the encryption algorithm and key derivation function.
    - Set the number of iterations.
    - (Optional) Enable HMAC integrity check.
+   - (Optional) Add one or multiple keyfiles.
    - Click "Encrypt Folder" or "Decrypt Folder".
 
 ## Contributing
@@ -78,3 +82,15 @@ Contributions are welcome! If you find a bug or want to add a new feature, pleas
 ## License
 
 This project is licensed under the MIT License. See the `LICENSE` file for details.
+
+## Todo
+
+OpenCryptUI aims to implement several additional features found in popular encryption tools like VeraCrypt. Here are some planned features:
+
+- **Hidden volumes:** Create hidden encrypted volumes within an existing encrypted volume for plausible deniability.
+- **PIM (Personal Iterations Multiplier) support:** Allow users to specify a PIM value to increase the number of iterations in the key derivation process for added security.
+- **Hardware-accelerated encryption:** Utilize hardware features like Intel AES-NI to speed up encryption and decryption processes.
+- **Cross-platform support:** Enhance compatibility and testing for various operating systems, including Windows, macOS, and Linux.
+- **Secure wipe:** Implement secure deletion of original files after encryption to prevent data recovery.
+
+Feel free to contribute to these features or suggest new ones!

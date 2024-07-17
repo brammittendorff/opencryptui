@@ -95,6 +95,16 @@
          </widget>
         </item>
         <item>
+         <widget class="QPushButton" name="fileKeyfileBrowseButton">
+          <property name="text">
+           <string>Browse Keyfiles</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="CustomListWidget" name="fileKeyfileListWidget"/>
+        </item>
+        <item>
          <widget class="QProgressBar" name="fileProgressBar">
           <property name="visible">
            <bool>false</bool>
@@ -204,6 +214,16 @@
            <string>Enable HMAC Integrity Check</string>
           </property>
          </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="folderKeyfileBrowseButton">
+          <property name="text">
+           <string>Browse Keyfiles</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="CustomListWidget" name="folderKeyfileListWidget"/>
         </item>
         <item>
          <widget class="QProgressBar" name="folderProgressBar">

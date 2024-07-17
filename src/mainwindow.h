@@ -6,6 +6,7 @@
 #include "encryptionengine.h"
 #include "encryptionworker.h"
 #include <QThread>
+#include "customlistwidget.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -23,9 +24,11 @@ private slots:
     void on_fileEncryptButton_clicked();
     void on_fileDecryptButton_clicked();
     void on_fileBrowseButton_clicked();
+    void on_fileKeyfileBrowseButton_clicked(); // New slot
     void on_folderEncryptButton_clicked();
     void on_folderDecryptButton_clicked();
     void on_folderBrowseButton_clicked();
+    void on_folderKeyfileBrowseButton_clicked(); // New slot
     void updateProgress(int value);
     void handleFinished(bool success, const QString &errorMessage);
     void showEstimatedTime(double seconds);
@@ -38,7 +41,6 @@ private:
     EncryptionWorker *worker;
 
     void setupUI();
-    void setupDrivesModel();
     void setupComboBoxes();
     void connectSignalsAndSlots();
     void startWorker(bool encrypt, bool isFile);

@@ -71,9 +71,11 @@ void MainWindow::connectSignalsAndSlots()
     connect(ui->fileEncryptButton, &QPushButton::clicked, this, &MainWindow::on_fileEncryptButton_clicked);
     connect(ui->fileDecryptButton, &QPushButton::clicked, this, &MainWindow::on_fileDecryptButton_clicked);
     connect(ui->fileBrowseButton, &QPushButton::clicked, this, &MainWindow::on_fileBrowseButton_clicked);
+    connect(ui->fileKeyfileBrowseButton, &QPushButton::clicked, this, &MainWindow::on_fileKeyfileBrowseButton_clicked);
     connect(ui->folderEncryptButton, &QPushButton::clicked, this, &MainWindow::on_folderEncryptButton_clicked);
     connect(ui->folderDecryptButton, &QPushButton::clicked, this, &MainWindow::on_folderDecryptButton_clicked);
     connect(ui->folderBrowseButton, &QPushButton::clicked, this, &MainWindow::on_folderBrowseButton_clicked);
+    connect(ui->folderKeyfileBrowseButton, &QPushButton::clicked, this, &MainWindow::on_folderKeyfileBrowseButton_clicked);
 }
 
 void MainWindow::on_fileEncryptButton_clicked()
@@ -104,6 +106,7 @@ void MainWindow::startWorker(bool encrypt, bool isFile)
     QString kdf = isFile ? ui->kdfComboBox->currentText() : ui->folderKdfComboBox->currentText();
     int iterations = isFile ? ui->iterationsSpinBox->value() : ui->folderIterationsSpinBox->value();
     bool useHMAC = isFile ? ui->hmacCheckBox->isChecked() : ui->folderHmacCheckBox->isChecked();
+    QStringList keyfilePaths = isFile ? ui->fileKeyfileListWidget->getAllItems() : ui->folderKeyfileListWidget->getAllItems(); // Using the new method
     QString customHeader = ""; // or any specific header if needed
 
     if (path.isEmpty() || password.isEmpty()) {
@@ -119,7 +122,7 @@ void MainWindow::startWorker(bool encrypt, bool isFile)
     estimatedTimeLabel->setVisible(true);
     estimatedTimeLabel->setText("Estimated time: calculating...");
 
-    worker->setParameters(path, password, algorithm, kdf, iterations, useHMAC, encrypt, isFile, customHeader);
+    worker->setParameters(path, password, algorithm, kdf, iterations, useHMAC, encrypt, isFile, customHeader, keyfilePaths);
     QMetaObject::invokeMethod(worker, "process", Qt::QueuedConnection);
 }
 
@@ -162,5 +165,25 @@ void MainWindow::on_folderBrowseButton_clicked()
     QString folderPath = QFileDialog::getExistingDirectory(this, "Select Folder");
     if (!folderPath.isEmpty()) {
         ui->folderPathLineEdit->setText(folderPath);
+    }
+}
+
+void MainWindow::on_fileKeyfileBrowseButton_clicked()
+{
+    QStringList keyfilePaths = QFileDialog::getOpenFileNames(this, "Select Keyfiles");
+    if (!keyfilePaths.isEmpty()) {
+        for (const QString &path : keyfilePaths) {
+            ui->fileKeyfileListWidget->addItem(path);
+        }
+    }
+}
+
+void MainWindow::on_folderKeyfileBrowseButton_clicked()
+{
+    QStringList keyfilePaths = QFileDialog::getOpenFileNames(this, "Select Keyfiles");
+    if (!keyfilePaths.isEmpty()) {
+        for (const QString &path : keyfilePaths) {
+            ui->folderKeyfileListWidget->addItem(path);
+        }
     }
 }

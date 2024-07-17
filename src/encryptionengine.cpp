@@ -43,22 +43,68 @@ bool EncryptionEngine::decompressFile(const QString& filePath, const QString& ou
     return process.exitCode() == 0;
 }
 
-bool EncryptionEngine::encryptFile(const QString& filePath, const QString& password, const QString& algorithm, const QString& kdf, int iterations, bool useHMAC, const QString& customHeader) {
-    QString outputPath = filePath + ".enc";
-    return cryptOperation(filePath, outputPath, password, algorithm, true, kdf, iterations, useHMAC, customHeader);
+QByteArray EncryptionEngine::readKeyfile(const QString& keyfilePath) {
+    if (keyfilePath.isEmpty()) {
+        return QByteArray();
+    }
+    QFile keyfile(keyfilePath);
+    if (!keyfile.open(QIODevice::ReadOnly)) {
+        qDebug() << "Failed to open keyfile";
+        return QByteArray();
+    }
+    return keyfile.readAll();
 }
 
-bool EncryptionEngine::decryptFile(const QString& filePath, const QString& password, const QString& algorithm, const QString& kdf, int iterations, bool useHMAC, const QString& customHeader) {
+QByteArray EncryptionEngine::deriveKey(const QString& password, const QByteArray& salt, const QStringList& keyfilePaths, const QString& kdf, int iterations) {
+    QByteArray key(EVP_MAX_KEY_LENGTH, 0);
+    QByteArray passwordWithKeyfile = password.toUtf8();
+
+    for (const QString &keyfilePath : keyfilePaths) {
+        passwordWithKeyfile.append(readKeyfile(keyfilePath));
+    }
+
+    if (kdf == "PBKDF2") {
+        if (!PKCS5_PBKDF2_HMAC(passwordWithKeyfile.data(), passwordWithKeyfile.size(), reinterpret_cast<const unsigned char*>(salt.data()), salt.size(), iterations, EVP_sha256(), key.size(), reinterpret_cast<unsigned char*>(key.data()))) {
+            qDebug() << "PBKDF2 key derivation failed";
+            return QByteArray();
+        }
+    } else if (kdf == "Argon2") {
+        if (argon2i_hash_raw(iterations, 1 << 16, 1, passwordWithKeyfile.data(), passwordWithKeyfile.size(), reinterpret_cast<const unsigned char*>(salt.data()), salt.size(), reinterpret_cast<unsigned char*>(key.data()), key.size()) != ARGON2_OK) {
+            qDebug() << "Argon2 key derivation failed";
+            return QByteArray();
+        }
+    } else if (kdf == "Scrypt") {
+        unsigned long long opslimit = iterations;
+        if (crypto_pwhash_scryptsalsa208sha256(reinterpret_cast<unsigned char*>(key.data()), static_cast<unsigned long long>(key.size()),
+                                               passwordWithKeyfile.constData(), static_cast<unsigned long long>(passwordWithKeyfile.size()),
+                                               reinterpret_cast<const unsigned char*>(salt.data()), 
+                                               opslimit,
+                                               crypto_pwhash_scryptsalsa208sha256_MEMLIMIT_INTERACTIVE) != 0) {
+            qDebug() << "Scrypt key derivation failed";
+            return QByteArray();
+        }
+    }
+
+    qDebug() << "Key derived successfully using" << kdf << "key (hex):" << key.toHex();
+    return key;
+}
+
+bool EncryptionEngine::encryptFile(const QString& filePath, const QString& password, const QString& algorithm, const QString& kdf, int iterations, bool useHMAC, const QString& customHeader, const QStringList& keyfilePaths) {
+    QString outputPath = filePath + ".enc";
+    return cryptOperation(filePath, outputPath, password, algorithm, true, kdf, iterations, useHMAC, customHeader, keyfilePaths);
+}
+
+bool EncryptionEngine::decryptFile(const QString& filePath, const QString& password, const QString& algorithm, const QString& kdf, int iterations, bool useHMAC, const QString& customHeader, const QStringList& keyfilePaths) {
     QString outputPath = filePath;
     outputPath.chop(4); // Remove ".enc"
-    bool success = cryptOperation(filePath, outputPath, password, algorithm, false, kdf, iterations, useHMAC, customHeader);
+    bool success = cryptOperation(filePath, outputPath, password, algorithm, false, kdf, iterations, useHMAC, customHeader, keyfilePaths);
     if (!success) {
         return false;
     }
     return true;
 }
 
-bool EncryptionEngine::cryptOperation(const QString& inputPath, const QString& outputPath, const QString& password, const QString& algorithm, bool encrypt, const QString& kdf, int iterations, bool useHMAC, const QString& customHeader) {
+bool EncryptionEngine::cryptOperation(const QString& inputPath, const QString& outputPath, const QString& password, const QString& algorithm, bool encrypt, const QString& kdf, int iterations, bool useHMAC, const QString& customHeader, const QStringList& keyfilePaths) {
     QFile inputFile(inputPath);
     QFile outputFile(outputPath);
 
@@ -100,34 +146,22 @@ bool EncryptionEngine::cryptOperation(const QString& inputPath, const QString& o
         lastIv = iv; // Store the last used IV
     }
 
-    QByteArray key(EVP_MAX_KEY_LENGTH, 0);
-    if (kdf == "PBKDF2") {
-        if (!PKCS5_PBKDF2_HMAC(password.toUtf8().data(), password.size(), reinterpret_cast<unsigned char*>(salt.data()), salt.size(), iterations, EVP_sha256(), key.size(), reinterpret_cast<unsigned char*>(key.data()))) {
-            qDebug() << "PBKDF2 key derivation failed";
-            return false;
-        }
-    } else if (kdf == "Argon2") {
-        if (argon2i_hash_raw(iterations, 1 << 16, 1, password.toUtf8().data(), password.size(), reinterpret_cast<unsigned char*>(salt.data()), salt.size(), reinterpret_cast<unsigned char*>(key.data()), key.size()) != ARGON2_OK) {
-            qDebug() << "Argon2 key derivation failed";
-            return false;
-        }
-    } else if (kdf == "Scrypt") {
-        unsigned long long opslimit = iterations; // Set opslimit to the iterations value
-        if (crypto_pwhash_scryptsalsa208sha256(reinterpret_cast<unsigned char*>(key.data()), static_cast<unsigned long long>(key.size()),
-                                            password.toUtf8().constData(), static_cast<unsigned long long>(password.size()),
-                                            reinterpret_cast<unsigned char*>(salt.data()), 
-                                            opslimit,
-                                            crypto_pwhash_scryptsalsa208sha256_MEMLIMIT_INTERACTIVE) != 0) {
-            qDebug() << "Scrypt key derivation failed";
-            return false;
-        }
+    QByteArray key = deriveKey(password, salt, keyfilePaths, kdf, iterations);
+
+    if (key.isEmpty()) {
+        return false;
     }
 
-    qDebug() << "Key derived successfully using" << kdf << "key (hex):" << key.toHex();
+    // Lock the key in memory to prevent it from being swapped out
+    if (sodium_mlock(key.data(), key.size()) != 0) {
+        qDebug() << "Failed to lock key in memory";
+        return false;
+    }
 
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
     if (!ctx) {
         qDebug() << "Failed to create EVP_CIPHER_CTX";
+        sodium_munlock(key.data(), key.size());
         return false;
     }
 
@@ -135,6 +169,7 @@ bool EncryptionEngine::cryptOperation(const QString& inputPath, const QString& o
     if (encrypt) {
         if (!EVP_EncryptInit_ex(ctx, cipher, nullptr, reinterpret_cast<const unsigned char*>(key.data()), reinterpret_cast<const unsigned char*>(iv.data()))) {
             qDebug() << "EVP_EncryptInit_ex failed";
+            sodium_munlock(key.data(), key.size());
             return false;
         }
 
@@ -146,6 +181,7 @@ bool EncryptionEngine::cryptOperation(const QString& inputPath, const QString& o
             int inLen = inputFile.read(buffer.data(), buffer.size());
             if (!EVP_EncryptUpdate(ctx, reinterpret_cast<unsigned char*>(outputBuffer.data()), &outLen, reinterpret_cast<unsigned char*>(buffer.data()), inLen)) {
                 qDebug() << "EVP_EncryptUpdate failed";
+                sodium_munlock(key.data(), key.size());
                 return false;
             }
             outputFile.write(outputBuffer.data(), outLen);
@@ -153,6 +189,7 @@ bool EncryptionEngine::cryptOperation(const QString& inputPath, const QString& o
 
         if (!EVP_EncryptFinal_ex(ctx, reinterpret_cast<unsigned char*>(outputBuffer.data()), &outLen)) {
             qDebug() << "EVP_EncryptFinal_ex failed";
+            sodium_munlock(key.data(), key.size());
             return false;
         }
         outputFile.write(outputBuffer.data(), outLen);
@@ -161,6 +198,7 @@ bool EncryptionEngine::cryptOperation(const QString& inputPath, const QString& o
     } else {
         if (!EVP_DecryptInit_ex(ctx, cipher, nullptr, reinterpret_cast<const unsigned char*>(key.data()), reinterpret_cast<const unsigned char*>(iv.data()))) {
             qDebug() << "EVP_DecryptInit_ex failed";
+            sodium_munlock(key.data(), key.size());
             return false;
         }
 
@@ -172,6 +210,7 @@ bool EncryptionEngine::cryptOperation(const QString& inputPath, const QString& o
             int inLen = inputFile.read(buffer.data(), buffer.size());
             if (!EVP_DecryptUpdate(ctx, reinterpret_cast<unsigned char*>(outputBuffer.data()), &outLen, reinterpret_cast<unsigned char*>(buffer.data()), inLen)) {
                 qDebug() << "EVP_DecryptUpdate failed";
+                sodium_munlock(key.data(), key.size());
                 return false;
             }
             outputFile.write(outputBuffer.data(), outLen);
@@ -179,6 +218,7 @@ bool EncryptionEngine::cryptOperation(const QString& inputPath, const QString& o
 
         if (!EVP_DecryptFinal_ex(ctx, reinterpret_cast<unsigned char*>(outputBuffer.data()), &outLen)) {
             qDebug() << "EVP_DecryptFinal_ex failed";
+            sodium_munlock(key.data(), key.size());
             return false;
         }
         outputFile.write(outputBuffer.data(), outLen);
@@ -189,6 +229,9 @@ bool EncryptionEngine::cryptOperation(const QString& inputPath, const QString& o
     EVP_CIPHER_CTX_free(ctx);
     inputFile.close();
     outputFile.close();
+
+    // Unlock the key from memory
+    sodium_munlock(key.data(), key.size());
 
     OPENSSL_cleanse(key.data(), key.size());
     OPENSSL_cleanse(iv.data(), iv.size());
@@ -326,12 +369,6 @@ bool EncryptionEngine::performAuthenticatedDecryption(EVP_CIPHER_CTX* ctx, const
     return true;
 }
 
-QByteArray EncryptionEngine::deriveKey(const QByteArray& password, const QByteArray& salt) {
-    QByteArray key(32, 0); // 256-bit key
-    PKCS5_PBKDF2_HMAC(password.constData(), password.length(), reinterpret_cast<const unsigned char*>(salt.constData()), salt.length(), 10000, EVP_sha256(), key.length(), reinterpret_cast<unsigned char*>(key.data()));
-    return key;
-}
-
 const EVP_CIPHER* EncryptionEngine::getCipher(const QString& algorithm) {
     if (algorithm == "AES-256-CBC") return EVP_aes_256_cbc();
     if (algorithm == "AES-256-GCM") return EVP_aes_256_gcm();
@@ -345,22 +382,22 @@ const EVP_CIPHER* EncryptionEngine::getCipher(const QString& algorithm) {
     return nullptr;
 }
 
-bool EncryptionEngine::encryptFolder(const QString& folderPath, const QString& password, const QString& algorithm, const QString& kdf, int iterations, bool useHMAC, const QString& customHeader) {
+bool EncryptionEngine::encryptFolder(const QString& folderPath, const QString& password, const QString& algorithm, const QString& kdf, int iterations, bool useHMAC, const QString& customHeader, const QStringList& keyfilePaths) {
     QString compressedFilePath = folderPath + ".tar.gz";
     if (!compressFolder(folderPath, compressedFilePath)) {
         return false;
     }
 
-    bool success = encryptFile(compressedFilePath, password, algorithm, kdf, iterations, useHMAC, customHeader);
+    bool success = encryptFile(compressedFilePath, password, algorithm, kdf, iterations, useHMAC, customHeader, keyfilePaths);
 
     return success;
 }
 
-bool EncryptionEngine::decryptFolder(const QString& folderPath, const QString& password, const QString& algorithm, const QString& kdf, int iterations, bool useHMAC, const QString& customHeader) {
+bool EncryptionEngine::decryptFolder(const QString& folderPath, const QString& password, const QString& algorithm, const QString& kdf, int iterations, bool useHMAC, const QString& customHeader, const QStringList& keyfilePaths) {
     QString encryptedFilePath = folderPath + ".enc";
     QString compressedFilePath = folderPath + ".tar.gz";
 
-    if (!decryptFile(encryptedFilePath, password, algorithm, kdf, iterations, useHMAC, customHeader)) {
+    if (!decryptFile(encryptedFilePath, password, algorithm, kdf, iterations, useHMAC, customHeader, keyfilePaths)) {
         return false;
     }
 

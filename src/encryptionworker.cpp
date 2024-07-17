@@ -8,7 +8,7 @@ EncryptionWorker::EncryptionWorker(QObject *parent)
 }
 
 void EncryptionWorker::setParameters(const QString &path, const QString &password, const QString &algorithm,
-                                     const QString &kdf, int iterations, bool useHMAC, bool encrypt, bool isFile, const QString &customHeader)
+                                     const QString &kdf, int iterations, bool useHMAC, bool encrypt, bool isFile, const QString &customHeader, const QStringList &keyfilePaths)
 {
     this->path = path;
     this->password = password;
@@ -19,6 +19,7 @@ void EncryptionWorker::setParameters(const QString &path, const QString &passwor
     this->encrypt = encrypt;
     this->isFile = isFile;
     this->customHeader = customHeader;
+    this->keyfilePaths = keyfilePaths;
 }
 
 void EncryptionWorker::process()
@@ -31,15 +32,15 @@ void EncryptionWorker::process()
 
     if (isFile) {
         if (encrypt) {
-            success = engine.encryptFile(path, password, algorithm, kdf, iterations, useHMAC, customHeader);
+            success = engine.encryptFile(path, password, algorithm, kdf, iterations, useHMAC, customHeader, keyfilePaths);
         } else {
-            success = engine.decryptFile(path, password, algorithm, kdf, iterations, useHMAC, customHeader);
+            success = engine.decryptFile(path, password, algorithm, kdf, iterations, useHMAC, customHeader, keyfilePaths);
         }
     } else {
         if (encrypt) {
-            success = engine.encryptFolder(path, password, algorithm, kdf, iterations, useHMAC, customHeader);
+            success = engine.encryptFolder(path, password, algorithm, kdf, iterations, useHMAC, customHeader, keyfilePaths);
         } else {
-            success = engine.decryptFolder(path, password, algorithm, kdf, iterations, useHMAC, customHeader);
+            success = engine.decryptFolder(path, password, algorithm, kdf, iterations, useHMAC, customHeader, keyfilePaths);
         }
     }
 

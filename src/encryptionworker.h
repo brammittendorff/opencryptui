@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QString>
+#include <QStringList>
 #include "encryptionengine.h"
 
 class EncryptionWorker : public QObject
@@ -11,7 +12,7 @@ class EncryptionWorker : public QObject
 public:
     explicit EncryptionWorker(QObject *parent = nullptr);
     void setParameters(const QString &path, const QString &password, const QString &algorithm,
-                       const QString &kdf, int iterations, bool useHMAC, bool encrypt, bool isFile, const QString &customHeader);
+                       const QString &kdf, int iterations, bool useHMAC, bool encrypt, bool isFile, const QString &customHeader, const QStringList &keyfilePaths);
 
 public slots:
     void process();
@@ -31,6 +32,7 @@ private:
     bool encrypt;
     bool isFile;
     QString customHeader;
+    QStringList keyfilePaths;
     EncryptionEngine engine;
 
     void encryptFile();

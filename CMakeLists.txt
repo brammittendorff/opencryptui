@@ -29,8 +29,10 @@ set(PROJECT_SOURCES
     src/mainwindow.h
     src/encryptionengine.cpp
     src/encryptionengine.h
-    src/encryptionworker.cpp # Add this line
-    src/encryptionworker.h   # Add this line
+    src/encryptionworker.cpp
+    src/encryptionworker.h
+    src/customlistwidget.cpp    # Add this line
+    src/customlistwidget.h      # Add this line
     ui/mainwindow.ui
 )
 
@@ -46,8 +48,8 @@ target_link_libraries(EncryptionApp PRIVATE
     ${SODIUM_LIBRARIES}
 )
 
-# Add this line to include the ui directory
 target_include_directories(EncryptionApp PRIVATE 
+    ${CMAKE_CURRENT_SOURCE_DIR}/src    # Change this to src to include customlistwidget.h
     ${CMAKE_CURRENT_SOURCE_DIR}/ui
     ${ARGON2_INCLUDE_DIRS}
     ${SODIUM_INCLUDE_DIRS}
