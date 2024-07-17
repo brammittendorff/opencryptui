@@ -10,6 +10,7 @@ OpenCryptUI is a Qt-based graphical user interface application for file and fold
 - Option to enable HMAC integrity check.
 - Memory encryption: Encrypts the in-memory keys used during encryption operations to protect against memory dump attacks.
 - Keyfile support: Keyfiles can be used to provide an additional layer of security, ensuring that access requires both the correct password and one or multiple keyfiles.
+- Hardware acceleration support: Detects support for hardware features like Intel AES-NI, which can potentially speed up AES encryption and decryption processes. OpenSSL may utilize these features automatically when available.
 
 ## Dependencies
 
@@ -89,7 +90,7 @@ OpenCryptUI aims to implement several additional features found in popular encry
 
 - **Hidden volumes:** Create hidden encrypted volumes within an existing encrypted volume for plausible deniability.
 - **PIM (Personal Iterations Multiplier) support:** Allow users to specify a PIM value to increase the number of iterations in the key derivation process for added security.
-- **Hardware-accelerated encryption:** Utilize hardware features like Intel AES-NI to speed up encryption and decryption processes.
+- **Explicit hardware acceleration utilization:** Implement and verify explicit use of hardware acceleration for all supported operations, with performance comparisons.
 - **Cross-platform support:** Enhance compatibility and testing for various operating systems, including Windows, macOS, and Linux.
 - **Secure wipe:** Implement secure deletion of original files after encryption to prevent data recovery.
 
