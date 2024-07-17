@@ -19,6 +19,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->folderIterationsSpinBox->setValue(10);
 
     connectSignalsAndSlots();
+    checkHardwareAcceleration();
 
     worker->moveToThread(&workerThread);
     connect(&workerThread, &QThread::finished, worker, &QObject::deleteLater);
@@ -186,4 +187,10 @@ void MainWindow::on_folderKeyfileBrowseButton_clicked()
             ui->folderKeyfileListWidget->addItem(path);
         }
     }
+}
+
+void MainWindow::checkHardwareAcceleration() {
+    bool supported = encryptionEngine.isHardwareAccelerationSupported();
+    QString status = supported ? "Supported" : "Not supported";
+    ui->hardwareAccelerationLabel->setText("Hardware Acceleration: " + status);
 }

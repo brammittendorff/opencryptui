@@ -6,6 +6,7 @@
 #include <QStringList>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
+#include <cpuid.h>
 
 class EncryptionEngine
 {
@@ -23,6 +24,8 @@ public:
 
     QByteArray getLastIv() const;
 
+    bool isHardwareAccelerationSupported() const { return m_aesNiSupported; }
+
 private:
     QByteArray lastIv; // Store the last used IV
 
@@ -35,6 +38,10 @@ private:
     QByteArray deriveKey(const QString& password, const QByteArray& salt, const QStringList& keyfilePaths, const QString& kdf, int iterations);
     QByteArray readKeyfile(const QString& keyfilePath);
     const EVP_CIPHER* getCipher(const QString& algorithm);
+
+    bool m_aesNiSupported;
+    bool checkHardwareSupport();
+    const EVP_CIPHER* getHardwareAcceleratedCipher(const QString& algorithm);
 };
 
 #endif // ENCRYPTIONENGINE_H

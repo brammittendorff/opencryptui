@@ -44,6 +44,8 @@ private:
     void setupComboBoxes();
     void connectSignalsAndSlots();
     void startWorker(bool encrypt, bool isFile);
+
+    void checkHardwareAcceleration();
 };
 
 #endif // MAINWINDOW_H

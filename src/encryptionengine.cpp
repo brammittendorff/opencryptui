@@ -17,6 +17,12 @@ EncryptionEngine::EncryptionEngine() {
         qDebug() << "Failed to initialize libsodium";
         throw std::runtime_error("Failed to initialize libsodium");
     }
+    m_aesNiSupported = checkHardwareSupport();
+    if (m_aesNiSupported) {
+        qDebug() << "AES-NI hardware acceleration is supported";
+    } else {
+        qDebug() << "AES-NI hardware acceleration is not supported";
+    }
 }
 
 EncryptionEngine::~EncryptionEngine() {
@@ -370,6 +376,11 @@ bool EncryptionEngine::performAuthenticatedDecryption(EVP_CIPHER_CTX* ctx, const
 }
 
 const EVP_CIPHER* EncryptionEngine::getCipher(const QString& algorithm) {
+    const EVP_CIPHER* hardwareCipher = getHardwareAcceleratedCipher(algorithm);
+    if (hardwareCipher) {
+        return hardwareCipher;
+    }
+
     if (algorithm == "AES-256-CBC") return EVP_aes_256_cbc();
     if (algorithm == "AES-256-GCM") return EVP_aes_256_gcm();
     if (algorithm == "AES-256-CTR") return EVP_aes_256_ctr();
@@ -379,6 +390,7 @@ const EVP_CIPHER* EncryptionEngine::getCipher(const QString& algorithm) {
     if (algorithm == "Blowfish") return EVP_bf_cbc();
     if (algorithm == "Camellia-256-CBC") return EVP_camellia_256_cbc();
     if (algorithm == "AES-128-CBC") return EVP_aes_128_cbc();
+
     return nullptr;
 }
 
@@ -404,4 +416,41 @@ bool EncryptionEngine::decryptFolder(const QString& folderPath, const QString& p
     bool success = decompressFile(compressedFilePath, folderPath);
 
     return success;
+}
+
+bool EncryptionEngine::checkHardwareSupport() {
+    unsigned int eax, ebx, ecx, edx;
+    if (__get_cpuid(1, &eax, &ebx, &ecx, &edx)) {
+        return (ecx & bit_AES) != 0;
+    }
+    return false;
+}
+
+const EVP_CIPHER* EncryptionEngine::getHardwareAcceleratedCipher(const QString& algorithm) {
+    if (m_aesNiSupported) {
+        // AES-NI is supported, return hardware-accelerated versions of AES ciphers
+        if (algorithm == "AES-256-CBC") {
+            return EVP_aes_256_cbc();
+        } else if (algorithm == "AES-256-GCM") {
+            return EVP_aes_256_gcm();
+        } else if (algorithm == "AES-256-CTR") {
+            return EVP_aes_256_ctr();
+        } else if (algorithm == "AES-128-CBC") {
+            return EVP_aes_128_cbc();
+        } else if (algorithm == "AES-128-GCM") {
+            return EVP_aes_128_gcm();
+        } else if (algorithm == "AES-128-CTR") {
+            return EVP_aes_128_ctr();
+        } else if (algorithm == "AES-192-CBC") {
+            return EVP_aes_192_cbc();
+        } else if (algorithm == "AES-192-GCM") {
+            return EVP_aes_192_gcm();
+        } else if (algorithm == "AES-192-CTR") {
+            return EVP_aes_192_ctr();
+        }
+    }
+
+    // For non-AES algorithms or if AES-NI is not supported, return nullptr
+    // This will cause the main getCipher function to fall back to non-accelerated versions
+    return nullptr;
 }
