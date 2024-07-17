@@ -51,6 +51,14 @@ To build the project, follow these steps:
    ./EncryptionApp
    ```
 
+## Detailed Installation Instructions
+
+For detailed installation instructions, please refer to the following:
+
+- [Linux](installation/linux.md)
+- [Windows](installation/windows.md)
+- [macOS](installation/osx.md)
+
 ## Usage
 
 1. Launch the application:
