@@ -2,6 +2,8 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QBuffer>
+#include <QTextStream>
 #include <QStandardItemModel>
 #include "encryptionengine.h"
 #include "encryptionworker.h"
@@ -32,6 +34,7 @@ private slots:
     void updateProgress(int value);
     void handleFinished(bool success, const QString &errorMessage);
     void showEstimatedTime(double seconds);
+    void on_benchmarkButton_clicked();
 
 private:
     Ui::MainWindow *ui;
@@ -39,6 +42,7 @@ private:
     QStandardItemModel *drivesModel;
     QThread workerThread;
     EncryptionWorker *worker;
+    static QTextStream* s_logStream;
 
     void setupUI();
     void setupComboBoxes();
@@ -46,6 +50,9 @@ private:
     void startWorker(bool encrypt, bool isFile);
 
     void checkHardwareAcceleration();
+
+    static void messageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg);
+
 };
 
 #endif // MAINWINDOW_H

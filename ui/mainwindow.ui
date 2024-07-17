@@ -272,6 +272,27 @@
         </item>
        </layout>
       </widget>
+      <widget class="QWidget" name="benchmarkTab">
+       <attribute name="title">
+        <string>Benchmark</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_5">
+        <item>
+         <widget class="QPushButton" name="benchmarkButton">
+          <property name="text">
+           <string>Run Benchmark</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QTextEdit" name="benchmarkResultsTextEdit">
+          <property name="readOnly">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
      </widget>
     </item>
    </layout>

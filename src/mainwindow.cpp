@@ -2,8 +2,14 @@
 #include "ui_mainwindow.h"
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QBuffer>
 #include <QDebug>
 #include <QThread>
+#include <QTextStream>
+#include "encryptionengine.h"
+
+// Add the static member initialization here
+QTextStream* MainWindow::s_logStream = nullptr;
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -193,4 +199,68 @@ void MainWindow::checkHardwareAcceleration() {
     bool supported = encryptionEngine.isHardwareAccelerationSupported();
     QString status = supported ? "Supported" : "Not supported";
     ui->hardwareAccelerationLabel->setText("Hardware Acceleration: " + status);
+}
+
+void MainWindow::on_benchmarkButton_clicked()
+{
+    ui->benchmarkResultsTextEdit->clear();
+    ui->benchmarkResultsTextEdit->append("Running benchmark...\n");
+    
+    // Create a buffer and a stream
+    QBuffer buffer;
+    buffer.open(QIODevice::ReadWrite);
+    QTextStream stream(&buffer);
+
+    // Set the static stream pointer
+    s_logStream = &stream;
+
+    // Install the message handler
+    QtMessageHandler oldMessageHandler = qInstallMessageHandler(messageHandler);
+
+    // Run the benchmark
+    encryptionEngine.runBenchmark();
+
+    // Reset the message handler and stream pointer
+    qInstallMessageHandler(oldMessageHandler);
+    s_logStream = nullptr;
+
+    // Get the benchmark results from the buffer
+    buffer.seek(0);
+    QString benchmarkResults = stream.readAll();
+
+    // Format and display the results in the text edit
+    QStringList lines = benchmarkResults.split("\n");
+    ui->benchmarkResultsTextEdit->append("Benchmark Results:\n");
+    for (const QString& line : lines) {
+        if (line.startsWith("Algorithm:")) {
+            QStringList parts = line.split(" ");
+            if (parts.size() >= 9) {
+                QString algorithm = parts[1];
+                QString time = parts[3];
+                QString throughput = parts[6];
+                QString acceleration = parts[8];
+                
+                QString formattedLine = QString("Algorithm: %1\n"
+                                                "Time: %2 ms\n"
+                                                "Throughput: %3 MB/s\n"
+                                                "%4\n")
+                                            .arg(algorithm)
+                                            .arg(time)
+                                            .arg(throughput)
+                                            .arg(acceleration);
+                ui->benchmarkResultsTextEdit->append(formattedLine);
+            }
+        }
+    }
+
+    ui->benchmarkResultsTextEdit->append("Benchmark complete.");
+}
+
+void MainWindow::messageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
+{
+    if (s_logStream)
+    {
+        *s_logStream << msg << Qt::endl;
+        QTextStream(stdout) << msg << Qt::endl;
+    }
 }

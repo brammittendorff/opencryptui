@@ -6,10 +6,12 @@
 #include <QByteArray>
 #include <QFileInfo>
 #include <QDirIterator>
+#include <QElapsedTimer>
 #include <openssl/rand.h>
 #include <openssl/evp.h>
 #include <argon2.h>
 #include <sodium.h>
+#include <cpuid.h>
 
 EncryptionEngine::EncryptionEngine() {
     OpenSSL_add_all_algorithms();
@@ -23,6 +25,11 @@ EncryptionEngine::EncryptionEngine() {
     } else {
         qDebug() << "AES-NI hardware acceleration is not supported";
     }
+}
+
+bool EncryptionEngine::isHardwareAccelerationSupported() const
+{
+    return m_aesNiSupported;
 }
 
 EncryptionEngine::~EncryptionEngine() {
@@ -453,4 +460,67 @@ const EVP_CIPHER* EncryptionEngine::getHardwareAcceleratedCipher(const QString& 
     // For non-AES algorithms or if AES-NI is not supported, return nullptr
     // This will cause the main getCipher function to fall back to non-accelerated versions
     return nullptr;
+}
+
+void EncryptionEngine::runBenchmark() {
+    QStringList algorithms = {
+        "AES-256-CBC", "AES-256-GCM", "AES-256-CTR",
+        "AES-192-CBC", "AES-192-GCM", "AES-192-CTR",
+        "AES-128-CBC", "AES-128-GCM", "AES-128-CTR",
+        "ChaCha20-Poly1305", "Twofish", "Serpent",
+        "Blowfish", "Camellia-256-CBC"
+    };
+
+    qDebug() << "Starting benchmark...";
+    for (const auto& algo : algorithms) {
+        benchmarkCipher(algo, true);
+        if (algo.startsWith("AES")) {
+            benchmarkCipher(algo, false);
+        }
+    }
+    qDebug() << "Benchmark complete.";
+}
+
+void EncryptionEngine::benchmarkCipher(const QString& algorithm, bool useHardwareAcceleration) {
+    const int dataSize = 100 * 1024 * 1024; // 100 MB
+    QByteArray testData(dataSize, 'A');
+    QByteArray key(32, 'K');
+    QByteArray iv(16, 'I');
+
+    QElapsedTimer timer;
+    timer.start();
+
+    const EVP_CIPHER* cipher = useHardwareAcceleration ? 
+                               getHardwareAcceleratedCipher(algorithm) : 
+                               getCipher(algorithm);
+    
+    if (!cipher) {
+        qDebug() << "Skipping" << algorithm << "- not supported";
+        return;
+    }
+
+    // Perform encryption
+    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+    EVP_EncryptInit_ex(ctx, cipher, nullptr, 
+                       reinterpret_cast<const unsigned char*>(key.data()), 
+                       reinterpret_cast<const unsigned char*>(iv.data()));
+
+    QByteArray ciphertext(testData.size() + EVP_MAX_BLOCK_LENGTH, 0);
+    int len;
+    int ciphertextLen = 0;
+    EVP_EncryptUpdate(ctx, reinterpret_cast<unsigned char*>(ciphertext.data()), &len, 
+                      reinterpret_cast<const unsigned char*>(testData.data()), testData.size());
+    ciphertextLen += len;
+    EVP_EncryptFinal_ex(ctx, reinterpret_cast<unsigned char*>(ciphertext.data()) + len, &len);
+    ciphertextLen += len;
+
+    EVP_CIPHER_CTX_free(ctx);
+
+    qint64 elapsed = timer.elapsed();
+    double throughput = (dataSize / (1024.0 * 1024.0)) / (elapsed / 1000.0);
+
+    qDebug() << "Algorithm:" << algorithm 
+             << "Time:" << elapsed << "ms" 
+             << "Throughput:" << throughput << "MB/s"
+             << (useHardwareAcceleration ? "(Hardware Accelerated)" : "(Software)");
 }
