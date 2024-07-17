@@ -53,7 +53,6 @@ bool EncryptionEngine::decryptFile(const QString& filePath, const QString& passw
     outputPath.chop(4); // Remove ".enc"
     bool success = cryptOperation(filePath, outputPath, password, algorithm, false, kdf, iterations, useHMAC, customHeader);
     if (!success) {
-        QFile::remove(outputPath);
         return false;
     }
     return true;
@@ -90,8 +89,6 @@ bool EncryptionEngine::cryptOperation(const QString& inputPath, const QString& o
         outputFile.write(salt);
         outputFile.write(iv);
         lastIv = iv; // Store the last used IV
-        qDebug() << "Encryption - IV (hex):" << iv.toHex();
-        qDebug() << "Encryption - Salt (hex):" << salt.toHex();
     } else {
         QByteArray header(customHeader.size(), 0);
         if (inputFile.read(header.data(), customHeader.size()) != customHeader.size() || header != customHeader.toUtf8()) {
@@ -101,8 +98,6 @@ bool EncryptionEngine::cryptOperation(const QString& inputPath, const QString& o
         inputFile.read(salt.data(), salt.size());
         inputFile.read(iv.data(), iv.size());
         lastIv = iv; // Store the last used IV
-        qDebug() << "Decryption - IV (hex):" << iv.toHex();
-        qDebug() << "Decryption - Salt (hex):" << salt.toHex();
     }
 
     QByteArray key(EVP_MAX_KEY_LENGTH, 0);
@@ -356,7 +351,6 @@ bool EncryptionEngine::encryptFolder(const QString& folderPath, const QString& p
     }
 
     bool success = encryptFile(compressedFilePath, password, algorithm, kdf, iterations, useHMAC, customHeader);
-    QFile::remove(compressedFilePath);
 
     return success;
 }
@@ -370,7 +364,6 @@ bool EncryptionEngine::decryptFolder(const QString& folderPath, const QString& p
     }
 
     bool success = decompressFile(compressedFilePath, folderPath);
-    QFile::remove(compressedFilePath);
 
     return success;
 }

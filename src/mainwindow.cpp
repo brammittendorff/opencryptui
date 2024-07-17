@@ -13,6 +13,11 @@ MainWindow::MainWindow(QWidget *parent)
     qDebug() << "MainWindow Constructor";
     ui->setupUi(this);
     setupUI();
+
+    // Set default values for iterations
+    ui->iterationsSpinBox->setValue(10);
+    ui->folderIterationsSpinBox->setValue(10);
+
     connectSignalsAndSlots();
 
     worker->moveToThread(&workerThread);
