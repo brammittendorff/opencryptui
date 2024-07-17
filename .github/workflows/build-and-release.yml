@@ -1,0 +1,114 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up CMake
+      uses: lukka/get-cmake@v2
+
+    - name: Install dependencies on Linux
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y qt5-default libssl-dev libsodium-dev libargon2-dev build-essential
+
+    - name: Install dependencies on Windows
+      if: matrix.os == 'windows-latest'
+      run: |
+        choco install -y openssl
+        choco install -y libsodium
+        choco install -y qt5
+        # Install Argon2 from source
+        git clone https://github.com/P-H-C/phc-winner-argon2.git
+        cd phc-winner-argon2
+        mkdir build
+        cd build
+        cmake -G "MinGW Makefiles" ..
+        mingw32-make
+        copy libargon2.a C:\Tools\argon2\lib
+        copy ../include/argon2.h C:\Tools\argon2\include
+
+    - name: Install dependencies on macOS
+      if: matrix.os == 'macos-latest'
+      run: |
+        brew install qt@5
+        brew install openssl
+        brew install libsodium
+        brew install argon2
+
+    - name: Configure CMake
+      run: |
+        if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
+          cmake -B build -S .;
+        elif [ "${{ matrix.os }}" == "macos-latest" ]; then
+          cmake -B build -S . -DQt5_DIR=$(brew --prefix qt@5)/lib/cmake/Qt5 -DOPENSSL_ROOT_DIR=$(brew --prefix openssl@1.1);
+        else
+          cmake -B build -S . -DARGON2_INCLUDE_DIR=C:\Tools\argon2\include -DARGON2_LIB=C:\Tools\argon2\lib;
+        fi
+      shell: bash
+
+    - name: Build
+      run: cmake --build build --config Release
+      shell: bash
+
+    - name: Archive build
+      if: matrix.os == 'ubuntu-latest'
+      run: tar -czvf OpenCryptUI-linux.tar.gz -C build .
+      shell: bash
+    - name: Archive build
+      if: matrix.os == 'windows-latest'
+      run: Compress-Archive -Path build\* -DestinationPath OpenCryptUI-windows.zip
+      shell: powershell
+    - name: Archive build
+      if: matrix.os == 'macos-latest'
+      run: tar -czvf OpenCryptUI-macos.tar.gz -C build .
+      shell: bash
+
+    - name: Upload Release Asset
+      uses: actions/upload-artifact@v2
+      with:
+        name: OpenCryptUI-${{ matrix.os }}
+        path: |
+          OpenCryptUI-linux.tar.gz
+          OpenCryptUI-windows.zip
+          OpenCryptUI-macos.tar.gz
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download Release Assets
+      uses: actions/download-artifact@v2
+      with:
+        name: OpenCryptUI-linux
+    - name: Download Release Assets
+      uses: actions/download-artifact@v2
+      with:
+        name: OpenCryptUI-windows
+    - name: Download Release Assets
+      uses: actions/download-artifact@v2
+      with:
+        name: OpenCryptUI-macos
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          OpenCryptUI-linux.tar.gz
+          OpenCryptUI-windows.zip
+          OpenCryptUI-macos.tar.gz
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
