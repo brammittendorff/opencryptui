@@ -112,10 +112,11 @@ bool EncryptionEngine::cryptOperation(const QString& inputPath, const QString& o
             return false;
         }
     } else if (kdf == "Scrypt") {
+        unsigned long long opslimit = iterations; // Set opslimit to the iterations value
         if (crypto_pwhash_scryptsalsa208sha256(reinterpret_cast<unsigned char*>(key.data()), static_cast<unsigned long long>(key.size()),
                                             password.toUtf8().constData(), static_cast<unsigned long long>(password.size()),
                                             reinterpret_cast<unsigned char*>(salt.data()), 
-                                            crypto_pwhash_scryptsalsa208sha256_OPSLIMIT_INTERACTIVE,
+                                            opslimit,
                                             crypto_pwhash_scryptsalsa208sha256_MEMLIMIT_INTERACTIVE) != 0) {
             qDebug() << "Scrypt key derivation failed";
             return false;
