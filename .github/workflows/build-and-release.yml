@@ -30,17 +30,18 @@ jobs:
         run: |
           brew update
           brew install qt openssl libsodium argon2
+          echo 'export CMAKE_PREFIX_PATH=$(brew --prefix qt)/lib/cmake' >> $GITHUB_ENV
 
       - name: Install dependencies (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
-          choco install qt5
-          choco install openssl
-          choco install libsodium
+          choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' -y
+          choco install qt5 -y
+          choco install openssl -y
+          choco install libsodium -y
           # Download and install Argon2
           Invoke-WebRequest -Uri "https://github.com/P-H-C/phc-winner-argon2/archive/refs/heads/master.zip" -OutFile "argon2.zip"
-          tar -xf argon2.zip
+          Expand-Archive -Path argon2.zip -DestinationPath .
           cd phc-winner-argon2-master
           mkdir build
           cd build
