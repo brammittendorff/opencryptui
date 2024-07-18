@@ -17,7 +17,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Set up CMake
-        uses: scivision/cmake-ci-action@v2
+        uses: jwlawson/actions-setup-cmake@v1
 
       - name: Install dependencies (Linux)
         if: matrix.os == 'ubuntu-latest'
@@ -46,7 +46,7 @@ jobs:
           cd build
           cmake ..
           cmake --build . --config Release
-          copy Release\argon2.exe C:\argon2
+          Copy-Item -Path "Release\argon2.exe" -Destination "C:\argon2"
 
       - name: Configure CMake
         run: cmake -S . -B build
