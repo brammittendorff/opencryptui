@@ -25,30 +25,85 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential cmake git qtbase5-dev qtchooser qt5-qmake qtbase5-dev-tools libssl-dev libsodium-dev libargon2-dev
 
-      - name: Install dependencies (macOS)
+      - name: Install Homebrew (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          brew update
-          brew install qt openssl libsodium argon2
+          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          echo 'eval $(/opt/homebrew/bin/brew shellenv)' >> $GITHUB_ENV
+          eval $(/opt/homebrew/bin/brew shellenv)
+
+      - name: Install Qt (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          MAX_RETRIES=3
+          RETRY_COUNT=0
+          until [ $RETRY_COUNT -ge $MAX_RETRIES ]
+          do
+            brew install qt && break
+            RETRY_COUNT=$[$RETRY_COUNT+1]
+            echo "Retrying Qt install ($RETRY_COUNT/$MAX_RETRIES)..."
+            sleep 10
+          done
+
+      - name: Install OpenSSL (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          MAX_RETRIES=3
+          RETRY_COUNT=0
+          until [ $RETRY_COUNT -ge $MAX_RETRIES ]
+          do
+            brew install openssl && break
+            RETRY_COUNT=$[$RETRY_COUNT+1]
+            echo "Retrying OpenSSL install ($RETRY_COUNT/$MAX_RETRIES)..."
+            sleep 10
+          done
+
+      - name: Install Libsodium (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          MAX_RETRIES=3
+          RETRY_COUNT=0
+          until [ $RETRY_COUNT -ge $MAX_RETRIES ]
+          do
+            brew install libsodium && break
+            RETRY_COUNT=$[$RETRY_COUNT+1]
+            echo "Retrying Libsodium install ($RETRY_COUNT/$MAX_RETRIES)..."
+            sleep 10
+          done
+
+      - name: Install Argon2 (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          MAX_RETRIES=3
+          RETRY_COUNT=0
+          until [ $RETRY_COUNT -ge $MAX_RETRIES ]
+          do
+            brew install argon2 && break
+            RETRY_COUNT=$[$RETRY_COUNT+1]
+            echo "Retrying Argon2 install ($RETRY_COUNT/$MAX_RETRIES)..."
+            sleep 10
+          done
+
+      - name: Set CMAKE_PREFIX_PATH (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
           echo "CMAKE_PREFIX_PATH=$(brew --prefix qt)/lib/cmake" >> $GITHUB_ENV
 
       - name: Install MinGW (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          Invoke-WebRequest -Uri "https://sourceforge.net/projects/mingw-w64/files/latest/download" -OutFile "mingw-w64.exe"
-          Start-Process "mingw-w64.exe" -ArgumentList "/S" -NoNewWindow -Wait
-
-      - name: Add MinGW to PATH (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          $env:Path += ";C:\Program Files\mingw-w64\bin"
+          Invoke-WebRequest -Uri "https://sourceforge.net/projects/mingw-w64/files/latest/download" -OutFile "mingw-w64.zip"
+          Expand-Archive -Path "mingw-w64.zip" -DestinationPath "C:\mingw-w64"
+          $env:Path += ";C:\mingw-w64\mingw64\bin"
           [System.Environment]::SetEnvironmentVariable("Path", $env:Path, [System.EnvironmentVariableTarget]::Machine)
 
       - name: Install CMake (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          Invoke-WebRequest -Uri "https://github.com/Kitware/CMake/releases/download/v3.21.2/cmake-3.21.2-windows-x86_64.msi" -OutFile "cmake.msi"
-          Start-Process msiexec.exe -ArgumentList "/i cmake.msi /quiet /norestart" -NoNewWindow -Wait
+          Invoke-WebRequest -Uri "https://github.com/Kitware/CMake/releases/download/v3.21.2/cmake-3.21.2-windows-x86_64.zip" -OutFile "cmake.zip"
+          Expand-Archive -Path "cmake.zip" -DestinationPath "C:\cmake"
+          $env:Path += ";C:\cmake\bin"
+          [System.Environment]::SetEnvironmentVariable("Path", $env:Path, [System.EnvironmentVariableTarget]::Machine)
 
       - name: Install Qt (Windows)
         if: matrix.os == 'windows-latest'
