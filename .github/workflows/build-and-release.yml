@@ -30,27 +30,65 @@ jobs:
         run: |
           brew update
           brew install qt openssl libsodium argon2
-          echo 'export CMAKE_PREFIX_PATH=$(brew --prefix qt)/lib/cmake' >> $GITHUB_ENV
+          echo "CMAKE_PREFIX_PATH=$(brew --prefix qt)/lib/cmake" >> $GITHUB_ENV
 
-      - name: Install dependencies (Windows)
+      - name: Install MinGW (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' -y
-          choco install qt5 -y
-          choco install openssl -y
-          choco install libsodium -y
-          # Download and install Argon2
+          Invoke-WebRequest -Uri "https://sourceforge.net/projects/mingw-w64/files/latest/download" -OutFile "mingw-w64.exe"
+          Start-Process "mingw-w64.exe" -ArgumentList "/S" -NoNewWindow -Wait
+
+      - name: Add MinGW to PATH (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          $env:Path += ";C:\Program Files\mingw-w64\bin"
+          [System.Environment]::SetEnvironmentVariable("Path", $env:Path, [System.EnvironmentVariableTarget]::Machine)
+
+      - name: Install CMake (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/Kitware/CMake/releases/download/v3.21.2/cmake-3.21.2-windows-x86_64.msi" -OutFile "cmake.msi"
+          Start-Process msiexec.exe -ArgumentList "/i cmake.msi /quiet /norestart" -NoNewWindow -Wait
+
+      - name: Install Qt (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          Invoke-WebRequest -Uri "https://download.qt.io/official_releases/qt/5.15/5.15.2/qt-opensource-windows-x86-5.15.2.exe" -OutFile "qt-installer.exe"
+          Start-Process "qt-installer.exe" -ArgumentList "/S" -NoNewWindow -Wait
+          $env:Path += ";C:\Qt\5.15.2\mingw81_64\bin"
+          [System.Environment]::SetEnvironmentVariable("Path", $env:Path, [System.EnvironmentVariableTarget]::Machine)
+
+      - name: Install OpenSSL (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          Invoke-WebRequest -Uri "https://slproweb.com/download/Win64OpenSSL-1_1_1k.exe" -OutFile "openssl.exe"
+          Start-Process "openssl.exe" -ArgumentList "/S" -NoNewWindow -Wait
+
+      - name: Install libsodium (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          Invoke-WebRequest -Uri "https://download.libsodium.org/libsodium/releases/libsodium-1.0.18-stable-msvc.zip" -OutFile "libsodium.zip"
+          Expand-Archive -Path "libsodium.zip" -DestinationPath "C:\libsodium"
+
+      - name: Install Argon2 (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
           Invoke-WebRequest -Uri "https://github.com/P-H-C/phc-winner-argon2/archive/refs/heads/master.zip" -OutFile "argon2.zip"
-          Expand-Archive -Path argon2.zip -DestinationPath .
+          Expand-Archive -Path "argon2.zip" -DestinationPath .
           cd phc-winner-argon2-master
           mkdir build
           cd build
-          cmake ..
+          cmake -G "MinGW Makefiles" ..
           cmake --build . --config Release
           Copy-Item -Path "Release\argon2.exe" -Destination "C:\argon2"
 
-      - name: Configure CMake
+      - name: Configure CMake (Linux and macOS)
+        if: matrix.os != 'windows-latest'
         run: cmake -S . -B build
+
+      - name: Configure CMake (Windows)
+        if: matrix.os == 'windows-latest'
+        run: cmake -G "MinGW Makefiles" -S . -B build
 
       - name: Build
         run: cmake --build build --config Release
