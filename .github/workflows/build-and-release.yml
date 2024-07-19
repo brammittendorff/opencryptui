@@ -33,7 +33,7 @@ jobs:
       - name: Install dependencies (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          brew install qt qt5 openssl libsodium argon2 ninja
+          brew install qt openssl libsodium argon2 ninja
 
       - name: Configure CMake (macOS)
         if: matrix.os == 'macos-latest'
