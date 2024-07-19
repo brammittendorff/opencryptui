@@ -42,7 +42,7 @@ set(PROJECT_SOURCES
 
 add_executable(EncryptionApp ${PROJECT_SOURCES})
 
-target_link_libraries(EncryptionApp PRIVATE 
+target_link_libraries(EncryptionApp PUBLIC 
     Qt5::Core
     Qt5::Gui
     Qt5::Widgets
