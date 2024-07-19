@@ -17,8 +17,21 @@ find_package(OpenSSL REQUIRED)
 
 # Find Argon2 and Sodium (Scrypt) packages
 find_package(PkgConfig REQUIRED)
-pkg_search_module(ARGON2 REQUIRED libargon2)
-pkg_search_module(SODIUM REQUIRED libsodium)
+
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    pkg_search_module(ARGON2 REQUIRED libargon2)
+    pkg_search_module(SODIUM REQUIRED libsodium)
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    set(ARGON2_LIB_DIR $ENV{ARGON2_LIB_DIR})
+    set(ARGON2_INCLUDE_DIR $ENV{ARGON2_INCLUDE_DIR})
+    set(SODIUM_LIB_DIR $ENV{SODIUM_LIB_DIR})
+    set(SODIUM_INCLUDE_DIR $ENV{SODIUM_INCLUDE_DIR})
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    set(ARGON2_LIB_DIR $ENV{ARGON2_LIB_DIR})
+    set(ARGON2_INCLUDE_DIR $ENV{ARGON2_INCLUDE_DIR})
+    set(SODIUM_LIB_DIR $ENV{SODIUM_LIB_DIR})
+    set(SODIUM_INCLUDE_DIR $ENV{SODIUM_INCLUDE_DIR})
+endif()
 
 # Add this line to set the UI file directory
 set(CMAKE_AUTOUIC_SEARCH_PATHS ${CMAKE_CURRENT_SOURCE_DIR}/ui)
@@ -42,6 +55,16 @@ set(PROJECT_SOURCES
 
 add_executable(EncryptionApp ${PROJECT_SOURCES})
 
+target_include_directories(EncryptionApp PRIVATE 
+    ${CMAKE_CURRENT_SOURCE_DIR}/include    # Include directory for header files
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui
+    ${ARGON2_INCLUDE_DIRS}
+    ${SODIUM_INCLUDE_DIRS}
+    ${ARGON2_INCLUDE_DIR}
+    ${SODIUM_INCLUDE_DIR}
+)
+
 target_link_libraries(EncryptionApp PUBLIC 
     Qt5::Core
     Qt5::Gui
@@ -50,14 +73,8 @@ target_link_libraries(EncryptionApp PUBLIC
     OpenSSL::Crypto
     ${ARGON2_LIBRARIES}
     ${SODIUM_LIBRARIES}
-)
-
-target_include_directories(EncryptionApp PRIVATE 
-    ${CMAKE_CURRENT_SOURCE_DIR}/include    # Include directory for header files
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/ui
-    ${ARGON2_INCLUDE_DIRS}
-    ${SODIUM_INCLUDE_DIRS}
+    ${ARGON2_LIB_DIR}/libargon2.a
+    ${SODIUM_LIB_DIR}/libsodium.a
 )
 
 # Print paths for debugging
@@ -66,3 +83,5 @@ message(STATUS "OpenSSL_INCLUDE_DIR: ${OpenSSL_INCLUDE_DIR}")
 message(STATUS "OpenSSL_LIBRARIES: ${OpenSSL_LIBRARIES}")
 message(STATUS "ARGON2_INCLUDE_DIRS: ${ARGON2_INCLUDE_DIRS}")
 message(STATUS "SODIUM_INCLUDE_DIRS: ${SODIUM_INCLUDE_DIRS}")
+message(STATUS "ARGON2_LIB_DIR: ${ARGON2_LIB_DIR}")
+message(STATUS "SODIUM_LIB_DIR: ${SODIUM_LIB_DIR}")

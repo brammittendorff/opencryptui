@@ -36,6 +36,14 @@ jobs:
           brew install qt@5 openssl libsodium argon2 ninja
           brew link --force qt@5
 
+      - name: Set environment variables for macOS
+        if: matrix.os == 'macos-latest'
+        run: |
+          echo "ARGON2_LIB_DIR=$(brew --prefix argon2)/lib" >> $GITHUB_ENV
+          echo "ARGON2_INCLUDE_DIR=$(brew --prefix argon2)/include" >> $GITHUB_ENV
+          echo "SODIUM_LIB_DIR=$(brew --prefix libsodium)/lib" >> $GITHUB_ENV
+          echo "SODIUM_INCLUDE_DIR=$(brew --prefix libsodium)/include" >> $GITHUB_ENV
+
       - name: Configure CMake (macOS)
         if: matrix.os == 'macos-latest'
         run: |
@@ -98,6 +106,15 @@ jobs:
           cmake -G "MinGW Makefiles" ..
           cmake --build . --config Release
           Copy-Item -Path "Release\argon2.exe" -Destination "C:\argon2"
+          Copy-Item -Path "..\include" -Destination "C:\argon2"
+
+      - name: Set environment variables for Windows
+        if: matrix.os == 'windows-latest'
+        run: |
+          echo "ARGON2_LIB_DIR=C:\argon2" >> $env:GITHUB_ENV
+          echo "ARGON2_INCLUDE_DIR=C:\argon2\include" >> $env:GITHUB_ENV
+          echo "SODIUM_LIB_DIR=C:\libsodium" >> $env:GITHUB_ENV
+          echo "SODIUM_INCLUDE_DIR=C:\libsodium\include" >> $env:GITHUB_ENV
 
       - name: Configure CMake
         run: cmake -S . -B build -G "${{ matrix.os == 'windows-latest' && 'MinGW Makefiles' || 'Ninja' }}"
