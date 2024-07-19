@@ -6,6 +6,8 @@
 #include <QDebug>
 #include <QThread>
 #include <QTextStream>
+#include <QTableWidgetItem>
+#include <QHeaderView>
 #include "encryptionengine.h"
 
 // Add the static member initialization here
@@ -32,8 +34,17 @@ MainWindow::MainWindow(QWidget *parent)
     connect(worker, &EncryptionWorker::progress, this, &MainWindow::updateProgress);
     connect(worker, &EncryptionWorker::finished, this, &MainWindow::handleFinished);
     connect(worker, &EncryptionWorker::estimatedTime, this, &MainWindow::showEstimatedTime);
+    connect(worker, &EncryptionWorker::benchmarkResultReady, this, &MainWindow::updateBenchmarkTable);
+
     workerThread.start();
+
+    // Initialize the benchmark table
+    ui->benchmarkTable->setColumnCount(5);
+    QStringList headers = {"Iterations", "MB/s", "ms", "Cipher", "KDF"};
+    ui->benchmarkTable->setHorizontalHeaderLabels(headers);
+    ui->benchmarkTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
 }
+
 
 MainWindow::~MainWindow()
 {
@@ -66,8 +77,8 @@ void MainWindow::setupComboBoxes() {
     ui->kdfComboBox->addItems(kdfs);
     ui->folderKdfComboBox->addItems(kdfs);
 
-    ui->iterationsSpinBox->setValue(100000);
-    ui->folderIterationsSpinBox->setValue(100000);
+    ui->iterationsSpinBox->setValue(10);
+    ui->folderIterationsSpinBox->setValue(10);
 
     ui->hmacCheckBox->setChecked(true);
     ui->folderHmacCheckBox->setChecked(true);
@@ -83,6 +94,7 @@ void MainWindow::connectSignalsAndSlots()
     connect(ui->folderDecryptButton, &QPushButton::clicked, this, &MainWindow::on_folderDecryptButton_clicked);
     connect(ui->folderBrowseButton, &QPushButton::clicked, this, &MainWindow::on_folderBrowseButton_clicked);
     connect(ui->folderKeyfileBrowseButton, &QPushButton::clicked, this, &MainWindow::on_folderKeyfileBrowseButton_clicked);
+    connect(ui->benchmarkButton, &QPushButton::clicked, this, &MainWindow::on_benchmarkButton_clicked);
 }
 
 void MainWindow::on_fileEncryptButton_clicked()
@@ -203,9 +215,9 @@ void MainWindow::checkHardwareAcceleration() {
 
 void MainWindow::on_benchmarkButton_clicked()
 {
-    ui->benchmarkResultsTextEdit->clear();
-    ui->benchmarkResultsTextEdit->append("Running benchmark...\n");
-    
+    ui->benchmarkTable->setRowCount(0); // Clear previous results
+    qDebug() << "Running benchmark...";
+
     // Create a buffer and a stream
     QBuffer buffer;
     buffer.open(QIODevice::ReadWrite);
@@ -227,33 +239,31 @@ void MainWindow::on_benchmarkButton_clicked()
     // Get the benchmark results from the buffer
     buffer.seek(0);
     QString benchmarkResults = stream.readAll();
+    
+    qDebug() << "Raw benchmark results:";
+    qDebug() << benchmarkResults;
 
-    // Format and display the results in the text edit
+    // Parse and display the results in the table
     QStringList lines = benchmarkResults.split("\n");
-    ui->benchmarkResultsTextEdit->append("Benchmark Results:\n");
     for (const QString& line : lines) {
-        if (line.startsWith("Algorithm:")) {
-            QStringList parts = line.split(" ");
+        if (line.startsWith("\"Algorithm:")) {
+            // Remove quotes at the beginning and end
+            QString cleanLine = line.mid(1, line.length() - 2);
+            QStringList parts = cleanLine.split(" ");
             if (parts.size() >= 9) {
                 QString algorithm = parts[1];
-                QString time = parts[3];
-                QString throughput = parts[6];
-                QString acceleration = parts[8];
+                QString kdf = parts[3];
+                double time = parts[5].toDouble();
+                double throughput = parts[8].toDouble();
                 
-                QString formattedLine = QString("Algorithm: %1\n"
-                                                "Time: %2 ms\n"
-                                                "Throughput: %3 MB/s\n"
-                                                "%4\n")
-                                            .arg(algorithm)
-                                            .arg(time)
-                                            .arg(throughput)
-                                            .arg(acceleration);
-                ui->benchmarkResultsTextEdit->append(formattedLine);
+                qDebug() << "Parsed values:" << algorithm << kdf << time << throughput;
+                
+                updateBenchmarkTable(1, throughput, time, algorithm, kdf);
             }
         }
     }
 
-    ui->benchmarkResultsTextEdit->append("Benchmark complete.");
+    qDebug() << "Benchmark complete.";
 }
 
 void MainWindow::messageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
@@ -263,4 +273,15 @@ void MainWindow::messageHandler(QtMsgType type, const QMessageLogContext &contex
         *s_logStream << msg << Qt::endl;
         QTextStream(stdout) << msg << Qt::endl;
     }
+}
+
+void MainWindow::updateBenchmarkTable(int iterations, double mbps, double ms, const QString &cipher, const QString &kdf) {
+    int row = ui->benchmarkTable->rowCount();
+    ui->benchmarkTable->insertRow(row);
+
+    ui->benchmarkTable->setItem(row, 0, new QTableWidgetItem(QString::number(iterations)));
+    ui->benchmarkTable->setItem(row, 1, new QTableWidgetItem(QString::number(mbps, 'f', 2)));
+    ui->benchmarkTable->setItem(row, 2, new QTableWidgetItem(QString::number(ms, 'f', 2)));
+    ui->benchmarkTable->setItem(row, 3, new QTableWidgetItem(cipher));
+    ui->benchmarkTable->setItem(row, 4, new QTableWidgetItem(kdf));
 }

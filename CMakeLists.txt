@@ -26,13 +26,17 @@ set(CMAKE_AUTOUIC_SEARCH_PATHS ${CMAKE_CURRENT_SOURCE_DIR}/ui)
 set(PROJECT_SOURCES
     src/main.cpp
     src/mainwindow.cpp
-    src/mainwindow.h
-    src/encryptionengine.cpp
-    src/encryptionengine.h
+    include/mainwindow.h
+    src/encryptionengine_init.cpp
+    src/encryptionengine_fileops.cpp
+    src/encryptionengine_keyderivation.cpp
+    src/encryptionengine_crypto.cpp
+    src/encryptionengine_benchmark.cpp
+    include/encryptionengine.h
     src/encryptionworker.cpp
-    src/encryptionworker.h
-    src/customlistwidget.cpp    # Add this line
-    src/customlistwidget.h      # Add this line
+    include/encryptionworker.h
+    src/customlistwidget.cpp
+    include/customlistwidget.h
     ui/mainwindow.ui
 )
 
@@ -49,7 +53,8 @@ target_link_libraries(EncryptionApp PRIVATE
 )
 
 target_include_directories(EncryptionApp PRIVATE 
-    ${CMAKE_CURRENT_SOURCE_DIR}/src    # Change this to src to include customlistwidget.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include    # Include directory for header files
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/ui
     ${ARGON2_INCLUDE_DIRS}
     ${SODIUM_INCLUDE_DIRS}

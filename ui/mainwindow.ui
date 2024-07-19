@@ -285,10 +285,32 @@
          </widget>
         </item>
         <item>
-         <widget class="QTextEdit" name="benchmarkResultsTextEdit">
-          <property name="readOnly">
-           <bool>true</bool>
-          </property>
+         <widget class="QTableWidget" name="benchmarkTable">
+          <column>
+           <property name="text">
+            <string>Iterations</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>MB/s</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>ms</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Cipher</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>KDF</string>
+           </property>
+          </column>
          </widget>
         </item>
        </layout>

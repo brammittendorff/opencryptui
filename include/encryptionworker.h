@@ -21,6 +21,7 @@ signals:
     void progress(int value);
     void finished(bool success, const QString &errorMessage);
     void estimatedTime(double seconds);
+    void benchmarkResultReady(int iterations, double mbps, double ms, const QString &cipher, const QString &kdf);
 
 private:
     QString path;
@@ -35,10 +36,7 @@ private:
     QStringList keyfilePaths;
     EncryptionEngine engine;
 
-    void encryptFile();
-    void decryptFile();
-    void encryptFolder();
-    void decryptFolder();
+    qint64 getFileSizeInBytes(const QString &path);
 };
 
 #endif // ENCRYPTIONWORKER_H

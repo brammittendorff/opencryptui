@@ -25,7 +25,10 @@ public:
 
     bool isHardwareAccelerationSupported() const;
 
+    QByteArray deriveKey(const QString &password, const QString &salt, const QString &kdf, int iterations, int keySize);
+
     void runBenchmark();
+    void benchmarkCipher(const QString& algorithm, const QString& kdf, bool useHardwareAcceleration);
 
 private:
     QByteArray lastIv; // Store the last used IV

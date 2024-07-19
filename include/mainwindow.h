@@ -52,6 +52,7 @@ private:
     void checkHardwareAcceleration();
 
     static void messageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg);
+    void updateBenchmarkTable(int iterations, double mbps, double ms, const QString &cipher, const QString &kdf);
 
 };
 
