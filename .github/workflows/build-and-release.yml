@@ -109,12 +109,13 @@ jobs:
           echo "QT5_DIR=$env:QT5_DIR"
 
       - name: Configure CMake
+        shell: bash
         run: |
-          if ("${{ matrix.os }}" -eq "windows-latest") {
+          if [ "${{ matrix.os }}" == "windows-latest" ]; then
             cmake -S . -B build -G "MinGW Makefiles" -DQt5_DIR="$env:QT5_DIR"
-          } else {
+          else
             cmake -S . -B build -G Ninja
-          }
+          fi
 
       - name: Build
         run: cmake --build build --config Release
