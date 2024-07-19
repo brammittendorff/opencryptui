@@ -2,10 +2,10 @@
 #include <QDebug>
 #include <sodium.h>
 #include <openssl/evp.h>
+
 #ifdef __x86_64__
 #include <cpuid.h>
 #endif
-
 
 EncryptionEngine::EncryptionEngine() {
     OpenSSL_add_all_algorithms();
@@ -34,10 +34,12 @@ QByteArray EncryptionEngine::getLastIv() const {
 }
 
 bool EncryptionEngine::checkHardwareSupport() {
+#ifdef __x86_64__
     unsigned int eax, ebx, ecx, edx;
     if (__get_cpuid(1, &eax, &ebx, &ecx, &edx)) {
         return (ecx & bit_AES) != 0;
     }
+#endif
     return false;
 }
 
