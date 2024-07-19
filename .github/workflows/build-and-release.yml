@@ -75,7 +75,8 @@ jobs:
         run: |
           git clone https://github.com/P-H-C/phc-winner-argon2.git
           cd phc-winner-argon2
-          make
+          mingw32-make
+          ar rcs libargon2.a src/*.o
           mkdir -p C:\argon2\lib
           mkdir -p C:\argon2\include
           Copy-Item -Path "libargon2.a" -Destination "C:\argon2\lib" -Force
