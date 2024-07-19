@@ -75,8 +75,8 @@ jobs:
         run: |
           git clone https://github.com/P-H-C/phc-winner-argon2.git
           cd phc-winner-argon2
-          mingw32-make
-          ar rcs libargon2.a src/*.o
+          gcc -std=c89 -O3 -Wall -g -Iinclude -Isrc -c src/argon2.c src/core.c src/blake2/blake2b.c src/thread.c src/encoding.c src/ref.c src/run.c
+          ar rcs libargon2.a argon2.o core.o blake2b.o thread.o encoding.o ref.o run.o
           mkdir -p C:\argon2\lib
           mkdir -p C:\argon2\include
           Copy-Item -Path "libargon2.a" -Destination "C:\argon2\lib" -Force
@@ -103,7 +103,7 @@ jobs:
           path: build/
 
   release_linux:
-    needs: [build]
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -152,7 +152,7 @@ jobs:
           asset_content_type: application/zip
 
   release_macos:
-    needs: [build]
+    needs: build
     runs-on: macos-latest
     steps:
       - name: Checkout code
@@ -201,7 +201,7 @@ jobs:
           asset_content_type: application/zip
 
   release_windows:
-    needs: [build]
+    needs: build
     runs-on: windows-latest
     steps:
       - name: Checkout code
