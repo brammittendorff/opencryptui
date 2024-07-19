@@ -35,6 +35,16 @@ jobs:
         run: |
           brew install qt openssl libsodium argon2 ninja
 
+      - name: Configure CMake (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          QT_DIR=$(brew --prefix qt)
+          cmake -S . -B build -G Ninja -DCMAKE_PREFIX_PATH=$QT_DIR
+
+      - name: Build (macOS)
+        if: matrix.os == 'macos-latest'
+        run: cmake --build build --config Release
+
       - name: Install Chocolatey (Windows)
         if: matrix.os == 'windows-latest'
         run: |
