@@ -14,10 +14,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up CMake
-        uses: jwlawson/actions-setup-cmake@v1
+        uses: jwlawson/actions-setup-cmake@v2
 
       - name: Install dependencies (Linux)
         if: matrix.os == 'ubuntu-latest'
@@ -32,61 +32,13 @@ jobs:
           echo 'eval $(/opt/homebrew/bin/brew shellenv)' >> $GITHUB_ENV
           eval $(/opt/homebrew/bin/brew shellenv)
 
-      - name: Install Qt (macOS)
+      - name: Install dependencies (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          MAX_RETRIES=3
-          RETRY_COUNT=0
-          until [ $RETRY_COUNT -ge $MAX_RETRIES ]
-          do
-            brew install qt && break
-            RETRY_COUNT=$[$RETRY_COUNT+1]
-            echo "Retrying Qt install ($RETRY_COUNT/$MAX_RETRIES)..."
-            sleep 10
-          done
-
-      - name: Install OpenSSL (macOS)
-        if: matrix.os == 'macos-latest'
-        run: |
-          MAX_RETRIES=3
-          RETRY_COUNT=0
-          until [ $RETRY_COUNT -ge $MAX_RETRIES ]
-          do
-            brew install openssl && break
-            RETRY_COUNT=$[$RETRY_COUNT+1]
-            echo "Retrying OpenSSL install ($RETRY_COUNT/$MAX_RETRIES)..."
-            sleep 10
-          done
-
-      - name: Install Libsodium (macOS)
-        if: matrix.os == 'macos-latest'
-        run: |
-          MAX_RETRIES=3
-          RETRY_COUNT=0
-          until [ $RETRY_COUNT -ge $MAX_RETRIES ]
-          do
-            brew install libsodium && break
-            RETRY_COUNT=$[$RETRY_COUNT+1]
-            echo "Retrying Libsodium install ($RETRY_COUNT/$MAX_RETRIES)..."
-            sleep 10
-          done
-
-      - name: Install Argon2 (macOS)
-        if: matrix.os == 'macos-latest'
-        run: |
-          MAX_RETRIES=3
-          RETRY_COUNT=0
-          until [ $RETRY_COUNT -ge $MAX_RETRIES ]
-          do
-            brew install argon2 && break
-            RETRY_COUNT=$[$RETRY_COUNT+1]
-            echo "Retrying Argon2 install ($RETRY_COUNT/$MAX_RETRIES)..."
-            sleep 10
-          done
-
-      - name: Set CMAKE_PREFIX_PATH (macOS)
-        if: matrix.os == 'macos-latest'
-        run: |
+          brew list qt || brew install qt
+          brew list openssl || brew install openssl
+          brew list libsodium || brew install libsodium
+          brew list argon2 || brew install argon2
           echo "CMAKE_PREFIX_PATH=$(brew --prefix qt)/lib/cmake" >> $GITHUB_ENV
 
       - name: Install MinGW (Windows)
@@ -94,24 +46,21 @@ jobs:
         run: |
           Invoke-WebRequest -Uri "https://sourceforge.net/projects/mingw-w64/files/latest/download" -OutFile "mingw-w64.zip"
           Expand-Archive -Path "mingw-w64.zip" -DestinationPath "C:\mingw-w64"
-          $env:Path += ";C:\mingw-w64\mingw64\bin"
-          [System.Environment]::SetEnvironmentVariable("Path", $env:Path, [System.EnvironmentVariableTarget]::Machine)
+          [System.Environment]::SetEnvironmentVariable("Path", "$env:Path;C:\mingw-w64\mingw64\bin", [System.EnvironmentVariableTarget]::Machine)
 
       - name: Install CMake (Windows)
         if: matrix.os == 'windows-latest'
         run: |
           Invoke-WebRequest -Uri "https://github.com/Kitware/CMake/releases/download/v3.21.2/cmake-3.21.2-windows-x86_64.zip" -OutFile "cmake.zip"
           Expand-Archive -Path "cmake.zip" -DestinationPath "C:\cmake"
-          $env:Path += ";C:\cmake\bin"
-          [System.Environment]::SetEnvironmentVariable("Path", $env:Path, [System.EnvironmentVariableTarget]::Machine)
+          [System.Environment]::SetEnvironmentVariable("Path", "$env:Path;C:\cmake\bin", [System.EnvironmentVariableTarget]::Machine)
 
       - name: Install Qt (Windows)
         if: matrix.os == 'windows-latest'
         run: |
           Invoke-WebRequest -Uri "https://download.qt.io/official_releases/qt/5.15/5.15.2/qt-opensource-windows-x86-5.15.2.exe" -OutFile "qt-installer.exe"
           Start-Process "qt-installer.exe" -ArgumentList "/S" -NoNewWindow -Wait
-          $env:Path += ";C:\Qt\5.15.2\mingw81_64\bin"
-          [System.Environment]::SetEnvironmentVariable("Path", $env:Path, [System.EnvironmentVariableTarget]::Machine)
+          [System.Environment]::SetEnvironmentVariable("Path", "$env:Path;C:\Qt\5.15.2\mingw81_64\bin", [System.EnvironmentVariableTarget]::Machine)
 
       - name: Install OpenSSL (Windows)
         if: matrix.os == 'windows-latest'
@@ -137,19 +86,14 @@ jobs:
           cmake --build . --config Release
           Copy-Item -Path "Release\argon2.exe" -Destination "C:\argon2"
 
-      - name: Configure CMake (Linux and macOS)
-        if: matrix.os != 'windows-latest'
-        run: cmake -S . -B build
-
-      - name: Configure CMake (Windows)
-        if: matrix.os == 'windows-latest'
-        run: cmake -G "MinGW Makefiles" -S . -B build
+      - name: Configure CMake
+        run: cmake -S . -B build -G "${{ matrix.os == 'windows-latest' && 'MinGW Makefiles' || 'Ninja' }}"
 
       - name: Build
         run: cmake --build build --config Release
 
       - name: Archive build artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.os }}-build
           path: build/
@@ -159,22 +103,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Download build artifacts (Linux)
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: ubuntu-latest-build
           path: builds/linux/
 
       - name: Download build artifacts (macOS)
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: macos-latest-build
           path: builds/macos/
 
       - name: Download build artifacts (Windows)
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: windows-latest-build
           path: builds/windows/
@@ -192,7 +136,7 @@ jobs:
         run: zip -r release/source.zip . -x .git\*
 
       - name: Upload release assets
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: release
           path: release/
