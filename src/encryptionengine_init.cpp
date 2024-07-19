@@ -2,7 +2,9 @@
 #include <QDebug>
 #include <sodium.h>
 #include <openssl/evp.h>
+#ifdef __x86_64__
 #include <cpuid.h>
+#endif
 
 
 EncryptionEngine::EncryptionEngine() {
