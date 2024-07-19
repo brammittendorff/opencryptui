@@ -102,39 +102,24 @@ jobs:
           name: ${{ matrix.os }}-build
           path: build/
 
-  release:
-    needs: build
+  release_linux:
+    needs: [build]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Download build artifacts (Linux)
+      - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
           name: ubuntu-latest-build
           path: builds/linux/
 
-      - name: Download build artifacts (macOS)
-        uses: actions/download-artifact@v4
-        with:
-          name: macos-latest-build
-          path: builds/macos/
-
-      - name: Download build artifacts (Windows)
-        uses: actions/download-artifact@v4
-        with:
-          name: windows-latest-build
-          path: builds/windows/
-
       - name: Create release directory
         run: mkdir -p release
 
       - name: Copy build artifacts to release directory
-        run: |
-          cp -r builds/linux release/linux
-          cp -r builds/macos release/macos
-          cp -r builds/windows release/windows
+        run: cp -r builds/linux release/linux
 
       - name: Create zip of source code
         run: zip -r release/source.zip . -x .git\*
@@ -152,7 +137,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
+          release_name: "Release ${{ github.ref }} - Linux"
           draft: false
           prerelease: false
 
@@ -163,5 +148,103 @@ jobs:
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: release/
-          asset_name: release.zip
+          asset_name: release_linux.zip
+          asset_content_type: application/zip
+
+  release_macos:
+    needs: [build]
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-latest-build
+          path: builds/macos/
+
+      - name: Create release directory
+        run: mkdir -p release
+
+      - name: Copy build artifacts to release directory
+        run: cp -r builds/macos release/macos
+
+      - name: Create zip of source code
+        run: zip -r release/source.zip . -x .git\*
+
+      - name: Upload release assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: release/
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: "Release ${{ github.ref }} - macOS"
+          draft: false
+          prerelease: false
+
+      - name: Upload release assets to GitHub Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: release/
+          asset_name: release_macos.zip
+          asset_content_type: application/zip
+
+  release_windows:
+    needs: [build]
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-latest-build
+          path: builds/windows/
+
+      - name: Create release directory
+        run: mkdir -p release
+
+      - name: Copy build artifacts to release directory
+        run: cp -r builds/windows release/windows
+
+      - name: Create zip of source code
+        run: zip -r release/source.zip . -x .git\*
+
+      - name: Upload release assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: release/
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: "Release ${{ github.ref }} - Windows"
+          draft: false
+          prerelease: false
+
+      - name: Upload release assets to GitHub Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: release/
+          asset_name: release_windows.zip
           asset_content_type: application/zip
