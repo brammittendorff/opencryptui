@@ -29,25 +29,21 @@ jobs:
         if: matrix.os == 'macos-latest'
         run: |
           /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || { echo "Homebrew installation failed"; exit 1; }
-          echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $GITHUB_ENV
-          eval "$(/opt/homebrew/bin/brew shellenv)"
 
       - name: Install dependencies (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          brew list qt || brew install qt
-          brew list openssl || brew install openssl
-          brew list libsodium || brew install libsodium
-          brew list argon2 || brew install argon2
-          brew install ninja
-          echo "CMAKE_PREFIX_PATH=$(brew --prefix qt)/lib/cmake" >> $GITHUB_ENV
+          brew install qt openssl libsodium argon2 ninja
+
+      - name: Install Chocolatey (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          iex "& { $(irm https://chocolatey.org/install.ps1 -UseBasicP) }"
 
       - name: Install MinGW (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          Invoke-WebRequest -Uri "https://sourceforge.net/projects/mingw-w64/files/latest/download" -OutFile "mingw-w64.zip"
-          Expand-Archive -Path "mingw-w64.zip" -DestinationPath "C:\mingw-w64"
-          [System.Environment]::SetEnvironmentVariable("Path", "$env:Path;C:\mingw-w64\mingw64\bin", [System.EnvironmentVariableTarget]::Machine)
+          choco install mingw --version 8.1.0 -y
 
       - name: Check MinGW Installation (Windows)
         if: matrix.os == 'windows-latest'
