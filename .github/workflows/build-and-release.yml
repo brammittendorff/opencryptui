@@ -105,7 +105,7 @@ jobs:
           cd build
           cmake -G "MinGW Makefiles" ..
           cmake --build . --config Release
-          Copy-Item -Path "Release\argon2.exe" -Destination "C:\argon2"
+          Copy-Item -Path "Release\libargon2.a" -Destination "C:\argon2"
           Copy-Item -Path "..\include" -Destination "C:\argon2"
 
       - name: Set environment variables for Windows

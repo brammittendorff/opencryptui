@@ -65,6 +65,11 @@ target_include_directories(EncryptionApp PRIVATE
     ${SODIUM_INCLUDE_DIR}
 )
 
+target_link_directories(EncryptionApp PRIVATE 
+    ${ARGON2_LIB_DIR}
+    ${SODIUM_LIB_DIR}
+)
+
 target_link_libraries(EncryptionApp PUBLIC 
     Qt5::Core
     Qt5::Gui
@@ -73,8 +78,8 @@ target_link_libraries(EncryptionApp PUBLIC
     OpenSSL::Crypto
     ${ARGON2_LIBRARIES}
     ${SODIUM_LIBRARIES}
-    ${ARGON2_LIB_DIR}/libargon2.a
-    ${SODIUM_LIB_DIR}/libsodium.a
+    argon2
+    sodium
 )
 
 # Print paths for debugging
