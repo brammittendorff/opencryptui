@@ -50,70 +50,46 @@ jobs:
         run: |
           iex "& { $(irm https://chocolatey.org/install.ps1 -UseBasicP) }"
 
-      - name: Install MinGW - Download (Windows)
+      - name: Install MinGW (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          Invoke-WebRequest -Uri "https://chocolatey.org/packages/mingw" -OutFile "mingwInstall.zip"
+          choco install mingw --version 8.1.0 -y
 
-      - name: Install MinGW - Extract (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          Expand-Archive -Path "mingwInstall.zip" -DestinationPath "C:\ProgramData\chocolatey\lib\mingw\tools\install" -Force
-
-      - name: Install MinGW - Verify (Windows)
+      - name: Check MinGW Installation (Windows)
         if: matrix.os == 'windows-latest'
         run: |
           g++ --version
 
-      - name: Install CMake - Download (Windows)
+      - name: Install CMake (Windows)
         if: matrix.os == 'windows-latest'
         run: |
           Invoke-WebRequest -Uri "https://github.com/Kitware/CMake/releases/download/v3.21.2/cmake-3.21.2-windows-x86_64.zip" -OutFile "cmake.zip"
+          Expand-Archive -Path "cmake.zip" -DestinationPath "C:\cmake"
+          [System.Environment]::SetEnvironmentVariable("Path", "$env:Path;C:\cmake\bin", [System.EnvironmentVariableTarget]::Machine)
 
-      - name: Install CMake - Extract (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          Expand-Archive -Path "cmake.zip" -DestinationPath "C:\cmake" -Force
-
-      - name: Install Qt - Download (Windows)
+      - name: Install Qt (Windows)
         if: matrix.os == 'windows-latest'
         run: |
           Invoke-WebRequest -Uri "https://download.qt.io/official_releases/qt/5.15/5.15.2/qt-opensource-windows-x86-5.15.2.exe" -OutFile "qt-installer.exe"
-
-      - name: Install Qt - Execute (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
           Start-Process "qt-installer.exe" -ArgumentList "/S" -NoNewWindow -Wait
           [System.Environment]::SetEnvironmentVariable("Path", "$env:Path;C:\Qt\5.15.2\mingw81_64\bin", [System.EnvironmentVariableTarget]::Machine)
 
-      - name: Install OpenSSL - Download (Windows)
+      - name: Install OpenSSL (Windows)
         if: matrix.os == 'windows-latest'
         run: |
           Invoke-WebRequest -Uri "https://slproweb.com/download/Win64OpenSSL-1_1_1k.exe" -OutFile "openssl.exe"
-
-      - name: Install OpenSSL - Execute (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
           Start-Process "openssl.exe" -ArgumentList "/S" -NoNewWindow -Wait
 
-      - name: Install libsodium - Download (Windows)
+      - name: Install libsodium (Windows)
         if: matrix.os == 'windows-latest'
         run: |
           Invoke-WebRequest -Uri "https://download.libsodium.org/libsodium/releases/libsodium-1.0.18-stable-msvc.zip" -OutFile "libsodium.zip"
+          Expand-Archive -Path "libsodium.zip" -DestinationPath "C:\libsodium"
 
-      - name: Install libsodium - Extract (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          Expand-Archive -Path "libsodium.zip" -DestinationPath "C:\libsodium" -Force
-
-      - name: Install Argon2 - Download (Windows)
+      - name: Install Argon2 (Windows)
         if: matrix.os == 'windows-latest'
         run: |
           Invoke-WebRequest -Uri "https://github.com/P-H-C/phc-winner-argon2/archive/refs/heads/master.zip" -OutFile "argon2.zip"
-
-      - name: Install Argon2 - Extract and Build (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
           Expand-Archive -Path "argon2.zip" -DestinationPath .
           cd phc-winner-argon2-master
           mkdir build
