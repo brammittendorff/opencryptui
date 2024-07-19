@@ -59,3 +59,10 @@ target_include_directories(EncryptionApp PRIVATE
     ${ARGON2_INCLUDE_DIRS}
     ${SODIUM_INCLUDE_DIRS}
 )
+
+# Print paths for debugging
+message(STATUS "Qt5_DIR: ${Qt5_DIR}")
+message(STATUS "OpenSSL_INCLUDE_DIR: ${OpenSSL_INCLUDE_DIR}")
+message(STATUS "OpenSSL_LIBRARIES: ${OpenSSL_LIBRARIES}")
+message(STATUS "ARGON2_INCLUDE_DIRS: ${ARGON2_INCLUDE_DIRS}")
+message(STATUS "SODIUM_INCLUDE_DIRS: ${SODIUM_INCLUDE_DIRS}")

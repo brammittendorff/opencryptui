@@ -39,7 +39,8 @@ jobs:
         if: matrix.os == 'macos-latest'
         run: |
           QT_DIR=$(brew --prefix qt)
-          cmake -S . -B build -G Ninja -DCMAKE_PREFIX_PATH=$QT_DIR
+          echo "QT_DIR=$QT_DIR"
+          cmake -S . -B build -G Ninja -DCMAKE_PREFIX_PATH=$QT_DIR -DQt5_DIR=$QT_DIR/lib/cmake/Qt5
 
       - name: Build (macOS)
         if: matrix.os == 'macos-latest'
