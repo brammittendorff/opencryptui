@@ -44,6 +44,14 @@ jobs:
           echo "SODIUM_LIB_DIR=$(brew --prefix libsodium)/lib" >> $GITHUB_ENV
           echo "SODIUM_INCLUDE_DIR=$(brew --prefix libsodium)/include" >> $GITHUB_ENV
 
+      - name: Debug environment variables (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          echo "ARGON2_LIB_DIR=$ARGON2_LIB_DIR"
+          echo "ARGON2_INCLUDE_DIR=$ARGON2_INCLUDE_DIR"
+          echo "SODIUM_LIB_DIR=$SODIUM_LIB_DIR"
+          echo "SODIUM_INCLUDE_DIR=$SODIUM_INCLUDE_DIR"
+
       - name: Configure CMake (macOS)
         if: matrix.os == 'macos-latest'
         run: |
@@ -73,7 +81,7 @@ jobs:
       - name: Build Argon2 from source (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          git clone https://github.com/P-H-C/phc-winner-argon2.git
+          git clone --depth 1 https://github.com/P-H-C/phc-winner-argon2.git
           cd phc-winner-argon2
           gcc -std=c89 -O3 -Wall -g -Iinclude -Isrc -c src/argon2.c src/core.c src/blake2/blake2b.c src/thread.c src/encoding.c src/ref.c src/run.c
           ar rcs libargon2.a argon2.o core.o blake2b.o thread.o encoding.o ref.o run.o
@@ -91,8 +99,22 @@ jobs:
           echo "SODIUM_INCLUDE_DIR=C:\Program Files\libsodium\include" >> $env:GITHUB_ENV
           echo "QT5_DIR=C:\tools\qt5-sdk\Qt5.15.2\5.15.2\mingw81_64\lib\cmake\Qt5" >> $env:GITHUB_ENV
 
+      - name: Debug environment variables (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          echo "ARGON2_LIB_DIR=$env:ARGON2_LIB_DIR"
+          echo "ARGON2_INCLUDE_DIR=$env:ARGON2_INCLUDE_DIR"
+          echo "SODIUM_LIB_DIR=$env:SODIUM_LIB_DIR"
+          echo "SODIUM_INCLUDE_DIR=$env:SODIUM_INCLUDE_DIR"
+          echo "QT5_DIR=$env:QT5_DIR"
+
       - name: Configure CMake
-        run: cmake -S . -B build -G "${{ matrix.os == 'windows-latest' && 'MinGW Makefiles' || 'Ninja' }}" -DQt5_DIR="${{ matrix.os == 'windows-latest' && 'C:/tools/qt5-sdk/Qt5.15.2/5.15.2/mingw81_64/lib/cmake/Qt5' || '' }}"
+        run: |
+          if [ ${{ matrix.os }} == 'windows-latest' ]; then
+            cmake -S . -B build -G "MinGW Makefiles" -DQt5_DIR="$env:QT5_DIR"
+          else
+            cmake -S . -B build -G Ninja
+          fi
 
       - name: Build
         run: cmake --build build --config Release
