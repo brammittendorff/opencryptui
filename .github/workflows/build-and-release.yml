@@ -23,14 +23,14 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake git qtbase5-dev qtchooser qt5-qmake qtbase5-dev-tools libssl-dev libsodium-dev libargon2-dev
+          sudo apt-get install -y build-essential cmake ninja-build git qtbase5-dev qtchooser qt5-qmake qtbase5-dev-tools libssl-dev libsodium-dev libargon2-dev
 
       - name: Install Homebrew (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-          echo 'eval $(/opt/homebrew/bin/brew shellenv)' >> $GITHUB_ENV
-          eval $(/opt/homebrew/bin/brew shellenv)
+          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || { echo "Homebrew installation failed"; exit 1; }
+          echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $GITHUB_ENV
+          eval "$(/opt/homebrew/bin/brew shellenv)"
 
       - name: Install dependencies (macOS)
         if: matrix.os == 'macos-latest'
@@ -39,6 +39,7 @@ jobs:
           brew list openssl || brew install openssl
           brew list libsodium || brew install libsodium
           brew list argon2 || brew install argon2
+          brew install ninja
           echo "CMAKE_PREFIX_PATH=$(brew --prefix qt)/lib/cmake" >> $GITHUB_ENV
 
       - name: Install MinGW (Windows)
@@ -47,6 +48,11 @@ jobs:
           Invoke-WebRequest -Uri "https://sourceforge.net/projects/mingw-w64/files/latest/download" -OutFile "mingw-w64.zip"
           Expand-Archive -Path "mingw-w64.zip" -DestinationPath "C:\mingw-w64"
           [System.Environment]::SetEnvironmentVariable("Path", "$env:Path;C:\mingw-w64\mingw64\bin", [System.EnvironmentVariableTarget]::Machine)
+
+      - name: Check MinGW Installation (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          g++ --version
 
       - name: Install CMake (Windows)
         if: matrix.os == 'windows-latest'
