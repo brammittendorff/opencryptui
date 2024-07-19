@@ -110,11 +110,11 @@ jobs:
 
       - name: Configure CMake
         run: |
-          if [ ${{ matrix.os }} == 'windows-latest' ]; then
+          if ("${{ matrix.os }}" -eq "windows-latest") {
             cmake -S . -B build -G "MinGW Makefiles" -DQt5_DIR="$env:QT5_DIR"
-          else
+          } else {
             cmake -S . -B build -G Ninja
-          fi
+          }
 
       - name: Build
         run: cmake --build build --config Release
