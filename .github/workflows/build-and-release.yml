@@ -33,7 +33,7 @@ jobs:
       - name: Install dependencies (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          brew install qt qt5 qtkeychain openssl libsodium argon2 ninja
+          brew install qt qt5 openssl libsodium argon2 ninja
 
       - name: Configure CMake (macOS)
         if: matrix.os == 'macos-latest'
@@ -70,10 +70,10 @@ jobs:
       - name: Install Qt (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          Invoke-WebRequest -Uri "https://download.qt.io/official_releases/qt/5.15/5.15.2/qt-opensource-windows-x86-5.15.2.exe" -OutFile "qt-installer.exe"
-          Start-Process "qt-installer.exe" -ArgumentList "/S" -NoNewWindow -Wait
+          Invoke-WebRequest -Uri "https://qt.mirror.constant.com/archive/qt/5.15/5.15.2/single/qt-everywhere-src-5.15.2.zip" -OutFile "qt-installer.zip"
+          Expand-Archive -Path "qt-installer.zip" -DestinationPath "C:\Qt"
           [System.Environment]::SetEnvironmentVariable("Path", "$env:Path;C:\Qt\5.15.2\mingw81_64\bin", [System.EnvironmentVariableTarget]::Machine)
-
+      
       - name: Install OpenSSL (Windows)
         if: matrix.os == 'windows-latest'
         run: |
