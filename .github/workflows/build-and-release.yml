@@ -64,6 +64,7 @@ jobs:
           choco install openssl -y
           choco install libsodium -y
           choco install mingw --version 8.1.0 -y
+          choco install make -y
 
       - name: Check MinGW Installation (Windows)
         if: matrix.os == 'windows-latest'
@@ -74,12 +75,11 @@ jobs:
         run: |
           git clone https://github.com/P-H-C/phc-winner-argon2.git
           cd phc-winner-argon2
-          mkdir build
-          cd build
-          cmake -G "MinGW Makefiles" ..
-          cmake --build . --config Release
+          make
+          mkdir -p C:\argon2\lib
+          mkdir -p C:\argon2\include
           Copy-Item -Path "libargon2.a" -Destination "C:\argon2\lib" -Force
-          Copy-Item -Path "..\include" -Destination "C:\argon2" -Recurse -Force
+          Copy-Item -Path "include\argon2.h" -Destination "C:\argon2\include" -Force
 
       - name: Set environment variables for Windows
         if: matrix.os == 'windows-latest'
