@@ -54,67 +54,40 @@ jobs:
         if: matrix.os == 'macos-latest'
         run: cmake --build build --config Release
 
-      - name: Install Chocolatey (Windows)
+      - name: Install Chocolatey and dependencies (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          iex "& { $(irm https://chocolatey.org/install.ps1 -UseBasicP) }"
-
-      - name: Install MinGW (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
+          Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex "& { $(irm https://chocolatey.org/install.ps1) }"
+          choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' -y
+          choco install git -y
+          choco install qt5-sdk -y
+          choco install openssl -y
+          choco install libsodium -y
           choco install mingw --version 8.1.0 -y
 
       - name: Check MinGW Installation (Windows)
         if: matrix.os == 'windows-latest'
-        run: |
-          g++ --version
+        run: g++ --version
 
-      - name: Install CMake (Windows)
+      - name: Build Argon2 from source (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          Invoke-WebRequest -Uri "https://github.com/Kitware/CMake/releases/download/v3.21.2/cmake-3.21.2-windows-x86_64.zip" -OutFile "cmake.zip"
-          Expand-Archive -Path "cmake.zip" -DestinationPath "C:\cmake"
-          [System.Environment]::SetEnvironmentVariable("Path", "$env:Path;C:\cmake\bin", [System.EnvironmentVariableTarget]::Machine)
-
-      - name: Install Qt (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          Invoke-WebRequest -Uri "https://qt.mirror.constant.com/archive/qt/5.15/5.15.2/single/qt-everywhere-src-5.15.2.zip" -OutFile "qt-installer.zip"
-          Expand-Archive -Path "qt-installer.zip" -DestinationPath "C:\Qt"
-          [System.Environment]::SetEnvironmentVariable("Path", "$env:Path;C:\Qt\5.15.2\mingw81_64\bin", [System.EnvironmentVariableTarget]::Machine)
-      
-      - name: Install OpenSSL (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          Invoke-WebRequest -Uri "https://slproweb.com/download/Win64OpenSSL-1_1_1k.exe" -OutFile "openssl.exe"
-          Start-Process "openssl.exe" -ArgumentList "/S" -NoNewWindow -Wait
-
-      - name: Install libsodium (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          Invoke-WebRequest -Uri "https://download.libsodium.org/libsodium/releases/libsodium-1.0.18-stable-msvc.zip" -OutFile "libsodium.zip"
-          Expand-Archive -Path "libsodium.zip" -DestinationPath "C:\libsodium"
-
-      - name: Install Argon2 (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          Invoke-WebRequest -Uri "https://github.com/P-H-C/phc-winner-argon2/archive/refs/heads/master.zip" -OutFile "argon2.zip"
-          Expand-Archive -Path "argon2.zip" -DestinationPath .
-          cd phc-winner-argon2-master
+          git clone https://github.com/P-H-C/phc-winner-argon2.git
+          cd phc-winner-argon2
           mkdir build
           cd build
           cmake -G "MinGW Makefiles" ..
           cmake --build . --config Release
-          Copy-Item -Path "Release\libargon2.a" -Destination "C:\argon2"
-          Copy-Item -Path "..\include" -Destination "C:\argon2"
+          Copy-Item -Path "libargon2.a" -Destination "C:\argon2\lib" -Force
+          Copy-Item -Path "..\include" -Destination "C:\argon2" -Recurse -Force
 
       - name: Set environment variables for Windows
         if: matrix.os == 'windows-latest'
         run: |
-          echo "ARGON2_LIB_DIR=C:\argon2" >> $env:GITHUB_ENV
+          echo "ARGON2_LIB_DIR=C:\argon2\lib" >> $env:GITHUB_ENV
           echo "ARGON2_INCLUDE_DIR=C:\argon2\include" >> $env:GITHUB_ENV
-          echo "SODIUM_LIB_DIR=C:\libsodium" >> $env:GITHUB_ENV
-          echo "SODIUM_INCLUDE_DIR=C:\libsodium\include" >> $env:GITHUB_ENV
+          echo "SODIUM_LIB_DIR=C:\Program Files\libsodium" >> $env:GITHUB_ENV
+          echo "SODIUM_INCLUDE_DIR=C:\Program Files\libsodium\include" >> $env:GITHUB_ENV
 
       - name: Configure CMake
         run: cmake -S . -B build -G "${{ matrix.os == 'windows-latest' && 'MinGW Makefiles' || 'Ninja' }}"
