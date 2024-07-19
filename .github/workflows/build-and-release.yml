@@ -89,7 +89,7 @@ jobs:
           echo "ARGON2_INCLUDE_DIR=C:\argon2\include" >> $env:GITHUB_ENV
           echo "SODIUM_LIB_DIR=C:\Program Files\libsodium" >> $env:GITHUB_ENV
           echo "SODIUM_INCLUDE_DIR=C:\Program Files\libsodium\include" >> $env:GITHUB_ENV
-          echo "QT5_DIR=C:\tools\qt5-sdk" >> $env:GITHUB_ENV
+          echo "QT5_DIR=C:\tools\qt5-sdk\Qt5.15.2\5.15.2\mingw81_64\lib\cmake\Qt5" >> $env:GITHUB_ENV
 
       - name: Configure CMake
         run: cmake -S . -B build -G "${{ matrix.os == 'windows-latest' && 'MinGW Makefiles' || 'Ninja' }}" -DQt5_DIR="${{ matrix.os == 'windows-latest' && 'C:/tools/qt5-sdk/Qt5.15.2/5.15.2/mingw81_64/lib/cmake/Qt5' || '' }}"
