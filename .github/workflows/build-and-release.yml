@@ -146,6 +146,15 @@ jobs:
         shell: bash
         run: cmake --build build --config Release
 
+      - name: Copy DLLs for Windows
+        if: matrix.os == 'windows-latest'
+        shell: msys2 {0}
+        run: |
+          cp /mingw64/bin/libargon2.dll build/
+          cp /mingw64/bin/libgcc_s_seh-1.dll build/
+          cp /mingw64/bin/libsodium-23.dll build/
+          cp /mingw64/bin/libstdc++-6.dll build/
+
       - name: Archive build artifacts
         uses: actions/upload-artifact@v4
         with:
