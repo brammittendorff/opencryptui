@@ -131,7 +131,7 @@ jobs:
         shell: bash
         run: |
           if [ "${{ matrix.os }}" == "windows-latest" ]; then
-            cmake -S . -B build -G "MinGW Makefiles" -DCMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH" -DQt5_DIR="$Qt5_DIR" -DOPENSSL_ROOT_DIR="$OPENSSL_ROOT_DIR" -DOPENSSL_INCLUDE_DIR="$OPENSSL_INCLUDE_DIR" -DOPENSSL_CRYPTO_LIBRARY="$OPENSSL_CRYPTO_LIBRARY" -DOPENSSL_SSL_LIBRARY="$OPENSSL_SSL_LIBRARY"
+            cmake -S . -B build -G "MinGW Makefiles" -DOPENSSL_ROOT_DIR="${{ env.OPENSSL_ROOT_DIR }}" -DOPENSSL_INCLUDE_DIR="${{ env.OPENSSL_INCLUDE_DIR }}" -DOPENSSL_CRYPTO_LIBRARY="${{ env.OPENSSL_CRYPTO_LIBRARY }}" -DOPENSSL_SSL_LIBRARY="${{ env.OPENSSL_SSL_LIBRARY }}" -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}" -DQt5_DIR="${{ env.Qt5_DIR }}"
           else
             cmake -S . -B build -G Ninja
           fi
