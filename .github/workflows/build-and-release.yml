@@ -67,7 +67,7 @@ jobs:
           choco install qt5-default -y
           choco install argon2 -y
           choco install libsodium -y
-          choco install mingw --version 8.1.0 -y
+          choco install mingw -y
           choco install make -y
 
       - name: Download and Install OpenSSL (Windows)
