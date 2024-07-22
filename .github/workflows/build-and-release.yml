@@ -71,25 +71,18 @@ jobs:
           choco install mingw --version 8.1.0 -y
           choco install make -y
 
-      - name: Set up Qt and OpenSSL (Windows)
+      - name: Extract paths from Chocolatey (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          echo "C:\Qt\5.15.2\mingw81_64\bin" >> $GITHUB_PATH
-          echo "Qt5_DIR=C:\Qt\5.15.2\mingw81_64\lib\cmake\Qt5" >> $GITHUB_ENV
-          echo "CMAKE_PREFIX_PATH=C:\Qt\5.15.2\mingw81_64" >> $GITHUB_ENV
-          echo "OPENSSL_ROOT_DIR=C:\Program Files\OpenSSL-Win64" >> $GITHUB_ENV
-          echo "OPENSSL_INCLUDE_DIR=C:\Program Files\OpenSSL-Win64\include" >> $GITHUB_ENV
-          echo "OPENSSL_CRYPTO_LIBRARY=C:\Program Files\OpenSSL-Win64\lib\libcrypto.lib" >> $GITHUB_ENV
-          echo "OPENSSL_SSL_LIBRARY=C:\Program Files\OpenSSL-Win64\lib\libssl.lib" >> $GITHUB_ENV
-
-      - name: Debug environment variables after setting
-        run: |
-          echo "Qt5_DIR: ${{ env.Qt5_DIR }}"
-          echo "CMAKE_PREFIX_PATH: ${{ env.CMAKE_PREFIX_PATH }}"
-          echo "OPENSSL_ROOT_DIR: ${{ env.OPENSSL_ROOT_DIR }}"
-          echo "OPENSSL_INCLUDE_DIR: ${{ env.OPENSSL_INCLUDE_DIR }}"
-          echo "OPENSSL_CRYPTO_LIBRARY: ${{ env.OPENSSL_CRYPTO_LIBRARY }}"
-          echo "OPENSSL_SSL_LIBRARY: ${{ env.OPENSSL_SSL_LIBRARY }}"
+          $qtPath = (Get-Command qt5-default).Path
+          $opensslPath = (Get-Command openssl).Path
+          $opensslRoot = Split-Path -Parent $opensslPath
+          echo "Qt5_DIR=$qtPath" >> $env:GITHUB_ENV
+          echo "CMAKE_PREFIX_PATH=$(Split-Path -Parent $qtPath)" >> $env:GITHUB_ENV
+          echo "OPENSSL_ROOT_DIR=$opensslRoot" >> $env:GITHUB_ENV
+          echo "OPENSSL_INCLUDE_DIR=$opensslRoot\include" >> $env:GITHUB_ENV
+          echo "OPENSSL_CRYPTO_LIBRARY=$opensslRoot\lib\libcrypto.lib" >> $env:GITHUB_ENV
+          echo "OPENSSL_SSL_LIBRARY=$opensslRoot\lib\libssl.lib" >> $env:GITHUB_ENV
 
       - name: Build Argon2 from source (Windows)
         if: matrix.os == 'windows-latest'
@@ -185,5 +178,5 @@ jobs:
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./release
-          asset_name: release.zip
-          asset_content_type: application/zip
+          asset name: release.zip
+          asset content type: application/zip
