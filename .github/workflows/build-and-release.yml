@@ -56,7 +56,9 @@ jobs:
             mingw-w64-x86_64-toolchain
             mingw-w64-x86_64-cmake
             mingw-w64-x86_64-ninja
-            mingw-w64-x86_64-qt5
+            mingw-w64-x86_64-qt5-base
+            mingw-w64-x86_64-qt5-tools
+            mingw-w64-x86_64-qt5-multimedia
             mingw-w64-x86_64-openssl
             mingw-w64-x86_64-libsodium
             mingw-w64-x86_64-argon2
