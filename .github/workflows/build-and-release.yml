@@ -74,26 +74,14 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: |
           $ProgressPreference = 'SilentlyContinue'
-          Invoke-WebRequest -Uri https://slproweb.com/download/Win64OpenSSL-3_3_1.msi -OutFile Win64OpenSSL-3_3_1.msi
-          if (!(Test-Path Win64OpenSSL-3_3_1.msi)) {
-            Write-Error "Failed to download OpenSSL installer"
-            exit 1
-          }
-          $process = Start-Process msiexec.exe -ArgumentList '/i', 'Win64OpenSSL-3_3_1.msi', '/quiet', '/norestart' -NoNewWindow -PassThru -Wait
-          if ($process.ExitCode -ne 0) {
-            Write-Error "OpenSSL installation failed with exit code $($process.ExitCode)"
-            exit 1
-          }
-          if (!(Test-Path "C:\Program Files\OpenSSL-Win64")) {
-            Write-Error "OpenSSL installation directory not found"
-            exit 1
-          }
-          echo "OPENSSL_ROOT_DIR=C:\Program Files\OpenSSL-Win64" >> $env:GITHUB_ENV
-          echo "OPENSSL_INCLUDE_DIR=C:\Program Files\OpenSSL-Win64\include" >> $env:GITHUB_ENV
-          echo "OPENSSL_CRYPTO_LIBRARY=C:\Program Files\OpenSSL-Win64\lib\libcrypto.lib" >> $env:GITHUB_ENV
-          echo "OPENSSL_SSL_LIBRARY=C:\Program Files\OpenSSL-Win64\lib\libssl.lib" >> $env:GITHUB_ENV
-          echo "C:\Program Files\OpenSSL-Win64\bin" >> $env:GITHUB_PATH
-          Write-Output "OpenSSL installation completed successfully"
+          Invoke-WebRequest -Uri "https://curl.se/windows/dl-7.86.0/openssl-1.1.1s-win64-mingw.zip" -OutFile openssl.zip
+          Expand-Archive -Path openssl.zip -DestinationPath C:\openssl -Force
+          echo "OPENSSL_ROOT_DIR=C:\openssl" >> $env:GITHUB_ENV
+          echo "OPENSSL_INCLUDE_DIR=C:\openssl\include" >> $env:GITHUB_ENV
+          echo "OPENSSL_CRYPTO_LIBRARY=C:\openssl\lib\libcrypto.dll.a" >> $env:GITHUB_ENV
+          echo "OPENSSL_SSL_LIBRARY=C:\openssl\lib\libssl.dll.a" >> $env:GITHUB_ENV
+          echo "C:\openssl\bin" >> $env:GITHUB_PATH
+          Write-Output "OpenSSL installation completed"
         shell: pwsh
 
       - name: Verify OpenSSL installation (Windows)
@@ -115,6 +103,9 @@ jobs:
             Write-Error "OpenSSL SSL library not found"
             exit 1
           }
+          Get-ChildItem $env:OPENSSL_ROOT_DIR
+          Get-ChildItem $env:OPENSSL_INCLUDE_DIR
+          Get-ChildItem (Split-Path $env:OPENSSL_CRYPTO_LIBRARY)
           Write-Output "OpenSSL installation verified successfully"
         shell: pwsh
 
@@ -126,16 +117,6 @@ jobs:
           $qtPath = Join-Path $qtBase $qtVersion
           echo "Qt5_DIR=$qtPath\mingw81_64\lib\cmake\Qt5" >> $env:GITHUB_ENV
           echo "CMAKE_PREFIX_PATH=$qtPath\mingw81_64" >> $env:GITHUB_ENV
-
-      - name: Debug environment variables after setting
-        run: |
-          echo "Qt5_DIR: ${{ env.Qt5_DIR }}"
-          echo "CMAKE_PREFIX_PATH: ${{ env.CMAKE_PREFIX_PATH }}"
-          echo "OPENSSL_ROOT_DIR: ${{ env.OPENSSL_ROOT_DIR }}"
-          echo "OPENSSL_INCLUDE_DIR: ${{ env.OPENSSL_INCLUDE_DIR }}"
-          echo "OPENSSL_CRYPTO_LIBRARY: ${{ env.OPENSSL_CRYPTO_LIBRARY }}"
-          echo "OPENSSL_SSL_LIBRARY: ${{ env.OPENSSL_SSL_LIBRARY }}"
-          echo "PATH: ${{ env.PATH }}"
 
       - name: Build Argon2 from source (Windows)
         if: matrix.os == 'windows-latest'
@@ -157,7 +138,7 @@ jobs:
           echo "SODIUM_LIB_DIR=C:\Program Files\libsodium" >> $env:GITHUB_ENV
           echo "SODIUM_INCLUDE_DIR=C:\Program Files\libsodium\include" >> $env:GITHUB_ENV
 
-      - name: Debug environment variables before configure
+      - name: Debug environment variables
         run: |
           echo "ARGON2_LIB_DIR: ${{ env.ARGON2_LIB_DIR }}"
           echo "ARGON2_INCLUDE_DIR: ${{ env.ARGON2_INCLUDE_DIR }}"
