@@ -61,6 +61,7 @@ jobs:
             mingw-w64-x86_64-argon2
             mingw-w64-x86_64-perl
             git
+            make
 
       - name: Build and set up dependencies (Windows)
         if: matrix.os == 'windows-latest'
@@ -85,9 +86,8 @@ jobs:
         if: matrix.os == 'windows-latest'
         shell: msys2 {0}
         run: |
-          git clone https://github.com/qt/qt5.git
+          git clone --depth 1 --branch v6.7.2 https://github.com/qt/qt5.git
           cd qt5
-          git checkout v6.7.2
           perl init-repository
           ./configure -opensource -confirm-license -prefix /mingw64 -platform win32-g++
           make -j$(nproc)
