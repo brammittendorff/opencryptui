@@ -75,18 +75,40 @@ jobs:
         run: |
           $ProgressPreference = 'SilentlyContinue'
           Invoke-WebRequest -Uri https://slproweb.com/download/Win64OpenSSL-3_3_1.msi -OutFile Win64OpenSSL-3_3_1.msi
-          Start-Process msiexec.exe -ArgumentList '/i', 'Win64OpenSSL-3_3_1.msi', '/quiet', '/qn', '/norestart' -NoNewWindow -Wait
-          echo "OPENSSL_ROOT_DIR=C:\Program Files\OpenSSL-Win64" >> $env:GITHUB_ENV
-          echo "OPENSSL_INCLUDE_DIR=C:\Program Files\OpenSSL-Win64\include" >> $env:GITHUB_ENV
-          echo "OPENSSL_CRYPTO_LIBRARY=C:\Program Files\OpenSSL-Win64\lib\libcrypto.lib" >> $env:GITHUB_ENV
-          echo "OPENSSL_SSL_LIBRARY=C:\Program Files\OpenSSL-Win64\lib\libssl.lib" >> $env:GITHUB_ENV
-          echo "C:\Program Files\OpenSSL-Win64\bin" >> $env:GITHUB_PATH
-          Write-Output "OpenSSL installation completed"
+          Write-Output "OpenSSL installer downloaded"
+          
+          $installProcess = Start-Process msiexec.exe -ArgumentList '/i', 'Win64OpenSSL-3_3_1.msi', '/quiet', '/qn', '/norestart', '/log', 'openssl_install.log' -NoNewWindow -PassThru -Wait
+          if ($installProcess.ExitCode -ne 0) {
+            Write-Error "OpenSSL installation failed with exit code $($installProcess.ExitCode)"
+            Get-Content openssl_install.log
+            exit 1
+          }
+          Write-Output "OpenSSL installation process completed"
+          
+          $opensslPath = "C:\Program Files\OpenSSL-Win64"
+          if (!(Test-Path $opensslPath)) {
+            Write-Error "OpenSSL installation directory not found at $opensslPath"
+            exit 1
+          }
+          
+          echo "OPENSSL_ROOT_DIR=$opensslPath" >> $env:GITHUB_ENV
+          echo "OPENSSL_INCLUDE_DIR=$opensslPath\include" >> $env:GITHUB_ENV
+          echo "OPENSSL_CRYPTO_LIBRARY=$opensslPath\lib\libcrypto.lib" >> $env:GITHUB_ENV
+          echo "OPENSSL_SSL_LIBRARY=$opensslPath\lib\libssl.lib" >> $env:GITHUB_ENV
+          echo "$opensslPath\bin" >> $env:GITHUB_PATH
+          
+          Write-Output "OpenSSL environment variables set"
+          Get-ChildItem $opensslPath
         shell: pwsh
-  
+
       - name: Verify OpenSSL installation (Windows)
         if: matrix.os == 'windows-latest'
         run: |
+          Write-Output "OPENSSL_ROOT_DIR: $env:OPENSSL_ROOT_DIR"
+          Write-Output "OPENSSL_INCLUDE_DIR: $env:OPENSSL_INCLUDE_DIR"
+          Write-Output "OPENSSL_CRYPTO_LIBRARY: $env:OPENSSL_CRYPTO_LIBRARY"
+          Write-Output "OPENSSL_SSL_LIBRARY: $env:OPENSSL_SSL_LIBRARY"
+          
           if (!(Test-Path $env:OPENSSL_ROOT_DIR)) {
             Write-Error "OpenSSL root directory not found"
             exit 1
@@ -103,9 +125,11 @@ jobs:
             Write-Error "OpenSSL SSL library not found"
             exit 1
           }
+          
           Get-ChildItem $env:OPENSSL_ROOT_DIR
           Get-ChildItem $env:OPENSSL_INCLUDE_DIR
           Get-ChildItem (Split-Path $env:OPENSSL_CRYPTO_LIBRARY)
+          
           Write-Output "OpenSSL installation verified successfully"
         shell: pwsh
 
