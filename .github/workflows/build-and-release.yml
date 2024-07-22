@@ -74,24 +74,37 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: |
           $ProgressPreference = 'SilentlyContinue'
-          Invoke-WebRequest -Uri "https://wiki.openssl.org/images/7/70/Win64OpenSSL-3_1_1.zip" -OutFile OpenSSL.zip
-          Expand-Archive -Path OpenSSL.zip -DestinationPath C:\OpenSSL -Force
-          echo "OPENSSL_ROOT_DIR=C:\OpenSSL\Win64OpenSSL-3_1_1" >> $env:GITHUB_ENV
-          echo "OPENSSL_INCLUDE_DIR=C:\OpenSSL\Win64OpenSSL-3_1_1\include" >> $env:GITHUB_ENV
-          echo "OPENSSL_CRYPTO_LIBRARY=C:\OpenSSL\Win64OpenSSL-3_1_1\lib\libcrypto.lib" >> $env:GITHUB_ENV
-          echo "OPENSSL_SSL_LIBRARY=C:\OpenSSL\Win64OpenSSL-3_1_1\lib\libssl.lib" >> $env:GITHUB_ENV
-          echo "C:\OpenSSL\Win64OpenSSL-3_1_1\bin" >> $env:GITHUB_PATH
-          Write-Output "OpenSSL files extracted to C:\OpenSSL\Win64OpenSSL-3_1_1"
-          Get-ChildItem C:\OpenSSL\Win64OpenSSL-3_1_1
-        shell: pwsh
-  
-      - name: Find OpenSSL Installation (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          Write-Output "Searching for OpenSSL installation..."
-          Get-ChildItem -Path "C:\Program Files" -Recurse -Filter "openssl.exe" -ErrorAction SilentlyContinue
-          Get-ChildItem -Path "C:\Program Files (x86)" -Recurse -Filter "openssl.exe" -ErrorAction SilentlyContinue
-          Get-ChildItem -Path "C:\" -Recurse -Filter "openssl.exe" -ErrorAction SilentlyContinue -Depth 3
+          $opensslUrl = "https://slproweb.com/download/Win64OpenSSL-3_3_1.msi"
+          $installerPath = "Win64OpenSSL-3_3_1.msi"
+          $opensslDir = "C:\Program Files\OpenSSL-Win64"
+
+          Write-Output "Downloading OpenSSL 3.3.1..."
+          Invoke-WebRequest -Uri $opensslUrl -OutFile $installerPath
+          if (!(Test-Path $installerPath)) {
+            Write-Error "Failed to download OpenSSL installer"
+            exit 1
+          }
+
+          Write-Output "Installing OpenSSL..."
+          $installProcess = Start-Process msiexec.exe -ArgumentList "/i", $installerPath, "/qn", "/norestart", "INSTALLDIR=$opensslDir" -NoNewWindow -PassThru -Wait
+          if ($installProcess.ExitCode -ne 0) {
+            Write-Error "OpenSSL installation failed with exit code $($installProcess.ExitCode)"
+            exit 1
+          }
+
+          if (!(Test-Path $opensslDir)) {
+            Write-Error "OpenSSL installation directory not found at $opensslDir"
+            exit 1
+          }
+
+          echo "OPENSSL_ROOT_DIR=$opensslDir" >> $env:GITHUB_ENV
+          echo "OPENSSL_INCLUDE_DIR=$opensslDir\include" >> $env:GITHUB_ENV
+          echo "OPENSSL_CRYPTO_LIBRARY=$opensslDir\lib\libcrypto.lib" >> $env:GITHUB_ENV
+          echo "OPENSSL_SSL_LIBRARY=$opensslDir\lib\libssl.lib" >> $env:GITHUB_ENV
+          echo "$opensslDir\bin" >> $env:GITHUB_PATH
+
+          Write-Output "OpenSSL environment variables set"
+          Get-ChildItem $opensslDir
         shell: pwsh
 
       - name: Verify OpenSSL installation (Windows)
