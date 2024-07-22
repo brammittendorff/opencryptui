@@ -43,24 +43,8 @@ jobs:
           echo "ARGON2_INCLUDE_DIR=$(brew --prefix argon2)/include" >> $GITHUB_ENV
           echo "SODIUM_LIB_DIR=$(brew --prefix libsodium)/lib" >> $GITHUB_ENV
           echo "SODIUM_INCLUDE_DIR=$(brew --prefix libsodium)/include" >> $GITHUB_ENV
-
-      - name: Debug environment variables (macOS)
-        if: matrix.os == 'macos-latest'
-        run: |
-          echo "ARGON2_LIB_DIR=$ARGON2_LIB_DIR"
-          echo "ARGON2_INCLUDE_DIR=$ARGON2_INCLUDE_DIR"
-          echo "SODIUM_LIB_DIR=$SODIUM_LIB_DIR"
-          echo "SODIUM_INCLUDE_DIR=$SODIUM_INCLUDE_DIR"
-
-      - name: Configure CMake (macOS)
-        if: matrix.os == 'macos-latest'
-        run: |
-          QT_DIR=$(brew --prefix qt@5)
-          cmake -S . -B build -G Ninja -DCMAKE_PREFIX_PATH=$QT_DIR -DQt5_DIR=$QT_DIR/lib/cmake/Qt5 -DQt5Core_DIR=$QT_DIR/lib/cmake/Qt5Core -DQt5Gui_DIR=$QT_DIR/lib/cmake/Qt5Gui -DQt5Widgets_DIR=$QT_DIR/lib/cmake/Qt5Widgets
-
-      - name: Build (macOS)
-        if: matrix.os == 'macos-latest'
-        run: cmake --build build --config Release
+          echo "Qt5_DIR=$(brew --prefix qt@5)/lib/cmake/Qt5" >> $GITHUB_ENV
+          echo "CMAKE_PREFIX_PATH=$(brew --prefix qt@5)" >> $GITHUB_ENV
 
       - name: Install Chocolatey and dependencies (Windows)
         if: matrix.os == 'windows-latest'
@@ -68,15 +52,18 @@ jobs:
           Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex "& { $(irm https://chocolatey.org/install.ps1) }"
           choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' -y
           choco install git -y
-          choco install qt5-sdk -y
+          choco install qt5-default -y
           choco install openssl -y
           choco install libsodium -y
           choco install mingw --version 8.1.0 -y
           choco install make -y
 
-      - name: Check MinGW Installation (Windows)
+      - name: Set up Qt (Windows)
         if: matrix.os == 'windows-latest'
-        run: g++ --version
+        run: |
+          echo "C:\Qt\5.15.2\mingw81_64\bin" >> $GITHUB_PATH
+          echo "Qt5_DIR=C:\Qt\5.15.2\mingw81_64\lib\cmake\Qt5" >> $GITHUB_ENV
+          echo "CMAKE_PREFIX_PATH=C:\Qt\5.15.2\mingw81_64" >> $GITHUB_ENV
 
       - name: Build Argon2 from source (Windows)
         if: matrix.os == 'windows-latest'
@@ -97,22 +84,22 @@ jobs:
           echo "ARGON2_INCLUDE_DIR=C:\argon2\include" >> $env:GITHUB_ENV
           echo "SODIUM_LIB_DIR=C:\Program Files\libsodium" >> $env:GITHUB_ENV
           echo "SODIUM_INCLUDE_DIR=C:\Program Files\libsodium\include" >> $env:GITHUB_ENV
-          echo "QT5_DIR=C:\tools\qt5-sdk\Qt5.15.2\5.15.2\mingw81_64\lib\cmake\Qt5" >> $env:GITHUB_ENV
 
-      - name: Debug environment variables (Windows)
-        if: matrix.os == 'windows-latest'
+      - name: Debug environment variables
         run: |
-          echo "ARGON2_LIB_DIR=$env:ARGON2_LIB_DIR"
-          echo "ARGON2_INCLUDE_DIR=$env:ARGON2_INCLUDE_DIR"
-          echo "SODIUM_LIB_DIR=$env:SODIUM_LIB_DIR"
-          echo "SODIUM_INCLUDE_DIR=$env:SODIUM_INCLUDE_DIR"
-          echo "QT5_DIR=$env:QT5_DIR"
+          echo "ARGON2_LIB_DIR: ${{ env.ARGON2_LIB_DIR }}"
+          echo "ARGON2_INCLUDE_DIR: ${{ env.ARGON2_INCLUDE_DIR }}"
+          echo "SODIUM_LIB_DIR: ${{ env.SODIUM_LIB_DIR }}"
+          echo "SODIUM_INCLUDE_DIR: ${{ env.SODIUM_INCLUDE_DIR }}"
+          echo "Qt5_DIR: ${{ env.Qt5_DIR }}"
+          echo "CMAKE_PREFIX_PATH: ${{ env.CMAKE_PREFIX_PATH }}"
+          echo "PATH: ${{ env.PATH }}"
 
       - name: Configure CMake
         shell: bash
         run: |
           if [ "${{ matrix.os }}" == "windows-latest" ]; then
-            cmake -S . -B build -G "MinGW Makefiles" -DQt5_DIR="$env:QT5_DIR"
+            cmake -S . -B build -G "MinGW Makefiles" -DCMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH" -DQt5_DIR="$Qt5_DIR"
           else
             cmake -S . -B build -G Ninja
           fi
@@ -126,7 +113,7 @@ jobs:
           name: ${{ matrix.os }}-build
           path: build/
 
-  release_linux:
+  release:
     needs: build
     runs-on: ubuntu-latest
     steps:
@@ -136,23 +123,19 @@ jobs:
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: ubuntu-latest-build
-          path: builds/linux/
+          path: builds/
 
       - name: Create release directory
         run: mkdir -p release
 
       - name: Copy build artifacts to release directory
-        run: cp -r builds/linux release/linux
+        run: |
+          cp -r builds/ubuntu-latest-build release/linux
+          cp -r builds/macos-latest-build release/macos
+          cp -r builds/windows-latest-build release/windows
 
       - name: Create zip of source code
         run: zip -r release/source.zip . -x .git\*
-
-      - name: Upload release assets
-        uses: actions/upload-artifact@v4
-        with:
-          name: release
-          path: release/
 
       - name: Create GitHub Release
         id: create_release
@@ -161,114 +144,16 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.ref }}
-          release_name: "Release ${{ github.ref }} - Linux"
+          release_name: Release ${{ github.ref }}
           draft: false
           prerelease: false
-
-      - name: Upload release assets to GitHub Release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: release/
-          asset_name: release_linux.zip
-          asset_content_type: application/zip
-
-  release_macos:
-    needs: build
-    runs-on: macos-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: macos-latest-build
-          path: builds/macos/
-
-      - name: Create release directory
-        run: mkdir -p release
-
-      - name: Copy build artifacts to release directory
-        run: cp -r builds/macos release/macos
-
-      - name: Create zip of source code
-        run: zip -r release/source.zip . -x .git\*
 
       - name: Upload release assets
-        uses: actions/upload-artifact@v4
-        with:
-          name: release
-          path: release/
-
-      - name: Create GitHub Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: "Release ${{ github.ref }} - macOS"
-          draft: false
-          prerelease: false
-
-      - name: Upload release assets to GitHub Release
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: release/
-          asset_name: release_macos.zip
-          asset_content_type: application/zip
-
-  release_windows:
-    needs: build
-    runs-on: windows-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: windows-latest-build
-          path: builds/windows/
-
-      - name: Create release directory
-        run: mkdir -p release
-
-      - name: Copy build artifacts to release directory
-        run: cp -r builds/windows release/windows
-
-      - name: Create zip of source code
-        run: zip -r release/source.zip . -x .git\*
-
-      - name: Upload release assets
-        uses: actions/upload-artifact@v4
-        with:
-          name: release
-          path: release/
-
-      - name: Create GitHub Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: "Release ${{ github.ref }} - Windows"
-          draft: false
-          prerelease: false
-
-      - name: Upload release assets to GitHub Release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: release/
-          asset_name: release_windows.zip
+          asset_path: ./release
+          asset_name: release.zip
           asset_content_type: application/zip
