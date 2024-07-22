@@ -46,6 +46,16 @@ jobs:
           echo "Qt5_DIR=$(brew --prefix qt@5)/lib/cmake/Qt5" >> $GITHUB_ENV
           echo "CMAKE_PREFIX_PATH=$(brew --prefix qt@5)" >> $GITHUB_ENV
 
+      - name: Download and Install OpenSSL (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          Invoke-WebRequest -Uri https://slproweb.com/download/Win64OpenSSL-1_1_1s.exe -OutFile Win64OpenSSL-1_1_1s.exe
+          Start-Process -FilePath Win64OpenSSL-1_1_1s.exe -ArgumentList '/silent', '/verysilent', '/suppressmsgboxes' -NoNewWindow -Wait
+          echo "OPENSSL_ROOT_DIR=C:\Program Files\OpenSSL-Win64" >> $env:GITHUB_ENV
+          echo "OPENSSL_INCLUDE_DIR=C:\Program Files\OpenSSL-Win64\include" >> $env:GITHUB_ENV
+          echo "OPENSSL_CRYPTO_LIBRARY=C:\Program Files\OpenSSL-Win64\lib\libcrypto.lib" >> $env:GITHUB_ENV
+          echo "OPENSSL_SSL_LIBRARY=C:\Program Files\OpenSSL-Win64\lib\libssl.lib" >> $env:GITHUB_ENV
+
       - name: Install Chocolatey (Windows)
         if: matrix.os == 'windows-latest'
         run: |
@@ -65,13 +75,12 @@ jobs:
         run: |
           choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' -y
           choco install qt5-default -y
-          choco install openssl -y
           choco install argon2 -y
           choco install libsodium -y
           choco install mingw --version 8.1.0 -y
           choco install make -y
 
-      - name: Set up Qt and OpenSSL (Windows)
+      - name: Set up Qt (Windows)
         if: matrix.os == 'windows-latest'
         run: |
           $qtBase = "C:\tools\qt"
@@ -79,10 +88,6 @@ jobs:
           $qtPath = Join-Path $qtBase $qtVersion
           echo "Qt5_DIR=$qtPath\mingw81_64\lib\cmake\Qt5" >> $env:GITHUB_ENV
           echo "CMAKE_PREFIX_PATH=$qtPath\mingw81_64" >> $env:GITHUB_ENV
-          echo "OPENSSL_ROOT_DIR=C:\Program Files\OpenSSL-Win64" >> $env:GITHUB_ENV
-          echo "OPENSSL_INCLUDE_DIR=C:\Program Files\OpenSSL-Win64\include" >> $env:GITHUB_ENV
-          echo "OPENSSL_CRYPTO_LIBRARY=C:\Program Files\OpenSSL-Win64\lib\libcrypto.lib" >> $env:GITHUB_ENV
-          echo "OPENSSL_SSL_LIBRARY=C:\Program Files\OpenSSL-Win64\lib\libssl.lib" >> $env:GITHUB_ENV
 
       - name: Debug environment variables after setting
         run: |
