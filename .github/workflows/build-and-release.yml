@@ -46,144 +46,40 @@ jobs:
           echo "Qt5_DIR=$(brew --prefix qt@5)/lib/cmake/Qt5" >> $GITHUB_ENV
           echo "CMAKE_PREFIX_PATH=$(brew --prefix qt@5)" >> $GITHUB_ENV
 
-      - name: Install Chocolatey (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex "& { $(irm https://chocolatey.org/install.ps1) }"
-
-      - name: Cache Chocolatey Packages (Windows)
-        if: matrix.os == 'windows-latest'
-        uses: actions/cache@v2
-        with:
-          path: C:\ProgramData\chocolatey\lib
-          key: ${{ runner.os }}-choco-${{ hashFiles('CMakeLists.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-choco-
-
-      - name: Install dependencies (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' -y
-          choco install qt5-default -y
-          choco install argon2 -y
-          choco install libsodium -y
-          choco install mingw -y
-          choco install make -y
-
-      - name: Setup MSYS2
+      - name: Setup MSYS2 (Windows)
         if: matrix.os == 'windows-latest'
         uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
           update: true
           install: >-
-            mingw-w64-x86_64-gcc
-            mingw-w64-x86_64-make
-            mingw-w64-x86_64-perl
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-ninja
+            mingw-w64-x86_64-qt5
+            mingw-w64-x86_64-openssl
+            mingw-w64-x86_64-libsodium
+            mingw-w64-x86_64-argon2
 
-      - name: Build OpenSSL from source (Windows)
+      - name: Build and set up dependencies (Windows)
         if: matrix.os == 'windows-latest'
         shell: msys2 {0}
         run: |
-          opensslVersion="3.3.1"
-          opensslUrl="https://www.openssl.org/source/openssl-$opensslVersion.tar.gz"
-          opensslArchive="openssl-$opensslVersion.tar.gz"
-          opensslDir="/c/OpenSSL-Win64"
+          echo "Setting up environment variables..."
+          echo "OPENSSL_ROOT_DIR=/mingw64" >> $GITHUB_ENV
+          echo "OPENSSL_INCLUDE_DIR=/mingw64/include" >> $GITHUB_ENV
+          echo "OPENSSL_CRYPTO_LIBRARY=/mingw64/lib/libcrypto.a" >> $GITHUB_ENV
+          echo "OPENSSL_SSL_LIBRARY=/mingw64/lib/libssl.a" >> $GITHUB_ENV
+          echo "Qt5_DIR=/mingw64/lib/cmake/Qt5" >> $GITHUB_ENV
+          echo "CMAKE_PREFIX_PATH=/mingw64" >> $GITHUB_ENV
+          echo "ARGON2_LIB_DIR=/mingw64/lib" >> $GITHUB_ENV
+          echo "ARGON2_INCLUDE_DIR=/mingw64/include" >> $GITHUB_ENV
+          echo "SODIUM_LIB_DIR=/mingw64/lib" >> $GITHUB_ENV
+          echo "SODIUM_INCLUDE_DIR=/mingw64/include" >> $GITHUB_ENV
+          echo "/mingw64/bin" >> $GITHUB_PATH
 
-          echo "Downloading OpenSSL $opensslVersion..."
-          curl -L $opensslUrl -o $opensslArchive
-          if [ ! -f $opensslArchive ]; then
-            echo "Failed to download OpenSSL"
-            exit 1
-          fi
-
-          echo "Extracting OpenSSL..."
-          tar -xzf $opensslArchive
-          if [ ! -d "openssl-$opensslVersion" ]; then
-            echo "Failed to extract OpenSSL"
-            exit 1
-          fi
-
-          echo "Building OpenSSL..."
-          cd "openssl-$opensslVersion"
-          ./Configure mingw64 no-shared --prefix=$opensslDir
-          make
-          make install
-
-          if [ ! -d $opensslDir ]; then
-            echo "OpenSSL installation directory not found at $opensslDir"
-            exit 1
-          fi
-
-          echo "OPENSSL_ROOT_DIR=$opensslDir" >> $GITHUB_ENV
-          echo "OPENSSL_INCLUDE_DIR=$opensslDir/include" >> $GITHUB_ENV
-          echo "OPENSSL_CRYPTO_LIBRARY=$opensslDir/lib/libcrypto.a" >> $GITHUB_ENV
-          echo "OPENSSL_SSL_LIBRARY=$opensslDir/lib/libssl.a" >> $GITHUB_ENV
-          echo "$opensslDir/bin" >> $GITHUB_PATH
-
-          echo "OpenSSL environment variables set"
-          ls -R $opensslDir
-
-      - name: Verify OpenSSL installation (Windows)
-        if: matrix.os == 'windows-latest'
-        shell: msys2 {0}
-        run: |
-          echo "OPENSSL_ROOT_DIR: $OPENSSL_ROOT_DIR"
-          echo "OPENSSL_INCLUDE_DIR: $OPENSSL_INCLUDE_DIR"
-          echo "OPENSSL_CRYPTO_LIBRARY: $OPENSSL_CRYPTO_LIBRARY"
-          echo "OPENSSL_SSL_LIBRARY: $OPENSSL_SSL_LIBRARY"
-          
-          if [ ! -d "$OPENSSL_ROOT_DIR" ]; then
-            echo "OpenSSL root directory not found"
-            exit 1
-          fi
-          if [ ! -d "$OPENSSL_INCLUDE_DIR" ]; then
-            echo "OpenSSL include directory not found"
-            exit 1
-          fi
-          if [ ! -f "$OPENSSL_CRYPTO_LIBRARY" ]; then
-            echo "OpenSSL crypto library not found"
-            exit 1
-          fi
-          if [ ! -f "$OPENSSL_SSL_LIBRARY" ]; then
-            echo "OpenSSL SSL library not found"
-            exit 1
-          fi
-          
-          ls -R "$OPENSSL_ROOT_DIR"
-          ls -R "$OPENSSL_INCLUDE_DIR"
-          ls -R "$(dirname "$OPENSSL_CRYPTO_LIBRARY")"
-          
-          echo "OpenSSL installation verified successfully"
-
-      - name: Set up Qt (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          $qtBase = "C:\tools\qt"
-          $qtVersion = "5.15.2"
-          $qtPath = Join-Path $qtBase $qtVersion
-          echo "Qt5_DIR=$qtPath\mingw81_64\lib\cmake\Qt5" >> $env:GITHUB_ENV
-          echo "CMAKE_PREFIX_PATH=$qtPath\mingw81_64" >> $env:GITHUB_ENV
-
-      - name: Build Argon2 from source (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          git clone --depth 1 https://github.com/P-H-C/phc-winner-argon2.git
-          cd phc-winner-argon2
-          gcc -std=c89 -O3 -Wall -g -Iinclude -Isrc -c src/argon2.c src/core.c src/blake2/blake2b.c src/thread.c src/encoding.c src/ref.c src/run.c
-          ar rcs libargon2.a argon2.o core.o blake2b.o thread.o encoding.o ref.o run.o
-          mkdir -p C:\argon2\lib
-          mkdir -p C:\argon2\include
-          Copy-Item -Path "libargon2.a" -Destination "C:\argon2\lib" -Force
-          Copy-Item -Path "include\argon2.h" -Destination "C:\argon2\include" -Force
-
-      - name: Set environment variables for Windows
-        if: matrix.os == 'windows-latest'
-        run: |
-          echo "ARGON2_LIB_DIR=C:\argon2\lib" >> $env:GITHUB_ENV
-          echo "ARGON2_INCLUDE_DIR=C:\argon2\include" >> $env:GITHUB_ENV
-          echo "SODIUM_LIB_DIR=C:\Program Files\libsodium" >> $env:GITHUB_ENV
-          echo "SODIUM_INCLUDE_DIR=C:\Program Files\libsodium\include" >> $env:GITHUB_ENV
+          echo "Verifying installations..."
+          pacman -Q mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja mingw-w64-x86_64-qt5 mingw-w64-x86_64-openssl mingw-w64-x86_64-libsodium mingw-w64-x86_64-argon2
 
       - name: Debug environment variables
         run: |
