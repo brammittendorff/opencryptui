@@ -62,6 +62,14 @@ jobs:
             mingw-w64-x86_64-qt5-base
             mingw-w64-x86_64-qt5-tools
 
+      - name: Find Qt5 CMake directory
+        if: matrix.os == 'windows-latest'
+        shell: msys2 {0}
+        run: |
+          QT5_DIR=$(find /mingw64/ -type d -name "Qt5*Config.cmake" | xargs dirname)
+          echo "Qt5_DIR=${QT5_DIR}" >> $GITHUB_ENV
+          echo "CMAKE_PREFIX_PATH=/mingw64" >> $GITHUB_ENV
+
       - name: Build and set up dependencies (Windows)
         if: matrix.os == 'windows-latest'
         shell: msys2 {0}
@@ -104,7 +112,7 @@ jobs:
               -DOPENSSL_CRYPTO_LIBRARY="$OPENSSL_CRYPTO_LIBRARY" \
               -DOPENSSL_SSL_LIBRARY="$OPENSSL_SSL_LIBRARY" \
               -DCMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH" \
-              -DQt5_DIR="/mingw64/lib/cmake/Qt5"
+              -DQt5_DIR="$Qt5_DIR"
           else
             cmake -S . -B build -G Ninja
           fi
