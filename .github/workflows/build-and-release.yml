@@ -16,6 +16,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Set up CMakename: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
       - name: Set up CMake
         if: matrix.os != 'windows-latest'
         uses: jwlawson/actions-setup-cmake@v2
@@ -64,6 +82,167 @@ jobs:
             mingw-w64-x86_64-qt5-tools
             cmake
             gcc
+
+      - name: Find Qt5 CMake directory
+        if: matrix.os == 'windows-latest'
+        shell: msys2 {0}
+        run: |
+          QT5_CONFIG=$(find /mingw64/ -name "Qt5Config.cmake" -o -name "qt5-config.cmake" | head -n 1)
+          if [ -z "$QT5_CONFIG" ]; then
+            echo "Qt5Config.cmake not found!"
+            exit 1
+          fi
+          QT5_DIR=$(dirname ${QT5_CONFIG})
+          echo "Qt5_DIR=${QT5_DIR}" >> $GITHUB_ENV
+          echo "CMAKE_MODULE_PATH=${QT5_DIR}" >> $GITHUB_ENV
+
+      - name: Build and set up dependencies (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: msys2 {0}
+        run: |
+          echo "Setting up environment variables..."
+          echo "OPENSSL_ROOT_DIR=/mingw64" >> $GITHUB_ENV
+          echo "OPENSSL_INCLUDE_DIR=/mingw64/include" >> $GITHUB_ENV
+          echo "OPENSSL_CRYPTO_LIBRARY=/mingw64/lib/libcrypto.a" >> $GITHUB_ENV
+          echo "OPENSSL_SSL_LIBRARY=/mingw64/lib/libssl.a" >> $GITHUB_ENV
+          echo "CMAKE_PREFIX_PATH=/mingw64" >> $GITHUB_ENV
+          echo "ARGON2_LIB_DIR=/mingw64/lib" >> $GITHUB_ENV
+          echo "ARGON2_INCLUDE_DIR=/mingw64/include" >> $GITHUB_ENV
+          echo "SODIUM_LIB_DIR=/mingw64/lib" >> $GITHUB_ENV
+          echo "SODIUM_INCLUDE_DIR=/mingw64/include" >> $GITHUB_ENV
+          echo "/mingw64/bin" >> $GITHUB_PATH
+
+          echo "Verifying installations..."
+          pacman -Q mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja mingw-w64-x86_64-openssl mingw-w64-x86_64-libsodium mingw-w64-x86_64-argon2 mingw-w64-x86_64-qt5-base mingw-w64-x86_64-qt5-tools
+
+      - name: Debug environment variables
+        run: |
+          echo "ARGON2_LIB_DIR: ${{ env.ARGON2_LIB_DIR }}"
+          echo "ARGON2_INCLUDE_DIR: ${{ env.ARGON2_INCLUDE_DIR }}"
+          echo "SODIUM_LIB_DIR: ${{ env.SODIUM_LIB_DIR }}"
+          echo "SODIUM_INCLUDE_DIR: ${{ env.SODIUM_INCLUDE_DIR }}"
+          echo "CMAKE_PREFIX_PATH: ${{ env.CMAKE_PREFIX_PATH }}"
+          echo "OPENSSL_ROOT_DIR: ${{ env.OPENSSL_ROOT_DIR }}"
+          echo "OPENSSL_INCLUDE_DIR: ${{ env.OPENSSL_INCLUDE_DIR }}"
+          echo "OPENSSL_CRYPTO_LIBRARY: ${{ env.OPENSSL_CRYPTO_LIBRARY }}"
+          echo "OPENSSL_SSL_LIBRARY: ${{ env.OPENSSL_SSL_LIBRARY }}"
+          echo "Qt5_DIR: ${{ env.Qt5_DIR }}"
+          echo "CMAKE_MODULE_PATH: ${{ env.CMAKE_MODULE_PATH }}"
+          echo "PATH: ${{ env.PATH }}"
+
+      - name: Configure CMake
+        shell: bash
+        run: |
+          if [ "${{ matrix.os }}" == "windows-latest" ]; then
+            cmake -S . -B build -G "MinGW Makefiles" \
+              -DOPENSSL_ROOT_DIR="${{ env.OPENSSL_ROOT_DIR }}" \
+              -DOPENSSL_INCLUDE_DIR="${{ env.OPENSSL_INCLUDE_DIR }}" \
+              -DOPENSSL_CRYPTO_LIBRARY="${{ env.OPENSSL_CRYPTO_LIBRARY }}" \
+              -DOPENSSL_SSL_LIBRARY="${{ env.OPENSSL_SSL_LIBRARY }}" \
+              -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}" \
+              -DCMAKE_MODULE_PATH="${{ env.Qt5_DIR }}" \
+              -DQt5_DIR="${{ env.Qt5_DIR }}"
+          else
+            cmake -S . -B build -G Ninja
+          fi
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Archive build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.os }}-build
+          path: build/
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: builds/
+
+      - name: Create release directory
+        run: mkdir -p release
+
+      - name: Copy build artifacts to release directory
+        run: |
+          cp -r builds/ubuntu-latest-build release/linux
+          cp -r builds/macos-latest-build release/macos
+          cp -r builds/windows-latest-build release/windows
+
+      - name: Create zip of source code
+        run: zip -r release/source.zip . -x .git\*
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+
+      - name: Upload release assets
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./release
+          asset_name: release.zip
+          asset_content_type: application/zip
+        uses: jwlawson/actions-setup-cmake@v2
+
+      - name: Install dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build git qtbase5-dev qtchooser qt5-qmake qtbase5-dev-tools libssl-dev libsodium-dev libargon2-dev
+
+      - name: Install Homebrew (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || { echo "Homebrew installation failed"; exit 1; }
+
+      - name: Install dependencies (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install qt@5 openssl libsodium argon2 ninja
+          brew link --force qt@5
+
+      - name: Set environment variables for macOS
+        if: matrix.os == 'macos-latest'
+        run: |
+          echo "ARGON2_LIB_DIR=$(brew --prefix argon2)/lib" >> $GITHUB_ENV
+          echo "ARGON2_INCLUDE_DIR=$(brew --prefix argon2)/include" >> $GITHUB_ENV
+          echo "SODIUM_LIB_DIR=$(brew --prefix libsodium)/lib" >> $GITHUB_ENV
+          echo "SODIUM_INCLUDE_DIR=$(brew --prefix libsodium)/include" >> $GITHUB_ENV
+          echo "Qt5_DIR=$(brew --prefix qt@5)/lib/cmake/Qt5" >> $GITHUB_ENV
+          echo "CMAKE_PREFIX_PATH=$(brew --prefix qt@5)" >> $GITHUB_ENV
+
+      - name: Setup MSYS2 (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-ninja
+            mingw-w64-x86_64-openssl
+            mingw-w64-x86_64-libsodium
+            mingw-w64-x86_64-argon2
+            mingw-w64-x86_64-qt5-base
+            mingw-w64-x86_64-qt5-tools
 
       - name: Find Qt5 CMake directory
         if: matrix.os == 'windows-latest'
