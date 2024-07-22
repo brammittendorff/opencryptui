@@ -63,6 +63,13 @@ jobs:
             mingw-w64-x86_64-libsodium
             mingw-w64-x86_64-argon2
 
+      - name: List CMake directories (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          echo "Listing contents of /mingw64/lib:"
+          ls -R /mingw64/lib
+        shell: bash
+
       - name: Build and set up dependencies (Windows)
         if: matrix.os == 'windows-latest'
         shell: msys2 {0}
@@ -96,13 +103,6 @@ jobs:
           echo "OPENSSL_CRYPTO_LIBRARY: ${{ env.OPENSSL_CRYPTO_LIBRARY }}"
           echo "OPENSSL_SSL_LIBRARY: ${{ env.OPENSSL_SSL_LIBRARY }}"
           echo "PATH: ${{ env.PATH }}"
-
-      - name: List CMake directories (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          echo "Listing contents of /mingw64/lib/cmake:"
-          ls -R /mingw64/lib/cmake
-        shell: bash
 
       - name: List Qt5 directory contents (Windows)
         if: matrix.os == 'windows-latest'
