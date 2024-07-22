@@ -14,20 +14,12 @@ find_package(Qt5 COMPONENTS Core Gui Widgets REQUIRED)
 
 # OpenSSL configuration
 if(WIN32)
-    # Set OpenSSL root directory for Windows
-    set(OPENSSL_ROOT_DIR "C:/Program Files/OpenSSL-Win64")
     set(OPENSSL_USE_STATIC_LIBS TRUE)
-    find_package(OpenSSL REQUIRED)
-
-    if(NOT OpenSSL_FOUND)
-        # Fallback to manual path setting if find_package fails
-        set(OPENSSL_INCLUDE_DIR "${OPENSSL_ROOT_DIR}/include")
-        set(OPENSSL_LIBRARIES "${OPENSSL_ROOT_DIR}/lib/libssl.lib" "${OPENSSL_ROOT_DIR}/lib/libcrypto.lib")
-    endif()
-else()
-    # For non-Windows platforms, use find_package
-    find_package(OpenSSL REQUIRED)
+    set(OPENSSL_MSVC_STATIC_RT TRUE)
 endif()
+
+# Find OpenSSL package
+find_package(OpenSSL REQUIRED)
 
 # Find Argon2 and Sodium (Scrypt) packages
 find_package(PkgConfig REQUIRED)

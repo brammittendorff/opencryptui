@@ -79,6 +79,7 @@ jobs:
           echo "OPENSSL_INCLUDE_DIR=C:\Program Files\OpenSSL-Win64\include" >> $env:GITHUB_ENV
           echo "OPENSSL_CRYPTO_LIBRARY=C:\Program Files\OpenSSL-Win64\lib\libcrypto.lib" >> $env:GITHUB_ENV
           echo "OPENSSL_SSL_LIBRARY=C:\Program Files\OpenSSL-Win64\lib\libssl.lib" >> $env:GITHUB_ENV
+          echo "C:\Program Files\OpenSSL-Win64\bin" >> $env:GITHUB_PATH
 
       - name: Set up Qt (Windows)
         if: matrix.os == 'windows-latest'
@@ -97,6 +98,7 @@ jobs:
           echo "OPENSSL_INCLUDE_DIR: ${{ env.OPENSSL_INCLUDE_DIR }}"
           echo "OPENSSL_CRYPTO_LIBRARY: ${{ env.OPENSSL_CRYPTO_LIBRARY }}"
           echo "OPENSSL_SSL_LIBRARY: ${{ env.OPENSSL_SSL_LIBRARY }}"
+          echo "PATH: ${{ env.PATH }}"
 
       - name: Build Argon2 from source (Windows)
         if: matrix.os == 'windows-latest'
@@ -136,7 +138,12 @@ jobs:
         shell: bash
         run: |
           if [ "${{ matrix.os }}" == "windows-latest" ]; then
-            cmake -S . -B build -G "MinGW Makefiles"
+            cmake -S . -B build -G "MinGW Makefiles" \
+              -DOPENSSL_ROOT_DIR="C:/Program Files/OpenSSL-Win64" \
+              -DOPENSSL_USE_STATIC_LIBS=TRUE \
+              -DOPENSSL_MSVC_STATIC_RT=TRUE \
+              -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}" \
+              -DQt5_DIR="${{ env.Qt5_DIR }}"
           else
             cmake -S . -B build -G Ninja
           fi
