@@ -59,9 +59,8 @@ jobs:
             mingw-w64-x86_64-openssl
             mingw-w64-x86_64-libsodium
             mingw-w64-x86_64-argon2
-            mingw-w64-x86_64-perl
-            git
-            make
+            mingw-w64-x86_64-qt5-base
+            mingw-w64-x86_64-qt5-tools
 
       - name: Build and set up dependencies (Windows)
         if: matrix.os == 'windows-latest'
@@ -80,18 +79,7 @@ jobs:
           echo "/mingw64/bin" >> $GITHUB_PATH
 
           echo "Verifying installations..."
-          pacman -Q mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja mingw-w64-x86_64-openssl mingw-w64-x86_64-libsodium mingw-w64-x86_64-argon2
-
-      - name: Compile Qt (Windows)
-        if: matrix.os == 'windows-latest'
-        shell: msys2 {0}
-        run: |
-          git clone --depth 1 --branch v6.7.2 https://github.com/qt/qt5.git
-          cd qt5
-          perl init-repository
-          ./configure -opensource -confirm-license -prefix /mingw64 -platform win32-g++
-          make -j$(nproc)
-          make install
+          pacman -Q mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja mingw-w64-x86_64-openssl mingw-w64-x86_64-libsodium mingw-w64-x86_64-argon2 mingw-w64-x86_64-qt5-base mingw-w64-x86_64-qt5-tools
 
       - name: Debug environment variables
         run: |
