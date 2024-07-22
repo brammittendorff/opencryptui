@@ -107,7 +107,7 @@ jobs:
           echo "ARGON2_LIB_DIR: ${{ env.ARGON2_LIB_DIR }}"
           echo "ARGON2_INCLUDE_DIR: ${{ env.ARGON2_INCLUDE_DIR }}"
           echo "SODIUM_LIB_DIR: ${{ env.SODIUM_LIB_DIR }}"
-          echo "Qt5_DIR: ${{ env.SODIUM_INCLUDE_DIR }}"
+          echo "SODIUM_INCLUDE_DIR: ${{ env.SODIUM_INCLUDE_DIR }}"
           echo "OPENSSL_ROOT_DIR: ${{ env.OPENSSL_ROOT_DIR }}"
           echo "OPENSSL_INCLUDE_DIR: ${{ env.OPENSSL_INCLUDE_DIR }}"
           echo "OPENSSL_CRYPTO_LIBRARY: ${{ env.OPENSSL_CRYPTO_LIBRARY }}"
@@ -141,7 +141,7 @@ jobs:
         shell: msys2 {0}
         run: cmake --build build --config Release
 
-      - name: Build for macOS
+      - name: Build for macOS/Linux
         if: matrix.os != 'windows-latest'
         shell: bash
         run: cmake --build build --config Release
@@ -155,30 +155,48 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      packages: write
-      deployments: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Download build artifacts
+      - name: Download Linux build artifacts
         uses: actions/download-artifact@v4
         with:
-          path: builds/
+          name: ubuntu-latest-build
+          path: build-linux/
+          if-no-files-found: error
+
+      - name: Download macOS build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-latest-build
+          path: build-macos/
+          if-no-files-found: error
+
+      - name: Download Windows build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-latest-build
+          path: build-windows/
+          if-no-files-found: error
 
       - name: Create release directory
         run: mkdir -p release
 
-      - name: Copy build artifacts to release directory
+      - name: Zip Linux build
         run: |
-          cp -r builds/ubuntu-latest-build release/linux
-          cp -r builds/macos-latest-build release/macos
-          cp -r builds/windows-latest-build release/windows
+          cd build-linux
+          zip -r ../release/linux-build.zip .
 
-      - name: Create zip of source code
-        run: zip -r release/source.zip . -x .git\*
+      - name: Zip macOS build
+        run: |
+          cd build-macos
+          zip -r ../release/macos-build.zip .
+
+      - name: Zip Windows build
+        run: |
+          cd build-windows
+          zip -r ../release/windows-build.zip .
 
       - name: Create GitHub Release
         id: create_release
@@ -191,12 +209,32 @@ jobs:
           draft: false
           prerelease: false
 
-      - name: Upload release assets
+      - name: Upload Linux build
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./release
-          asset_name: release.zip
+          asset_path: ./release/linux-build.zip
+          asset_name: linux-build.zip
+          asset_content_type: application/zip
+
+      - name: Upload macOS build
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./release/macos-build.zip
+          asset_name: macos-build.zip
+          asset_content_type: application/zip
+
+      - name: Upload Windows build
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./release/windows-build.zip
+          asset_name: windows-build.zip
           asset_content_type: application/zip
