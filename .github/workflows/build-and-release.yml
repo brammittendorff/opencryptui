@@ -74,13 +74,13 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: |
           $ProgressPreference = 'SilentlyContinue'
-          Invoke-WebRequest -Uri "https://curl.se/windows/dl-7.86.0/openssl-1.1.1s-win64-mingw.zip" -OutFile openssl.zip
-          Expand-Archive -Path openssl.zip -DestinationPath C:\openssl -Force
-          echo "OPENSSL_ROOT_DIR=C:\openssl" >> $env:GITHUB_ENV
-          echo "OPENSSL_INCLUDE_DIR=C:\openssl\include" >> $env:GITHUB_ENV
-          echo "OPENSSL_CRYPTO_LIBRARY=C:\openssl\lib\libcrypto.dll.a" >> $env:GITHUB_ENV
-          echo "OPENSSL_SSL_LIBRARY=C:\openssl\lib\libssl.dll.a" >> $env:GITHUB_ENV
-          echo "C:\openssl\bin" >> $env:GITHUB_PATH
+          Invoke-WebRequest -Uri https://slproweb.com/download/Win64OpenSSL-3_1_3.exe -OutFile Win64OpenSSL-3_1_3.exe
+          Start-Process -FilePath .\Win64OpenSSL-3_1_3.exe -Args "/silent /verysilent /sp- /suppressmsgboxes" -Verb RunAs -Wait
+          echo "OPENSSL_ROOT_DIR=C:\Program Files\OpenSSL-Win64" >> $env:GITHUB_ENV
+          echo "OPENSSL_INCLUDE_DIR=C:\Program Files\OpenSSL-Win64\include" >> $env:GITHUB_ENV
+          echo "OPENSSL_CRYPTO_LIBRARY=C:\Program Files\OpenSSL-Win64\lib\libcrypto.lib" >> $env:GITHUB_ENV
+          echo "OPENSSL_SSL_LIBRARY=C:\Program Files\OpenSSL-Win64\lib\libssl.lib" >> $env:GITHUB_ENV
+          echo "C:\Program Files\OpenSSL-Win64\bin" >> $env:GITHUB_PATH
           Write-Output "OpenSSL installation completed"
         shell: pwsh
 
