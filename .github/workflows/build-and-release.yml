@@ -70,27 +70,41 @@ jobs:
           choco install mingw -y
           choco install make -y
 
-      - name: Download and Install OpenSSL (Windows)
+      - name: Install build tools for OpenSSL (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          choco install strawberryperl -y
+          choco install nasm -y
+        shell: pwsh
+
+      - name: Build OpenSSL from source (Windows)
         if: matrix.os == 'windows-latest'
         run: |
           $ProgressPreference = 'SilentlyContinue'
-          $opensslUrl = "https://slproweb.com/download/Win64OpenSSL-3_3_1.msi"
-          $installerPath = "Win64OpenSSL-3_3_1.msi"
-          $opensslDir = "C:\Program Files\OpenSSL-Win64"
+          $opensslVersion = "3.3.1"
+          $opensslUrl = "https://www.openssl.org/source/openssl-$opensslVersion.tar.gz"
+          $opensslArchive = "openssl-$opensslVersion.tar.gz"
+          $opensslDir = "C:\OpenSSL-Win64"
 
-          Write-Output "Downloading OpenSSL 3.3.1..."
-          Invoke-WebRequest -Uri $opensslUrl -OutFile $installerPath
-          if (!(Test-Path $installerPath)) {
-            Write-Error "Failed to download OpenSSL installer"
+          Write-Output "Downloading OpenSSL $opensslVersion..."
+          Invoke-WebRequest -Uri $opensslUrl -OutFile $opensslArchive
+          if (!(Test-Path $opensslArchive)) {
+            Write-Error "Failed to download OpenSSL"
             exit 1
           }
 
-          Write-Output "Installing OpenSSL..."
-          $installProcess = Start-Process msiexec.exe -ArgumentList "/i", $installerPath, "/qn", "/norestart", "INSTALLDIR=$opensslDir" -NoNewWindow -PassThru -Wait
-          if ($installProcess.ExitCode -ne 0) {
-            Write-Error "OpenSSL installation failed with exit code $($installProcess.ExitCode)"
+          Write-Output "Extracting OpenSSL..."
+          tar -xzf $opensslArchive
+          if (!(Test-Path "openssl-$opensslVersion")) {
+            Write-Error "Failed to extract OpenSSL"
             exit 1
           }
+
+          Write-Output "Building OpenSSL..."
+          cd "openssl-$opensslVersion"
+          perl Configure mingw64 no-shared --prefix=$opensslDir
+          mingw32-make
+          mingw32-make install
 
           if (!(Test-Path $opensslDir)) {
             Write-Error "OpenSSL installation directory not found at $opensslDir"
