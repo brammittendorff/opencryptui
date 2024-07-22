@@ -70,88 +70,91 @@ jobs:
           choco install mingw -y
           choco install make -y
 
-      - name: Install build tools for OpenSSL (Windows)
+      - name: Setup MSYS2
         if: matrix.os == 'windows-latest'
-        run: |
-          choco install strawberryperl -y
-          choco install nasm -y
-        shell: pwsh
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-make
+            mingw-w64-x86_64-perl
 
       - name: Build OpenSSL from source (Windows)
         if: matrix.os == 'windows-latest'
+        shell: msys2 {0}
         run: |
-          $ProgressPreference = 'SilentlyContinue'
-          $opensslVersion = "3.3.1"
-          $opensslUrl = "https://www.openssl.org/source/openssl-$opensslVersion.tar.gz"
-          $opensslArchive = "openssl-$opensslVersion.tar.gz"
-          $opensslDir = "C:\OpenSSL-Win64"
+          opensslVersion="3.3.1"
+          opensslUrl="https://www.openssl.org/source/openssl-$opensslVersion.tar.gz"
+          opensslArchive="openssl-$opensslVersion.tar.gz"
+          opensslDir="/c/OpenSSL-Win64"
 
-          Write-Output "Downloading OpenSSL $opensslVersion..."
-          Invoke-WebRequest -Uri $opensslUrl -OutFile $opensslArchive
-          if (!(Test-Path $opensslArchive)) {
-            Write-Error "Failed to download OpenSSL"
+          echo "Downloading OpenSSL $opensslVersion..."
+          curl -L $opensslUrl -o $opensslArchive
+          if [ ! -f $opensslArchive ]; then
+            echo "Failed to download OpenSSL"
             exit 1
-          }
+          fi
 
-          Write-Output "Extracting OpenSSL..."
+          echo "Extracting OpenSSL..."
           tar -xzf $opensslArchive
-          if (!(Test-Path "openssl-$opensslVersion")) {
-            Write-Error "Failed to extract OpenSSL"
+          if [ ! -d "openssl-$opensslVersion" ]; then
+            echo "Failed to extract OpenSSL"
             exit 1
-          }
+          fi
 
-          Write-Output "Building OpenSSL..."
+          echo "Building OpenSSL..."
           cd "openssl-$opensslVersion"
-          perl Configure mingw64 no-shared --prefix=$opensslDir
-          mingw32-make
-          mingw32-make install
+          ./Configure mingw64 no-shared --prefix=$opensslDir
+          make
+          make install
 
-          if (!(Test-Path $opensslDir)) {
-            Write-Error "OpenSSL installation directory not found at $opensslDir"
+          if [ ! -d $opensslDir ]; then
+            echo "OpenSSL installation directory not found at $opensslDir"
             exit 1
-          }
+          fi
 
-          echo "OPENSSL_ROOT_DIR=$opensslDir" >> $env:GITHUB_ENV
-          echo "OPENSSL_INCLUDE_DIR=$opensslDir\include" >> $env:GITHUB_ENV
-          echo "OPENSSL_CRYPTO_LIBRARY=$opensslDir\lib\libcrypto.lib" >> $env:GITHUB_ENV
-          echo "OPENSSL_SSL_LIBRARY=$opensslDir\lib\libssl.lib" >> $env:GITHUB_ENV
-          echo "$opensslDir\bin" >> $env:GITHUB_PATH
+          echo "OPENSSL_ROOT_DIR=$opensslDir" >> $GITHUB_ENV
+          echo "OPENSSL_INCLUDE_DIR=$opensslDir/include" >> $GITHUB_ENV
+          echo "OPENSSL_CRYPTO_LIBRARY=$opensslDir/lib/libcrypto.a" >> $GITHUB_ENV
+          echo "OPENSSL_SSL_LIBRARY=$opensslDir/lib/libssl.a" >> $GITHUB_ENV
+          echo "$opensslDir/bin" >> $GITHUB_PATH
 
-          Write-Output "OpenSSL environment variables set"
-          Get-ChildItem $opensslDir
-        shell: pwsh
+          echo "OpenSSL environment variables set"
+          ls -R $opensslDir
 
       - name: Verify OpenSSL installation (Windows)
         if: matrix.os == 'windows-latest'
+        shell: msys2 {0}
         run: |
-          Write-Output "OPENSSL_ROOT_DIR: $env:OPENSSL_ROOT_DIR"
-          Write-Output "OPENSSL_INCLUDE_DIR: $env:OPENSSL_INCLUDE_DIR"
-          Write-Output "OPENSSL_CRYPTO_LIBRARY: $env:OPENSSL_CRYPTO_LIBRARY"
-          Write-Output "OPENSSL_SSL_LIBRARY: $env:OPENSSL_SSL_LIBRARY"
+          echo "OPENSSL_ROOT_DIR: $OPENSSL_ROOT_DIR"
+          echo "OPENSSL_INCLUDE_DIR: $OPENSSL_INCLUDE_DIR"
+          echo "OPENSSL_CRYPTO_LIBRARY: $OPENSSL_CRYPTO_LIBRARY"
+          echo "OPENSSL_SSL_LIBRARY: $OPENSSL_SSL_LIBRARY"
           
-          if (!(Test-Path $env:OPENSSL_ROOT_DIR)) {
-            Write-Error "OpenSSL root directory not found"
+          if [ ! -d "$OPENSSL_ROOT_DIR" ]; then
+            echo "OpenSSL root directory not found"
             exit 1
-          }
-          if (!(Test-Path $env:OPENSSL_INCLUDE_DIR)) {
-            Write-Error "OpenSSL include directory not found"
+          fi
+          if [ ! -d "$OPENSSL_INCLUDE_DIR" ]; then
+            echo "OpenSSL include directory not found"
             exit 1
-          }
-          if (!(Test-Path $env:OPENSSL_CRYPTO_LIBRARY)) {
-            Write-Error "OpenSSL crypto library not found"
+          fi
+          if [ ! -f "$OPENSSL_CRYPTO_LIBRARY" ]; then
+            echo "OpenSSL crypto library not found"
             exit 1
-          }
-          if (!(Test-Path $env:OPENSSL_SSL_LIBRARY)) {
-            Write-Error "OpenSSL SSL library not found"
+          fi
+          if [ ! -f "$OPENSSL_SSL_LIBRARY" ]; then
+            echo "OpenSSL SSL library not found"
             exit 1
-          }
+          fi
           
-          Get-ChildItem $env:OPENSSL_ROOT_DIR
-          Get-ChildItem $env:OPENSSL_INCLUDE_DIR
-          Get-ChildItem (Split-Path $env:OPENSSL_CRYPTO_LIBRARY)
+          ls -R "$OPENSSL_ROOT_DIR"
+          ls -R "$OPENSSL_INCLUDE_DIR"
+          ls -R "$(dirname "$OPENSSL_CRYPTO_LIBRARY")"
           
-          Write-Output "OpenSSL installation verified successfully"
-        shell: pwsh
+          echo "OpenSSL installation verified successfully"
 
       - name: Set up Qt (Windows)
         if: matrix.os == 'windows-latest'
