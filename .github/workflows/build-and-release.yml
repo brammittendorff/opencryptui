@@ -69,6 +69,7 @@ jobs:
             mingw-w64-x86_64-qt5-tools
             cmake
             gcc
+            mingw-w64-x86_64-ntldd
 
       - name: Find Qt5 CMake directory
         if: matrix.os == 'windows-latest'
@@ -127,7 +128,7 @@ jobs:
             -DOPENSSL_CRYPTO_LIBRARY="${{ env.OPENSSL_CRYPTO_LIBRARY }}" \
             -DOPENSSL_SSL_LIBRARY="${{ env.OPENSSL_SSL_LIBRARY }}" \
             -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}" \
-            -DCMAKE_MODULE_PATH="${{ env.Qt5_DIR }}" \
+            -DCMAKE_MODULE_PATH="${{ env.CMAKE_MODULE_PATH }}" \
             -DQt5_DIR="${{ env.Qt5_DIR }}"
 
       - name: Configure CMake for macOS/Linux
@@ -135,7 +136,7 @@ jobs:
         shell: bash
         run: |
           cmake -S . -B build -G Ninja
-    
+
       - name: Build for Windows
         if: matrix.os == 'windows-latest'
         shell: msys2 {0}
@@ -150,27 +151,14 @@ jobs:
         if: matrix.os == 'windows-latest'
         shell: msys2 {0}
         run: |
-          cp /mingw64/bin/libargon2.dll build/
-          cp /mingw64/bin/libgcc_s_seh-1.dll build/
-          cp /mingw64/bin/libsodium-26.dll build/
-          cp /mingw64/bin/libstdc++-6.dll build/
-          cp /mingw64/bin/libwinpthread-1.dll build/
-          cp /mingw64/bin/Qt5Core.dll build/
-          cp /mingw64/bin/Qt5Gui.dll build/
-          cp /mingw64/bin/Qt5Widgets.dll build/
-          cp /mingw64/bin/Qt5Concurrent.dll build/
-          cp /mingw64/bin/Qt5Network.dll build/
-          cp /mingw64/bin/libicu*.dll build/ # Include ICU dependencies
-          cp /mingw64/bin/libpcre2*.dll build/ # Include PCRE2 dependencies
-          cp /mingw64/bin/libdouble-conversion.dll build/
-          cp /mingw64/bin/libzstd.dll build/
-          cp /mingw64/bin/zlib1.dll build/
-          cp /mingw64/bin/libharfbuzz-0.dll build/
-          cp /mingw64/bin/libmd4c.dll build/
-          cp /mingw64/bin/libpng16-16.dll build/
-          cp /mingw64/bin/libfreetype-6.dll build/
-          cp /mingw64/bin/libicu*.dll build/
-          cp /mingw64/bin/libpcre2*.dll build/
+          /mingw64/bin/ntldd.exe -R build/EncryptionApp.exe | while IFS= read -r line
+          do
+              if [[ "$line" =~ C:\\msys64\\mingw64\\bin\\[^[:space:]]+\.dll ]]; then
+                  dll_path="${BASH_REMATCH[0]}"
+                  echo "Copying $dll_path to build directory"
+                  cp "$dll_path" build/
+              fi
+          done
 
       - name: Archive build artifacts
         uses: actions/upload-artifact@v4
