@@ -73,13 +73,50 @@ jobs:
       - name: Download and Install OpenSSL (Windows)
         if: matrix.os == 'windows-latest'
         run: |
+          $ProgressPreference = 'SilentlyContinue'
           Invoke-WebRequest -Uri https://slproweb.com/download/Win64OpenSSL-3_3_1.msi -OutFile Win64OpenSSL-3_3_1.msi
-          Start-Process msiexec.exe -ArgumentList '/i', 'Win64OpenSSL-3_3_1.msi', '/quiet', '/norestart' -NoNewWindow -Wait
+          if (!(Test-Path Win64OpenSSL-3_3_1.msi)) {
+            Write-Error "Failed to download OpenSSL installer"
+            exit 1
+          }
+          $process = Start-Process msiexec.exe -ArgumentList '/i', 'Win64OpenSSL-3_3_1.msi', '/quiet', '/norestart' -NoNewWindow -PassThru -Wait
+          if ($process.ExitCode -ne 0) {
+            Write-Error "OpenSSL installation failed with exit code $($process.ExitCode)"
+            exit 1
+          }
+          if (!(Test-Path "C:\Program Files\OpenSSL-Win64")) {
+            Write-Error "OpenSSL installation directory not found"
+            exit 1
+          }
           echo "OPENSSL_ROOT_DIR=C:\Program Files\OpenSSL-Win64" >> $env:GITHUB_ENV
           echo "OPENSSL_INCLUDE_DIR=C:\Program Files\OpenSSL-Win64\include" >> $env:GITHUB_ENV
           echo "OPENSSL_CRYPTO_LIBRARY=C:\Program Files\OpenSSL-Win64\lib\libcrypto.lib" >> $env:GITHUB_ENV
           echo "OPENSSL_SSL_LIBRARY=C:\Program Files\OpenSSL-Win64\lib\libssl.lib" >> $env:GITHUB_ENV
           echo "C:\Program Files\OpenSSL-Win64\bin" >> $env:GITHUB_PATH
+          Write-Output "OpenSSL installation completed successfully"
+        shell: pwsh
+
+      - name: Verify OpenSSL installation (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          if (!(Test-Path $env:OPENSSL_ROOT_DIR)) {
+            Write-Error "OpenSSL root directory not found"
+            exit 1
+          }
+          if (!(Test-Path $env:OPENSSL_INCLUDE_DIR)) {
+            Write-Error "OpenSSL include directory not found"
+            exit 1
+          }
+          if (!(Test-Path $env:OPENSSL_CRYPTO_LIBRARY)) {
+            Write-Error "OpenSSL crypto library not found"
+            exit 1
+          }
+          if (!(Test-Path $env:OPENSSL_SSL_LIBRARY)) {
+            Write-Error "OpenSSL SSL library not found"
+            exit 1
+          }
+          Write-Output "OpenSSL installation verified successfully"
+        shell: pwsh
 
       - name: Set up Qt (Windows)
         if: matrix.os == 'windows-latest'
@@ -139,11 +176,12 @@ jobs:
         run: |
           if [ "${{ matrix.os }}" == "windows-latest" ]; then
             cmake -S . -B build -G "MinGW Makefiles" \
-              -DOPENSSL_ROOT_DIR="C:/Program Files/OpenSSL-Win64" \
-              -DOPENSSL_USE_STATIC_LIBS=TRUE \
-              -DOPENSSL_MSVC_STATIC_RT=TRUE \
-              -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}" \
-              -DQt5_DIR="${{ env.Qt5_DIR }}"
+              -DOPENSSL_ROOT_DIR="$OPENSSL_ROOT_DIR" \
+              -DOPENSSL_INCLUDE_DIR="$OPENSSL_INCLUDE_DIR" \
+              -DOPENSSL_CRYPTO_LIBRARY="$OPENSSL_CRYPTO_LIBRARY" \
+              -DOPENSSL_SSL_LIBRARY="$OPENSSL_SSL_LIBRARY" \
+              -DCMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH" \
+              -DQt5_DIR="$Qt5_DIR"
           else
             cmake -S . -B build -G Ninja
           fi
