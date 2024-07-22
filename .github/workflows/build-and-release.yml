@@ -100,6 +100,7 @@ jobs:
           echo "OPENSSL_INCLUDE_DIR: ${{ env.OPENSSL_INCLUDE_DIR }}"
           echo "OPENSSL_CRYPTO_LIBRARY: ${{ env.OPENSSL_CRYPTO_LIBRARY }}"
           echo "OPENSSL_SSL_LIBRARY: ${{ env.OPENSSL_SSL_LIBRARY }}"
+          echo "Qt5_DIR: ${{ env.Qt5_DIR }}"
           echo "PATH: ${{ env.PATH }}"
 
       - name: Configure CMake
