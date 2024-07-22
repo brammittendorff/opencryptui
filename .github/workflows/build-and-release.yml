@@ -166,6 +166,9 @@ jobs:
           cp /mingw64/bin/libzstd.dll build/
           cp /mingw64/bin/zlib1.dll build/
           cp /mingw64/bin/libharfbuzz-0.dll build/
+          cp /mingw64/bin/libmd4c.dll build/
+          cp /mingw64/bin/libpng16-16.dll build/
+          cp /mingw64/bin/libfreetype-6.dll build/
 
       - name: Archive build artifacts
         uses: actions/upload-artifact@v4
