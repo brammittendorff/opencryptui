@@ -103,7 +103,8 @@ jobs:
               -DOPENSSL_INCLUDE_DIR="$OPENSSL_INCLUDE_DIR" \
               -DOPENSSL_CRYPTO_LIBRARY="$OPENSSL_CRYPTO_LIBRARY" \
               -DOPENSSL_SSL_LIBRARY="$OPENSSL_SSL_LIBRARY" \
-              -DCMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH"
+              -DCMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH" \
+              -DQt5_DIR="/mingw64/lib/cmake/Qt5"
           else
             cmake -S . -B build -G Ninja
           fi
