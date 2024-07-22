@@ -70,20 +70,20 @@ jobs:
           choco install mingw -y
           choco install make -y
 
-      - name: Download and Install OpenSSL (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          $ProgressPreference = 'SilentlyContinue'
-          Invoke-WebRequest -Uri https://slproweb.com/download/Win64OpenSSL-3_1_3.exe -OutFile Win64OpenSSL-3_1_3.exe
-          Start-Process -FilePath .\Win64OpenSSL-3_1_3.exe -Args "/silent /verysilent /sp- /suppressmsgboxes" -Verb RunAs -Wait
-          echo "OPENSSL_ROOT_DIR=C:\Program Files\OpenSSL-Win64" >> $env:GITHUB_ENV
-          echo "OPENSSL_INCLUDE_DIR=C:\Program Files\OpenSSL-Win64\include" >> $env:GITHUB_ENV
-          echo "OPENSSL_CRYPTO_LIBRARY=C:\Program Files\OpenSSL-Win64\lib\libcrypto.lib" >> $env:GITHUB_ENV
-          echo "OPENSSL_SSL_LIBRARY=C:\Program Files\OpenSSL-Win64\lib\libssl.lib" >> $env:GITHUB_ENV
-          echo "C:\Program Files\OpenSSL-Win64\bin" >> $env:GITHUB_PATH
-          Write-Output "OpenSSL installation completed"
-        shell: pwsh
-
+          - name: Download and Install OpenSSL (Windows)
+          if: matrix.os == 'windows-latest'
+          run: |
+            $ProgressPreference = 'SilentlyContinue'
+            Invoke-WebRequest -Uri https://slproweb.com/download/Win64OpenSSL-3_3_1.msi -OutFile Win64OpenSSL-3_3_1.msi
+            Start-Process msiexec.exe -ArgumentList '/i', 'Win64OpenSSL-3_3_1.msi', '/quiet', '/qn', '/norestart' -NoNewWindow -Wait
+            echo "OPENSSL_ROOT_DIR=C:\Program Files\OpenSSL-Win64" >> $env:GITHUB_ENV
+            echo "OPENSSL_INCLUDE_DIR=C:\Program Files\OpenSSL-Win64\include" >> $env:GITHUB_ENV
+            echo "OPENSSL_CRYPTO_LIBRARY=C:\Program Files\OpenSSL-Win64\lib\libcrypto.lib" >> $env:GITHUB_ENV
+            echo "OPENSSL_SSL_LIBRARY=C:\Program Files\OpenSSL-Win64\lib\libssl.lib" >> $env:GITHUB_ENV
+            echo "C:\Program Files\OpenSSL-Win64\bin" >> $env:GITHUB_PATH
+            Write-Output "OpenSSL installation completed"
+          shell: pwsh
+  
       - name: Verify OpenSSL installation (Windows)
         if: matrix.os == 'windows-latest'
         run: |
