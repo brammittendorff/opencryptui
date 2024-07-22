@@ -79,7 +79,7 @@ jobs:
           echo "SODIUM_LIB_DIR=/mingw64/lib" >> $GITHUB_ENV
           echo "SODIUM_INCLUDE_DIR=/mingw64/include" >> $GITHUB_ENV
           echo "/mingw64/bin" >> $GITHUB_PATH
-      
+
           echo "Verifying installations..."
           pacman -Q mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja mingw-w64-x86_64-qt5-base mingw-w64-x86_64-qt5-tools mingw-w64-x86_64-openssl mingw-w64-x86_64-libsodium mingw-w64-x86_64-argon2
 
@@ -97,6 +97,12 @@ jobs:
           echo "OPENSSL_SSL_LIBRARY: ${{ env.OPENSSL_SSL_LIBRARY }}"
           echo "PATH: ${{ env.PATH }}"
 
+      - name: List Qt5 directory contents (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          echo "Listing contents of $Qt5_DIR:"
+          ls -R ${{ env.Qt5_DIR }}
+
       - name: Configure CMake
         shell: bash
         run: |
@@ -111,6 +117,7 @@ jobs:
           else
             cmake -S . -B build -G Ninja
           fi
+
 
       - name: Build
         run: cmake --build build --config Release
