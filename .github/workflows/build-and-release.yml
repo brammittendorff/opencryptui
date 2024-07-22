@@ -164,7 +164,9 @@ jobs:
           cp /mingw64/bin/libintl-8.dll build/
 
           # Correct paths for Qt plugins
+          mkdir -p build/platforms
           cp /mingw64/share/qt5/plugins/platforms/qwindows.dll build/platforms/
+          mkdir -p build/styles
           cp /mingw64/share/qt5/plugins/styles/qwindowsvistastyle.dll build/styles/
 
       - name: Archive build artifacts
