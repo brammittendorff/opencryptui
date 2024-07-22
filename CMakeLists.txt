@@ -14,12 +14,16 @@ find_package(Qt5 COMPONENTS Core Gui Widgets REQUIRED)
 
 # OpenSSL configuration
 if(WIN32)
-    # Comment out the OpenSSL find_package for Windows
-    # find_package(OpenSSL REQUIRED)
+    # Set OpenSSL root directory for Windows
+    set(OPENSSL_ROOT_DIR "C:/Program Files/OpenSSL-Win64")
+    set(OPENSSL_USE_STATIC_LIBS TRUE)
+    find_package(OpenSSL REQUIRED)
 
-    # Set OpenSSL paths for Windows
-    set(OPENSSL_INCLUDE_DIR "C:/Program Files/OpenSSL-Win64/include")
-    set(OPENSSL_LIBRARIES "C:/Program Files/OpenSSL-Win64/lib/libssl.lib" "C:/Program Files/OpenSSL-Win64/lib/libcrypto.lib")
+    if(NOT OpenSSL_FOUND)
+        # Fallback to manual path setting if find_package fails
+        set(OPENSSL_INCLUDE_DIR "${OPENSSL_ROOT_DIR}/include")
+        set(OPENSSL_LIBRARIES "${OPENSSL_ROOT_DIR}/lib/libssl.lib" "${OPENSSL_ROOT_DIR}/lib/libcrypto.lib")
+    endif()
 else()
     # For non-Windows platforms, use find_package
     find_package(OpenSSL REQUIRED)
@@ -85,7 +89,8 @@ target_link_libraries(EncryptionApp PUBLIC
     Qt5::Core
     Qt5::Gui
     Qt5::Widgets
-    ${OPENSSL_LIBRARIES}
+    OpenSSL::SSL
+    OpenSSL::Crypto
     ${ARGON2_LIBRARIES}
     ${SODIUM_LIBRARIES}
     argon2
@@ -94,8 +99,9 @@ target_link_libraries(EncryptionApp PUBLIC
 
 # Print paths for debugging
 message(STATUS "Qt5_DIR: ${Qt5_DIR}")
-message(STATUS "OpenSSL_INCLUDE_DIR: ${OPENSSL_INCLUDE_DIR}")
-message(STATUS "OpenSSL_LIBRARIES: ${OPENSSL_LIBRARIES}")
+message(STATUS "OPENSSL_ROOT_DIR: ${OPENSSL_ROOT_DIR}")
+message(STATUS "OPENSSL_INCLUDE_DIR: ${OPENSSL_INCLUDE_DIR}")
+message(STATUS "OPENSSL_LIBRARIES: ${OPENSSL_LIBRARIES}")
 message(STATUS "ARGON2_INCLUDE_DIRS: ${ARGON2_INCLUDE_DIRS}")
 message(STATUS "SODIUM_INCLUDE_DIRS: ${SODIUM_INCLUDE_DIRS}")
 message(STATUS "ARGON2_LIB_DIR: ${ARGON2_LIB_DIR}")
