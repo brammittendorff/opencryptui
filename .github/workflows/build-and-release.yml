@@ -118,7 +118,8 @@ jobs:
               -DOPENSSL_CRYPTO_LIBRARY="$OPENSSL_CRYPTO_LIBRARY" \
               -DOPENSSL_SSL_LIBRARY="$OPENSSL_SSL_LIBRARY" \
               -DCMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH" \
-              -DCMAKE_MODULE_PATH="$CMAKE_MODULE_PATH"
+              -DCMAKE_MODULE_PATH="$Qt5_DIR" \
+              -DQt5_DIR="$Qt5_DIR"
           else
             cmake -S . -B build -G Ninja
           fi
