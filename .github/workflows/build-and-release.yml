@@ -131,7 +131,14 @@ jobs:
         run: |
           cmake -S . -B build -G Ninja
     
-      - name: Build
+      - name: Build for Windows
+        if: matrix.os == 'windows-latest'
+        shell: msys2 {0}
+        run: cmake --build build --config Release
+
+      - name: Build for macOS
+        if: matrix.os != 'windows-latest'
+        shell: bash
         run: cmake --build build --config Release
 
       - name: Archive build artifacts
