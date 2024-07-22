@@ -67,7 +67,6 @@ jobs:
             mingw-w64-x86_64-argon2
             mingw-w64-x86_64-qt5-base
             mingw-w64-x86_64-qt5-tools
-            mingw-w64-x86_64-ntldd
             cmake
             gcc
 
@@ -151,7 +150,27 @@ jobs:
         if: matrix.os == 'windows-latest'
         shell: msys2 {0}
         run: |
-          /mingw64/bin/ntldd.exe -R build/EncryptionApp.exe | grep -oP '/mingw64/bin/\S+\.dll' | xargs -I{} cp {} build/
+          cp /mingw64/bin/libargon2.dll build/
+          cp /mingw64/bin/libgcc_s_seh-1.dll build/
+          cp /mingw64/bin/libsodium-26.dll build/
+          cp /mingw64/bin/libstdc++-6.dll build/
+          cp /mingw64/bin/libwinpthread-1.dll build/
+          cp /mingw64/bin/Qt5Core.dll build/
+          cp /mingw64/bin/Qt5Gui.dll build/
+          cp /mingw64/bin/Qt5Widgets.dll build/
+          cp /mingw64/bin/Qt5Concurrent.dll build/
+          cp /mingw64/bin/Qt5Network.dll build/
+          cp /mingw64/bin/libicu*.dll build/ # Include ICU dependencies
+          cp /mingw64/bin/libpcre2*.dll build/ # Include PCRE2 dependencies
+          cp /mingw64/bin/libdouble-conversion.dll build/
+          cp /mingw64/bin/libzstd.dll build/
+          cp /mingw64/bin/zlib1.dll build/
+          cp /mingw64/bin/libharfbuzz-0.dll build/
+          cp /mingw64/bin/libmd4c.dll build/
+          cp /mingw64/bin/libpng16-16.dll build/
+          cp /mingw64/bin/libfreetype-6.dll build/
+          cp /mingw64/bin/libicu*.dll build/
+          cp /mingw64/bin/libpcre2*.dll build/
 
       - name: Archive build artifacts
         uses: actions/upload-artifact@v4
