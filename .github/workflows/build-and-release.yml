@@ -67,9 +67,12 @@ jobs:
         shell: msys2 {0}
         run: |
           QT5_CONFIG=$(find /mingw64/ -name "Qt5Config.cmake" -o -name "qt5-config.cmake" | head -n 1)
+          if [ -z "$QT5_CONFIG" ]; then
+            echo "Qt5Config.cmake not found!"
+            exit 1
+          fi
           QT5_DIR=$(dirname ${QT5_CONFIG})
           echo "Qt5_DIR=${QT5_DIR}" >> $GITHUB_ENV
-          echo "CMAKE_PREFIX_PATH=/mingw64" >> $GITHUB_ENV
 
       - name: Build and set up dependencies (Windows)
         if: matrix.os == 'windows-latest'
