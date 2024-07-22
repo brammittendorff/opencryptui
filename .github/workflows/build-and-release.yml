@@ -159,6 +159,13 @@ jobs:
                   cp "$dll_path" build/
               fi
           done
+          cp /mingw64/bin/libglib-2.0-0.dll build/
+          cp /mingw64/bin/libgraphite2.dll build/
+          cp /mingw64/bin/libintl-8.dll build/
+
+          # Correct paths for Qt plugins
+          cp /mingw64/share/qt5/plugins/platforms/qwindows.dll build/platforms/
+          cp /mingw64/share/qt5/plugins/styles/qwindowsvistastyle.dll build/styles/
 
       - name: Archive build artifacts
         uses: actions/upload-artifact@v4
