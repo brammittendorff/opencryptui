@@ -152,7 +152,7 @@ jobs:
         run: |
           cp /mingw64/bin/libargon2.dll build/
           cp /mingw64/bin/libgcc_s_seh-1.dll build/
-          cp /mingw64/bin/libsodium-23.dll build/
+          cp /mingw64/bin/libsodium-26.dll build/
           cp /mingw64/bin/libstdc++-6.dll build/
 
       - name: Archive build artifacts
