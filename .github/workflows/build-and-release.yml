@@ -155,6 +155,11 @@ jobs:
           cp /mingw64/bin/libsodium-26.dll build/
           cp /mingw64/bin/libstdc++-6.dll build/
           cp /mingw64/bin/libwinpthread-1.dll build/
+          cp /mingw64/bin/Qt5Core.dll build/
+          cp /mingw64/bin/Qt5Gui.dll build/
+          cp /mingw64/bin/Qt5Widgets.dll build/
+          cp /mingw64/bin/libicu*.dll build/ # Include ICU dependencies
+          cp /mingw64/bin/libpcre2*.dll build/ # Include PCRE2 dependencies
 
       - name: Archive build artifacts
         uses: actions/upload-artifact@v4
