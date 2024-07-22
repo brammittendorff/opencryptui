@@ -60,6 +60,7 @@ jobs:
             mingw-w64-x86_64-libsodium
             mingw-w64-x86_64-argon2
             mingw-w64-x86_64-perl
+            git
 
       - name: Build and set up dependencies (Windows)
         if: matrix.os == 'windows-latest'
