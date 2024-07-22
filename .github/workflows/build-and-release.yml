@@ -158,8 +158,14 @@ jobs:
           cp /mingw64/bin/Qt5Core.dll build/
           cp /mingw64/bin/Qt5Gui.dll build/
           cp /mingw64/bin/Qt5Widgets.dll build/
+          cp /mingw64/bin/Qt5Concurrent.dll build/
+          cp /mingw64/bin/Qt5Network.dll build/
           cp /mingw64/bin/libicu*.dll build/ # Include ICU dependencies
           cp /mingw64/bin/libpcre2*.dll build/ # Include PCRE2 dependencies
+          cp /mingw64/bin/libdouble-conversion.dll build/
+          cp /mingw64/bin/libzstd.dll build/
+          cp /mingw64/bin/zlib1.dll build/
+          cp /mingw64/bin/libharfbuzz-0.dll build/
 
       - name: Archive build artifacts
         uses: actions/upload-artifact@v4
