@@ -73,6 +73,7 @@ jobs:
           fi
           QT5_DIR=$(dirname ${QT5_CONFIG})
           echo "Qt5_DIR=${QT5_DIR}" >> $GITHUB_ENV
+          echo "CMAKE_MODULE_PATH=${QT5_DIR}" >> $GITHUB_ENV
 
       - name: Build and set up dependencies (Windows)
         if: matrix.os == 'windows-latest'
@@ -117,7 +118,7 @@ jobs:
               -DOPENSSL_CRYPTO_LIBRARY="$OPENSSL_CRYPTO_LIBRARY" \
               -DOPENSSL_SSL_LIBRARY="$OPENSSL_SSL_LIBRARY" \
               -DCMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH" \
-              -DQt5_DIR="$Qt5_DIR"
+              -DCMAKE_MODULE_PATH="$CMAKE_MODULE_PATH"
           else
             cmake -S . -B build -G Ninja
           fi
