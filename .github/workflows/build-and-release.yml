@@ -46,9 +46,10 @@ jobs:
           echo "Qt5_DIR=$(brew --prefix qt@5)/lib/cmake/Qt5" >> $GITHUB_ENV
           echo "CMAKE_PREFIX_PATH=$(brew --prefix qt@5)" >> $GITHUB_ENV
 
-      - name: Set up Chocolatey (Windows)
+      - name: Install Chocolatey (Windows)
         if: matrix.os == 'windows-latest'
-        uses: crazy-max/ghaction-chocolatey@v1
+        run: |
+          Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex "& { $(irm https://chocolatey.org/install.ps1) }"
 
       - name: Cache Chocolatey Packages (Windows)
         if: matrix.os == 'windows-latest'
@@ -62,11 +63,13 @@ jobs:
       - name: Install dependencies (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          choco install cmake --version=3.14
-          choco install qt5-default --version=5.15.2
-          choco install openssl --version=1.1.1k
-          choco install argon2 --version=20190702
-          choco install libsodium --version=1.0.18
+          choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' -y
+          choco install qt5-default -y
+          choco install openssl -y
+          choco install argon2 -y
+          choco install libsodium -y
+          choco install mingw --version 8.1.0 -y
+          choco install make -y
 
       - name: Set up Qt and OpenSSL (Windows)
         if: matrix.os == 'windows-latest'
