@@ -173,21 +173,19 @@ jobs:
           "$NTLDD_PATH" -R build/EncryptionApp.exe > ntldd_output.txt
 
           echo "Extracting DLL paths..."
-          grep -oP '/mingw64/bin/[^[:space:]]+\.dll' ntldd_output.txt > dll_paths.txt
+          DLL_PATHS=$(sed -n 's/.*\(\.dll\).*$/\1/p' ntldd_output.txt | tr -d '\r')
 
-          if [ ! -s dll_paths.txt ]; then
+          if [ -z "$DLL_PATHS" ]; then
               echo "No DLLs found by ntldd."
               cat ntldd_output.txt  # Show the output for debugging
               exit 1
           fi
 
-          cat dll_paths.txt  # Print the extracted DLL paths for debugging
-
-          echo "Copying DLLs..."
-          while IFS= read -r dll_path; do
+          echo "$DLL_PATHS" | while IFS= read -r dll_path
+          do
               echo "Copying $dll_path to build directory"
               cp "$dll_path" build/ || { echo "Failed to copy $dll_path"; exit 1; }
-          done < dll_paths.txt
+          done
 
           echo "Copying additional required DLLs..."
           cp /mingw64/bin/libglib-2.0-0.dll build/ || { echo "Failed to copy libglib-2.0-0.dll"; exit 1; }
