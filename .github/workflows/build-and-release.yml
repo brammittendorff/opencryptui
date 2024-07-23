@@ -171,19 +171,23 @@ jobs:
 
           echo "Running ntldd and capturing DLLs..."
           "$NTLDD_PATH" -R build/EncryptionApp.exe > ntldd_output.txt
-          DLL_PATHS=$(awk '/\/mingw64\/bin\/[^[:space:]]+\.dll/ {print $1}' ntldd_output.txt)
 
-          if [ -z "$DLL_PATHS" ]; then
+          echo "Extracting DLL paths..."
+          grep -oP '/mingw64/bin/[^[:space:]]+\.dll' ntldd_output.txt > dll_paths.txt
+
+          if [ ! -s dll_paths.txt ]; then
               echo "No DLLs found by ntldd."
               cat ntldd_output.txt  # Show the output for debugging
               exit 1
           fi
 
-          echo "$DLL_PATHS" | while IFS= read -r dll_path
-          do
+          cat dll_paths.txt  # Print the extracted DLL paths for debugging
+
+          echo "Copying DLLs..."
+          while IFS= read -r dll_path; do
               echo "Copying $dll_path to build directory"
               cp "$dll_path" build/ || { echo "Failed to copy $dll_path"; exit 1; }
-          done
+          done < dll_paths.txt
 
           echo "Copying additional required DLLs..."
           cp /mingw64/bin/libglib-2.0-0.dll build/ || { echo "Failed to copy libglib-2.0-0.dll"; exit 1; }
@@ -195,7 +199,6 @@ jobs:
           cp /mingw64/share/qt5/plugins/styles/qwindowsvistastyle.dll build/styles/ || { echo "Failed to copy qwindowsvistastyle.dll"; exit 1; }
 
           echo "All DLLs and plugins copied successfully."
-
 
       - name: Archive build artifacts
         uses: actions/upload-artifact@v4
