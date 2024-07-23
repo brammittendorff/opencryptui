@@ -163,10 +163,19 @@ jobs:
           fi
           echo "ntldd.exe found at $NTLDD_PATH"
 
-          echo "Running ntldd and copying DLLs..."
-          DLL_PATHS=$("$NTLDD_PATH" -R build/EncryptionApp.exe | grep -oP '/mingw64/bin/[^[:space:]]+\.dll')
+          echo "Checking if build/EncryptionApp.exe exists..."
+          if [ ! -f "build/EncryptionApp.exe" ]; then
+              echo "build/EncryptionApp.exe not found!"
+              exit 1
+          fi
+
+          echo "Running ntldd and capturing DLLs..."
+          "$NTLDD_PATH" -R build/EncryptionApp.exe > ntldd_output.txt
+          DLL_PATHS=$(awk '/\/mingw64\/bin\/[^[:space:]]+\.dll/ {print $1}' ntldd_output.txt)
+
           if [ -z "$DLL_PATHS" ]; then
               echo "No DLLs found by ntldd."
+              cat ntldd_output.txt  # Show the output for debugging
               exit 1
           fi
 
