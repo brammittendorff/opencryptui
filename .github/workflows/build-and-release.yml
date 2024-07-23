@@ -173,7 +173,7 @@ jobs:
           "$NTLDD_PATH" -R build/EncryptionApp.exe > ntldd_output.txt
 
           echo "Extracting DLL paths..."
-          DLL_PATHS=$(sed -n 's/.*\(\.dll\).*$/\1/p' ntldd_output.txt | tr -d '\r')
+          DLL_PATHS=$(awk '/\/mingw64\/bin\/[^[:space:]]+\.dll/ {print $1}' ntldd_output.txt | tr -d '\r')
 
           if [ -z "$DLL_PATHS" ]; then
               echo "No DLLs found by ntldd."
@@ -197,6 +197,7 @@ jobs:
           cp /mingw64/share/qt5/plugins/styles/qwindowsvistastyle.dll build/styles/ || { echo "Failed to copy qwindowsvistastyle.dll"; exit 1; }
 
           echo "All DLLs and plugins copied successfully."
+
 
       - name: Archive build artifacts
         uses: actions/upload-artifact@v4
