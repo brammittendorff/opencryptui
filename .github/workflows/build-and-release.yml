@@ -176,10 +176,12 @@ jobs:
           cat ntldd_output.txt
       
           echo "Extracting DLL paths..."
-          DLL_PATHS=$(python -c 'import re; content = open("ntldd_output.txt", "r").read(); dlls = re.findall(r"(/mingw64/bin/[^\s]+\.dll)", content, re.MULTILINE); print("\n".join(dlls))')
+          DLL_PATHS=$(python -c 'import re; content = open("ntldd_output.txt", "r").read(); dlls = re.findall(r"(/mingw64/bin/[^\s]+\.dll)", content); print("\n".join(dlls))')
       
           if [ -z "$DLL_PATHS" ]; then
               echo "No DLLs found by ntldd."
+              echo "Content of ntldd_output.txt:"
+              cat ntldd_output.txt | od -c
               exit 1
           fi
       
