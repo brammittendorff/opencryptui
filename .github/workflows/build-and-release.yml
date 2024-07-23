@@ -151,24 +151,19 @@ jobs:
         if: matrix.os == 'windows-latest'
         shell: msys2 {0}
         run: |
-          TOTAL_DLLS="$(/mingw64/bin/ntldd.exe -R build/EncryptionApp.exe)"
-          echo "$TOTAL_DLLS"
-          /mingw64/bin/ntldd.exe -R build/EncryptionApp.exe | while IFS= read -r line
+          mkdir -p build/platforms
+          mkdir -p build/styles
+          /mingw64/bin/ntldd.exe -R build/EncryptionApp.exe | grep -oP 'C:\\msys64\\mingw64\\bin\\[^[:space:]]+\.dll' | while IFS= read -r dll_path
           do
-              if [[ "$line" =~ C:\\msys64\\mingw64\\bin\\[^[:space:]]+\.dll ]]; then
-                  dll_path="${BASH_REMATCH[0]}"
-                  echo "Copying $dll_path to build directory"
-                  cp "$dll_path" build/
-              fi
+              echo "Copying $dll_path to build directory"
+              cp "$dll_path" build/
           done
           cp /mingw64/bin/libglib-2.0-0.dll build/
           cp /mingw64/bin/libgraphite2.dll build/
           cp /mingw64/bin/libintl-8.dll build/
 
           # Correct paths for Qt plugins
-          mkdir -p build/platforms
           cp /mingw64/share/qt5/plugins/platforms/qwindows.dll build/platforms/
-          mkdir -p build/styles
           cp /mingw64/share/qt5/plugins/styles/qwindowsvistastyle.dll build/styles/
 
       - name: Archive build artifacts
