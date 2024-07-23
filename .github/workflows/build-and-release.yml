@@ -154,7 +154,7 @@ jobs:
           echo "Creating necessary directories..."
           mkdir -p build/platforms || { echo "Failed to create build/platforms"; exit 1; }
           mkdir -p build/styles || { echo "Failed to create build/styles"; exit 1; }
-
+      
           echo "Finding ntldd.exe..."
           NTLDD_PATH=$(find /mingw64/bin -name "ntldd.exe" | head -n 1)
           if [ -z "$NTLDD_PATH" ]; then
@@ -162,46 +162,46 @@ jobs:
               exit 1
           fi
           echo "ntldd.exe found at $NTLDD_PATH"
-
+      
           echo "Checking if build/EncryptionApp.exe exists..."
           if [ ! -f "build/EncryptionApp.exe" ]; then
               echo "build/EncryptionApp.exe not found!"
               exit 1
           fi
-
+      
           echo "Running ntldd and capturing DLLs..."
           "$NTLDD_PATH" -R build/EncryptionApp.exe > ntldd_output.txt
-
+      
           echo "Output from ntldd:"
           cat ntldd_output.txt
-
+      
           echo "Extracting DLL paths..."
-          DLL_PATHS=$(awk '/\/mingw64\/bin\// {for(i=1;i<=NF;i++) if($i ~ /\/mingw64\/bin\//) print $i}' ntldd_output.txt)
-
+          DLL_PATHS=$(tr -s ' ' '\n' < ntldd_output.txt | grep '/mingw64/bin/[^ ]*\.dll')
+      
           if [ -z "$DLL_PATHS" ]; then
               echo "No DLLs found by ntldd."
               exit 1
           fi
-
+      
           echo "DLL paths found:"
           echo "$DLL_PATHS"
-
+      
           echo "$DLL_PATHS" | while IFS= read -r dll_path
           do
               echo "Copying $dll_path to build directory"
               cp "$dll_path" build/ || { echo "Failed to copy $dll_path"; exit 1; }
           done
-
+      
           echo "Copying additional required DLLs..."
           cp /mingw64/bin/libglib-2.0-0.dll build/ || { echo "Failed to copy libglib-2.0-0.dll"; exit 1; }
           cp /mingw64/bin/libgraphite2.dll build/ || { echo "Failed to copy libgraphite2.dll"; exit 1; }
           cp /mingw64/bin/libintl-8.dll build/ || { echo "Failed to copy libintl-8.dll"; exit 1; }
-
+      
           echo "Copying Qt plugins..."
           cp /mingw64/share/qt5/plugins/platforms/qwindows.dll build/platforms/ || { echo "Failed to copy qwindows.dll"; exit 1; }
           cp /mingw64/share/qt5/plugins/styles/qwindowsvistastyle.dll build/styles/ || { echo "Failed to copy qwindowsvistastyle.dll"; exit 1; }
-
-          echo "All DLLs and plugins copied successfully."
+      
+          echo "All DLLs and plugins copied successfully."      
 
       - name: Archive build artifacts
         uses: actions/upload-artifact@v4
