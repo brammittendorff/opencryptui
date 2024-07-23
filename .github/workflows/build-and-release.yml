@@ -151,7 +151,7 @@ jobs:
         if: matrix.os == 'windows-latest'
         shell: msys2 {0}
         run: |
-          TOTAL_DLLS = $(/mingw64/bin/ntldd.exe -R build/EncryptionApp.exe)
+          TOTAL_DLLS="$(/mingw64/bin/ntldd.exe -R build/EncryptionApp.exe)"
           echo "$TOTAL_DLLS"
           /mingw64/bin/ntldd.exe -R build/EncryptionApp.exe | while IFS= read -r line
           do
