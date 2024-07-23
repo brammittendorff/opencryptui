@@ -151,20 +151,27 @@ jobs:
         if: matrix.os == 'windows-latest'
         shell: msys2 {0}
         run: |
-          mkdir -p build/platforms
-          mkdir -p build/styles
-          /mingw64/bin/ntldd.exe -R build/EncryptionApp.exe | grep -oP 'C:\\msys64\\mingw64\\bin\\[^[:space:]]+\.dll' | while IFS= read -r dll_path
+          echo "Creating necessary directories..."
+          mkdir -p build/platforms || { echo "Failed to create build/platforms"; exit 1; }
+          mkdir -p build/styles || { echo "Failed to create build/styles"; exit 1; }
+
+          echo "Running ntldd and copying DLLs..."
+          /mingw64/bin/ntldd.exe -R build/EncryptionApp.exe | grep -oP '/mingw64/bin/[^[:space:]]+\.dll' | while IFS= read -r dll_path
           do
               echo "Copying $dll_path to build directory"
-              cp "$dll_path" build/
+              cp "$dll_path" build/ || { echo "Failed to copy $dll_path"; exit 1; }
           done
-          cp /mingw64/bin/libglib-2.0-0.dll build/
-          cp /mingw64/bin/libgraphite2.dll build/
-          cp /mingw64/bin/libintl-8.dll build/
 
-          # Correct paths for Qt plugins
-          cp /mingw64/share/qt5/plugins/platforms/qwindows.dll build/platforms/
-          cp /mingw64/share/qt5/plugins/styles/qwindowsvistastyle.dll build/styles/
+          echo "Copying additional required DLLs..."
+          cp /mingw64/bin/libglib-2.0-0.dll build/ || { echo "Failed to copy libglib-2.0-0.dll"; exit 1; }
+          cp /mingw64/bin/libgraphite2.dll build/ || { echo "Failed to copy libgraphite2.dll"; exit 1; }
+          cp /mingw64/bin/libintl-8.dll build/ || { echo "Failed to copy libintl-8.dll"; exit 1; }
+
+          echo "Copying Qt plugins..."
+          cp /mingw64/share/qt5/plugins/platforms/qwindows.dll build/platforms/ || { echo "Failed to copy qwindows.dll"; exit 1; }
+          cp /mingw64/share/qt5/plugins/styles/qwindowsvistastyle.dll build/styles/ || { echo "Failed to copy qwindowsvistastyle.dll"; exit 1; }
+
+          echo "All DLLs and plugins copied successfully."
 
       - name: Archive build artifacts
         uses: actions/upload-artifact@v4
