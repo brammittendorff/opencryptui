@@ -176,7 +176,7 @@ jobs:
           cat ntldd_output.txt
       
           echo "Extracting DLL paths..."
-          DLL_PATHS=$(python -c 'import re; content = open("ntldd_output.txt", "r").read(); dlls = re.findall(r"(/mingw64/bin/[^\s]+\.dll)", content); print("\n".join(dlls))')
+          DLL_PATHS=$(grep -oP '(?<= => )/mingw64/bin/[^ ]+\.dll' ntldd_output.txt)
       
           if [ -z "$DLL_PATHS" ]; then
               echo "No DLLs found by ntldd."
@@ -204,6 +204,7 @@ jobs:
           cp /mingw64/share/qt5/plugins/styles/qwindowsvistastyle.dll build/styles/ || { echo "Failed to copy qwindowsvistastyle.dll"; exit 1; }
       
           echo "All DLLs and plugins copied successfully."
+      
 
       - name: Archive build artifacts
         uses: actions/upload-artifact@v4
