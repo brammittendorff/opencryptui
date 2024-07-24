@@ -172,7 +172,7 @@ jobs:
           echo "Running ntldd and capturing DLLs..."
           "$NTLDD_PATH" -R build/EncryptionApp.exe | while IFS= read -r line
           do
-              if [[ "$line" =~ [A-Za-z]:\\[^[:space:]]+\.dll ]]; then
+              if [[ "$line" =~ [A-Za-z]:\\msys64\\mingw64\\bin\\[^[:space:]]+\.dll ]]; then
                   dll_path="${BASH_REMATCH[0]}"
                   echo "Copying $dll_path to build directory"
                   cp "$dll_path" build/ || { echo "Failed to copy $dll_path"; exit 1; }
@@ -257,32 +257,12 @@ jobs:
           draft: false
           prerelease: false
 
-      - name: Upload Linux build
-        uses: actions/upload-release-asset@v1
+      - name: Upload assets to release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            release/linux-build.zip
+            release/macos-build.zip
+            release/windows-build.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./release/linux-build.zip
-          asset_name: linux-build.zip
-          asset_content_type: application/zip
-
-      - name: Upload macOS build
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./release/macos-build.zip
-          asset_name: macos-build.zip
-          asset_content_type: application/zip
-
-      - name: Upload Windows build
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./release/windows-build.zip
-          asset_name: windows-build.zip
-          asset_content_type: application/zip
