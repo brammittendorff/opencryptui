@@ -176,6 +176,8 @@ jobs:
                   dll_path="${BASH_REMATCH[0]}"
                   echo "Copying $dll_path to build directory"
                   cp "$dll_path" build/ || { echo "Failed to copy $dll_path"; exit 1; }
+              elif [[ "$line" =~ [A-Za-z]:\\Windows\\SYSTEM32\\[^[:space:]]+\.dll ]]; then
+                  echo "Skipping system DLL $line"
               fi
           done
       
