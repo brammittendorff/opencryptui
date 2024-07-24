@@ -170,28 +170,13 @@ jobs:
           fi
       
           echo "Running ntldd and capturing DLLs..."
-          "$NTLDD_PATH" -R build/EncryptionApp.exe > ntldd_output.txt
-      
-          echo "Output from ntldd:"
-          cat ntldd_output.txt
-      
-          echo "Extracting DLL paths..."
-          DLL_PATHS=$(grep -oP '(?<= => )/mingw64/bin/[^ ]+\.dll' ntldd_output.txt)
-      
-          if [ -z "$DLL_PATHS" ]; then
-              echo "No DLLs found by ntldd."
-              echo "Content of ntldd_output.txt:"
-              cat ntldd_output.txt | od -c
-              exit 1
-          fi
-      
-          echo "DLL paths found:"
-          echo "$DLL_PATHS"
-      
-          echo "$DLL_PATHS" | while IFS= read -r dll_path
+          "$NTLDD_PATH" -R build/EncryptionApp.exe | while IFS= read -r line
           do
-              echo "Copying $dll_path to build directory"
-              cp "$dll_path" build/ || { echo "Failed to copy $dll_path"; exit 1; }
+              if [[ "$line" =~ [A-Za-z]:\\[^[:space:]]+\.dll ]]; then
+                  dll_path="${BASH_REMATCH[0]}"
+                  echo "Copying $dll_path to build directory"
+                  cp "$dll_path" build/ || { echo "Failed to copy $dll_path"; exit 1; }
+              fi
           done
       
           echo "Copying additional required DLLs..."
@@ -204,7 +189,6 @@ jobs:
           cp /mingw64/share/qt5/plugins/styles/qwindowsvistastyle.dll build/styles/ || { echo "Failed to copy qwindowsvistastyle.dll"; exit 1; }
       
           echo "All DLLs and plugins copied successfully."
-      
 
       - name: Archive build artifacts
         uses: actions/upload-artifact@v4
