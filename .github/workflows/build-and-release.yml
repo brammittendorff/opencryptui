@@ -211,10 +211,6 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      packages: write
-      deployments: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -259,17 +255,6 @@ jobs:
           zip -r ../release/windows-build.zip .
 
       - name: Create GitHub Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
-
-      - name: Upload assets to release
         uses: softprops/action-gh-release@v1
         with:
           files: |
