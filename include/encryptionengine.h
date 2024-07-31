@@ -19,7 +19,7 @@ public:
     bool decryptFolder(const QString& folderPath, const QString& password, const QString& algorithm, const QString& kdf, int iterations, bool useHMAC, const QString& customHeader, const QStringList& keyfilePaths = QStringList());
 
     bool compressFolder(const QString& folderPath, const QString& outputFilePath);
-    bool decompressFile(const QString& filePath, const QString& outputFolderPath);
+    bool decompressFolder(const QString& filePath, const QString& outputFolderPath);
 
     QByteArray getLastIv() const;
 

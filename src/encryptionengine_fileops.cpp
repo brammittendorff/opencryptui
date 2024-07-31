@@ -10,7 +10,7 @@ bool EncryptionEngine::compressFolder(const QString& folderPath, const QString& 
     return process.exitCode() == 0;
 }
 
-bool EncryptionEngine::decompressFile(const QString& filePath, const QString& outputFolderPath) {
+bool EncryptionEngine::decompressFolder(const QString& filePath, const QString& outputFolderPath) {
     QProcess process;
     process.start("tar", QStringList() << "-xzf" << filePath << "-C" << outputFolderPath);
     process.waitForFinished(-1);
@@ -42,5 +42,5 @@ bool EncryptionEngine::decryptFolder(const QString& folderPath, const QString& p
     if (!decryptFile(encryptedFilePath, password, algorithm, kdf, iterations, useHMAC, customHeader, keyfilePaths)) {
         return false;
     }
-    return decompressFile(compressedFilePath, folderPath);
+    return decompressFolder(compressedFilePath, folderPath);
 }

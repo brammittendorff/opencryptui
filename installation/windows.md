@@ -2,124 +2,102 @@
 
 ## Prerequisites
 
-### 1. Install MinGW
-1. **Download MinGW**:
-   - Go to the [MinGW-w64](https://sourceforge.net/projects/mingw-w64/) page.
-   - Download the latest version suitable for your system (usually `mingw-w64-install.exe`).
+1. **MSYS2**: Install MSYS2 from [msys2.org](https://www.msys2.org/).
 
-2. **Install MinGW**:
-   - Run the installer and follow the prompts.
-   - Choose the architecture (x86_64 for 64-bit systems).
-   - Choose the version of the GCC compiler (the latest stable version is recommended).
-   - Choose the threads model (win32 is usually fine).
-   - Choose the exception model (dwarf for 32-bit, seh for 64-bit).
-   - Install to a directory (e.g., `C:\mingw-w64`).
-
-3. **Add MinGW to PATH**:
-   - Go to Control Panel -> System and Security -> System -> Advanced system settings -> Environment Variables.
-   - Under System variables, find the PATH variable, and click Edit.
-   - Add the path to the MinGW `bin` directory (e.g., `C:\mingw-w64\bin`).
-
-### 2. Install CMake
-1. **Download CMake**:
-   - Go to the [CMake Downloads](https://cmake.org/download/) page.
-   - Download the installer for Windows (`cmake-X.Y.Z-windows-x86_64.msi`).
-
-2. **Install CMake**:
-   - Run the installer and follow the prompts.
-   - Make sure to select the option to add CMake to the system PATH for all users.
-
-### 3. Install Qt
-1. **Download Qt**:
-   - Go to the [Qt Downloads](https://www.qt.io/download) page.
-   - Download the Qt Online Installer.
-
-2. **Install Qt**:
-   - Run the installer and follow the prompts.
-   - Select the MinGW toolchain during installation.
-
-### 4. Install OpenSSL
-1. **Download OpenSSL**:
-   - Go to [slproweb.com](https://slproweb.com/products/Win32OpenSSL.html).
-   - Download the full installer for OpenSSL.
-
-2. **Install OpenSSL**:
-   - Run the installer and follow the prompts.
-   - Note the installation directory (e.g., `C:\OpenSSL-Win64`).
-
-3. **Add OpenSSL to PATH**:
-   - Add the path to the OpenSSL `bin` directory to your system PATH (e.g., `C:\OpenSSL-Win64\bin`).
-
-### 5. Install Libsodium
-1. **Download Libsodium**:
-   - Go to the [Libsodium Releases](https://github.com/jedisct1/libsodium/releases) page.
-   - Download the precompiled binaries for Windows.
-
-2. **Install Libsodium**:
-   - Extract the downloaded archive to a suitable location (e.g., `C:\libsodium`).
-
-3. **Add Libsodium to PATH**:
-   - Add the path to the Libsodium `bin` directory to your system PATH (e.g., `C:\libsodium\bin`).
-
-### 6. Install Argon2
-
-1. **Download and Build Argon2**:
-   - Clone the Argon2 repository:
-     ```sh
-     git clone https://github.com/P-H-C/phc-winner-argon2.git
-     cd phc-winner-argon2
-     ```
-
-2. **Build Argon2**:
-   - Create a build directory and navigate to it:
-     ```sh
-     mkdir build
-     cd build
-     ```
-   - Run CMake to configure the build:
-     ```sh
-     cmake -G "MinGW Makefiles" ..
-     ```
-   - Build Argon2 using `mingw32-make`:
-     ```sh
-     mingw32-make
-     ```
-   - Copy the `libargon2.a` file to a suitable directory (e.g., `C:\argon2\lib`) and the `argon2.h` header file to `C:\argon2\include`.
-
-3. **Add Argon2 to PATH**:
-   - Add the path to the Argon2 `bin` directory (if any) to your system PATH (e.g., `C:\argon2\bin`).
-
-## Building the Project
-
-1. **Clone the Repository**:
-
-   Open Command Prompt or Git Bash and clone the repository:
+2. **Install dependencies**: Open the MSYS2 terminal and run the following commands:
    ```sh
-   git clone <repository_url>
+   pacman -Syu --noconfirm
+   pacman -S --noconfirm \
+     mingw-w64-x86_64-toolchain \
+     mingw-w64-x86_64-cmake \
+     mingw-w64-x86_64-ninja \
+     mingw-w64-x86_64-openssl \
+     mingw-w64-x86_64-libsodium \
+     mingw-w64-x86_64-argon2 \
+     mingw-w64-x86_64-qt5-base \
+     mingw-w64-x86_64-qt5-tools \
+     cmake \
+     gcc \
+     mingw-w64-x86_64-ntldd
+   ```
+
+## Build Steps
+
+1. **Clone the repository**:
+   ```sh
+   git clone https://github.com/brammittendorff/opencryptui.git
    cd opencryptui
    ```
 
-2. Create a Build Directory
-
+2. **Set environment variables and configure the build**:
    ```sh
-   mkdir build
-   cd build
+   QT5_CONFIG=$(find /mingw64/ -name "Qt5Config.cmake" -o -name "qt5-config.cmake" | head -n 1)
+   if [ -z "$QT5_CONFIG" ]; then
+     echo "Qt5Config.cmake not found!"
+     exit 1
+   fi
+   QT5_DIR=$(dirname ${QT5_CONFIG})
+   echo "Qt5_DIR=${QT5_DIR}" >> $GITHUB_ENV
+   echo "CMAKE_MODULE_PATH=${QT5_DIR}" >> $GITHUB_ENV
+
+   echo "Setting up environment variables..."
+   echo "OPENSSL_ROOT_DIR=/mingw64" >> $GITHUB_ENV
+   echo "OPENSSL_INCLUDE_DIR=/mingw64/include" >> $GITHUB_ENV
+   echo "OPENSSL_CRYPTO_LIBRARY=/mingw64/lib/libcrypto.a" >> $GITHUB_ENV
+   echo "OPENSSL_SSL_LIBRARY=/mingw64/lib/libssl.a" >> $GITHUB_ENV
+   echo "CMAKE_PREFIX_PATH=/mingw64" >> $GITHUB_ENV
+   echo "ARGON2_LIB_DIR=/mingw64/lib" >> $GITHUB_ENV
+   echo "ARGON2_INCLUDE_DIR=/mingw64/include" >> $GITHUB_ENV
+   echo "SODIUM_LIB_DIR=/mingw64/lib" >> $GITHUB_ENV
+   echo "SODIUM_INCLUDE_DIR=/mingw64/include" >> $GITHUB_ENV
+   echo "/mingw64/bin" >> $GITHUB_PATH
    ```
 
-3. **Run CMake with MinGW**:
-   Generate the build files for MinGW:
+3. **Build the project**:
    ```sh
-   cmake -G "MinGW Makefiles" ..
+   cmake -S . -B build -G "MinGW Makefiles" \
+     -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT_DIR}" \
+     -DOPENSSL_INCLUDE_DIR="${OPENSSL_INCLUDE_DIR}" \
+     -DOPENSSL_CRYPTO_LIBRARY="${OPENSSL_CRYPTO_LIBRARY}" \
+     -DOPENSSL_SSL_LIBRARY="${OPENSSL_SSL_LIBRARY}" \
+     -DCMAKE_PREFIX_PATH="${CMAKE_PREFIX_PATH}" \
+     -DCMAKE_MODULE_PATH="${CMAKE_MODULE_PATH}" \
+     -DQt5_DIR="${QT5_DIR}"
+
+   cmake --build build --config Release
    ```
 
-4. **Build the Project**:
-   Use `mingw32-make` to build the project:
+4. **Copy DLLs**:
    ```sh
-   mingw32-make
-   ```
+   mkdir -p build/platforms
+   mkdir -p build/styles
 
-5. **Run the Application**:
-   Navigate to the build directory and run the application:
-   ```sh
-   .\EncryptionApp.exe
+   NTLDD_PATH=$(find /mingw64/bin -name "ntldd.exe" | head -n 1)
+   if [ -z "$NTLDD_PATH" ]; then
+     echo "ntldd.exe not found!"
+     exit 1
+   fi
+
+   DLL_PATHS=$(mktemp)
+   "$NTLDD_PATH" -R build/EncryptionApp.exe | while IFS= read -r line
+   do
+     if [[ "$line" =~ [A-Za-z]:\\[^[:space:]]+\.dll ]]; then
+       dll_path="${BASH_REMATCH[0]}"
+       echo "$dll_path" >> "$DLL_PATHS"
+     fi
+   done
+
+   cat "$DLL_PATHS" | while IFS= read -r dll_path
+   do
+     if [[ "$dll_path" != *Windows* ]]; then
+       cp "$dll_path" build/
+     fi
+   done
+   rm "$DLL_PATHS"
+
+   cp /mingw64/bin/libglib-2.0-0.dll build/
+   cp /mingw64/bin/libgraphite2.dll build/
+   cp /mingw64/bin/libintl-8.dll build/
+   cp /mingw64/share/qt5/plugins/platforms/qwindows.dll build/platforms/
+   cp /mingw64/share/qt5/plugins/styles/qwindowsvistastyle.dll build/styles/
    ```
