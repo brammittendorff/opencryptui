@@ -17,6 +17,7 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
     , worker(new EncryptionWorker)
+    , m_signalsConnected(false)  // Initialize the flag
 {
     qDebug() << "MainWindow Constructor";
     ui->setupUi(this);
@@ -26,7 +27,13 @@ MainWindow::MainWindow(QWidget *parent)
     ui->iterationsSpinBox->setValue(10);
     ui->folderIterationsSpinBox->setValue(10);
 
-    connectSignalsAndSlots();
+    // Ensure connectSignalsAndSlots is called only once
+    static bool connectionsSet = false;
+    if (!connectionsSet) {
+        connectSignalsAndSlots();
+        connectionsSet = true;
+    }
+
     checkHardwareAcceleration();
 
     worker->moveToThread(&workerThread);
@@ -44,7 +51,6 @@ MainWindow::MainWindow(QWidget *parent)
     ui->benchmarkTable->setHorizontalHeaderLabels(headers);
     ui->benchmarkTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
 }
-
 
 MainWindow::~MainWindow()
 {
@@ -86,39 +92,53 @@ void MainWindow::setupComboBoxes() {
 
 void MainWindow::connectSignalsAndSlots()
 {
-    connect(ui->fileEncryptButton, &QPushButton::clicked, this, &MainWindow::on_fileEncryptButton_clicked);
-    connect(ui->fileDecryptButton, &QPushButton::clicked, this, &MainWindow::on_fileDecryptButton_clicked);
-    connect(ui->fileBrowseButton, &QPushButton::clicked, this, &MainWindow::on_fileBrowseButton_clicked);
-    connect(ui->fileKeyfileBrowseButton, &QPushButton::clicked, this, &MainWindow::on_fileKeyfileBrowseButton_clicked);
-    connect(ui->folderEncryptButton, &QPushButton::clicked, this, &MainWindow::on_folderEncryptButton_clicked);
-    connect(ui->folderDecryptButton, &QPushButton::clicked, this, &MainWindow::on_folderDecryptButton_clicked);
-    connect(ui->folderBrowseButton, &QPushButton::clicked, this, &MainWindow::on_folderBrowseButton_clicked);
-    connect(ui->folderKeyfileBrowseButton, &QPushButton::clicked, this, &MainWindow::on_folderKeyfileBrowseButton_clicked);
-    connect(ui->benchmarkButton, &QPushButton::clicked, this, &MainWindow::on_benchmarkButton_clicked);
+    if (m_signalsConnected) {
+        qDebug() << "Signals already connected, skipping...";
+        return;
+    }
+
+    qDebug() << "Connecting signals and slots";
+
+    safeConnect(ui->fileEncryptButton, SIGNAL(clicked()), this, SLOT(on_fileEncryptButton_clicked()));
+    safeConnect(ui->fileDecryptButton, SIGNAL(clicked()), this, SLOT(on_fileDecryptButton_clicked()));
+    safeConnect(ui->fileBrowseButton, SIGNAL(clicked()), this, SLOT(on_fileBrowseButton_clicked()));
+    safeConnect(ui->fileKeyfileBrowseButton, SIGNAL(clicked()), this, SLOT(on_fileKeyfileBrowseButton_clicked()));
+    safeConnect(ui->folderEncryptButton, SIGNAL(clicked()), this, SLOT(on_folderEncryptButton_clicked()));
+    safeConnect(ui->folderDecryptButton, SIGNAL(clicked()), this, SLOT(on_folderDecryptButton_clicked()));
+    safeConnect(ui->folderBrowseButton, SIGNAL(clicked()), this, SLOT(on_folderBrowseButton_clicked()));
+    safeConnect(ui->folderKeyfileBrowseButton, SIGNAL(clicked()), this, SLOT(on_folderKeyfileBrowseButton_clicked()));
+    safeConnect(ui->benchmarkButton, SIGNAL(clicked()), this, SLOT(on_benchmarkButton_clicked()));
+
+    m_signalsConnected = true;
 }
 
 void MainWindow::on_fileEncryptButton_clicked()
 {
+    qDebug() << "File Encrypt Button Clicked";
     startWorker(true, true);
 }
 
 void MainWindow::on_fileDecryptButton_clicked()
 {
+    qDebug() << "File Decrypt Button Clicked";
     startWorker(false, true);
 }
 
 void MainWindow::on_folderEncryptButton_clicked()
 {
+    qDebug() << "Folder Encrypt Button Clicked";
     startWorker(true, false);
 }
 
 void MainWindow::on_folderDecryptButton_clicked()
 {
+    qDebug() << "Folder Decrypt Button Clicked";
     startWorker(false, false);
 }
 
 void MainWindow::startWorker(bool encrypt, bool isFile)
 {
+    qDebug() << "Start Worker: encrypt=" << encrypt << ", isFile=" << isFile;
     QString path = isFile ? ui->filePathLineEdit->text() : ui->folderPathLineEdit->text();
     QString password = isFile ? ui->filePasswordLineEdit->text() : ui->folderPasswordLineEdit->text();
     QString algorithm = isFile ? ui->fileAlgorithmComboBox->currentText() : ui->folderAlgorithmComboBox->currentText();
@@ -147,12 +167,14 @@ void MainWindow::startWorker(bool encrypt, bool isFile)
 
 void MainWindow::updateProgress(int value)
 {
+    qDebug() << "Update Progress: value=" << value;
     ui->fileProgressBar->setValue(value);
     ui->folderProgressBar->setValue(value);
 }
 
 void MainWindow::handleFinished(bool success, const QString &errorMessage)
 {
+    qDebug() << "Handle Finished: success=" << success << ", errorMessage=" << errorMessage;
     ui->fileProgressBar->setVisible(false);
     ui->folderProgressBar->setVisible(false);
     ui->fileEstimatedTimeLabel->setVisible(false);
@@ -166,6 +188,7 @@ void MainWindow::handleFinished(bool success, const QString &errorMessage)
 
 void MainWindow::showEstimatedTime(double seconds)
 {
+    qDebug() << "Show Estimated Time: seconds=" << seconds;
     QString timeText = QString("Estimated time: %1 seconds").arg(seconds, 0, 'f', 2);
     ui->fileEstimatedTimeLabel->setText(timeText);
     ui->folderEstimatedTimeLabel->setText(timeText);
@@ -173,6 +196,8 @@ void MainWindow::showEstimatedTime(double seconds)
 
 void MainWindow::on_fileBrowseButton_clicked()
 {
+    static int callCount = 0;
+    qDebug() << "File Browse Button Clicked (Call #" << ++callCount << ")";
     QString filePath = QFileDialog::getOpenFileName(this, "Select File");
     if (!filePath.isEmpty()) {
         ui->filePathLineEdit->setText(filePath);
@@ -181,6 +206,7 @@ void MainWindow::on_fileBrowseButton_clicked()
 
 void MainWindow::on_folderBrowseButton_clicked()
 {
+    qDebug() << "Folder Browse Button Clicked";
     QString folderPath = QFileDialog::getExistingDirectory(this, "Select Folder");
     if (!folderPath.isEmpty()) {
         ui->folderPathLineEdit->setText(folderPath);
@@ -189,6 +215,7 @@ void MainWindow::on_folderBrowseButton_clicked()
 
 void MainWindow::on_fileKeyfileBrowseButton_clicked()
 {
+    qDebug() << "File Keyfile Browse Button Clicked";
     QStringList keyfilePaths = QFileDialog::getOpenFileNames(this, "Select Keyfiles");
     if (!keyfilePaths.isEmpty()) {
         for (const QString &path : keyfilePaths) {
@@ -199,6 +226,7 @@ void MainWindow::on_fileKeyfileBrowseButton_clicked()
 
 void MainWindow::on_folderKeyfileBrowseButton_clicked()
 {
+    qDebug() << "Folder Keyfile Browse Button Clicked";
     QStringList keyfilePaths = QFileDialog::getOpenFileNames(this, "Select Keyfiles");
     if (!keyfilePaths.isEmpty()) {
         for (const QString &path : keyfilePaths) {
@@ -276,6 +304,7 @@ void MainWindow::messageHandler(QtMsgType type, const QMessageLogContext &contex
 }
 
 void MainWindow::updateBenchmarkTable(int iterations, double mbps, double ms, const QString &cipher, const QString &kdf) {
+    qDebug() << "Update Benchmark Table: iterations=" << iterations << ", mbps=" << mbps << ", ms=" << ms << ", cipher=" << cipher << ", kdf=" << kdf;
     int row = ui->benchmarkTable->rowCount();
     ui->benchmarkTable->insertRow(row);
 
@@ -284,4 +313,10 @@ void MainWindow::updateBenchmarkTable(int iterations, double mbps, double ms, co
     ui->benchmarkTable->setItem(row, 2, new QTableWidgetItem(QString::number(ms, 'f', 2)));
     ui->benchmarkTable->setItem(row, 3, new QTableWidgetItem(cipher));
     ui->benchmarkTable->setItem(row, 4, new QTableWidgetItem(kdf));
+}
+
+void MainWindow::safeConnect(const QObject* sender, const char* signal, const QObject* receiver, const char* method)
+{
+    disconnect(sender, signal, receiver, method);  // First disconnect any existing connection
+    connect(sender, signal, receiver, method, Qt::UniqueConnection);  // Then connect with UniqueConnection
 }

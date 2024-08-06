@@ -21,6 +21,9 @@ int main(int argc, char *argv[])
     }
 
     // Print the number of MainWindow instances
+    // Add this line to check if another instance of MainWindow is created
+    static int mainWindowInstanceCount = 0;
+    ++mainWindowInstanceCount;
     qDebug() << "Number of MainWindow instances:" << mainWindowCount;
 
     // Show the MainWindow

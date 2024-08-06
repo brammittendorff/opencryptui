@@ -43,6 +43,7 @@ private:
     QThread workerThread;
     EncryptionWorker *worker;
     static QTextStream* s_logStream;
+    bool m_signalsConnected;  // Add this line
 
     void setupUI();
     void setupComboBoxes();
@@ -54,6 +55,7 @@ private:
     static void messageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg);
     void updateBenchmarkTable(int iterations, double mbps, double ms, const QString &cipher, const QString &kdf);
 
+    void safeConnect(const QObject* sender, const char* signal, const QObject* receiver, const char* method);
 };
 
 #endif // MAINWINDOW_H
