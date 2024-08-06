@@ -202,6 +202,236 @@ jobs:
       
           echo "All DLLs and plugins copied successfully."
 
+      - name: Install GUI testing dependencies (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb x11-utils xdotool
+
+      - name: Install GUI testing dependencies (macOS)
+        if: matrix.os == 'macos-latest'
+        run: brew install xdotool
+
+      - name: Run GUI tests (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          # Start Xvfb
+          Xvfb :99 &
+          export DISPLAY=:99
+      
+          # Create test file
+          echo "test" > test.txt
+      
+          # Start the application
+          ./build/EncryptionApp &
+          APP_PID=$!
+      
+          # Wait for the application to start
+          sleep 5
+      
+          # Interact with the application using xdotool for encryption
+          xdotool key Tab  # Focus on file path input
+          xdotool type "$(pwd)/test.txt"
+          xdotool key Tab Tab  # Navigate to password field
+          xdotool type "testpassword"
+          xdotool key Tab Tab Tab Tab Tab Tab Tab  # Navigate to Encrypt button (7 tabs)
+          xdotool key Return
+      
+          # Wait for encryption to complete
+          sleep 5
+      
+          # Close the application
+          kill $APP_PID
+      
+          # Verify encryption
+          if [ -f "test.txt.enc" ]; then
+            echo "Encryption successful"
+          else
+            echo "Encryption failed"
+            exit 1
+          fi
+      
+          # Remove original file
+          rm test.txt
+      
+          # Start the application again for decryption
+          ./build/EncryptionApp &
+          APP_PID=$!
+      
+          # Wait for the application to start
+          sleep 5
+      
+          # Interact with the application for decryption
+          xdotool key Tab  # Focus on file path input
+          xdotool type "$(pwd)/test.txt.enc"
+          xdotool key Tab Tab  # Navigate to password field
+          xdotool type "testpassword"
+          xdotool key Tab Tab Tab Tab Tab Tab Tab Tab  # Navigate to Decrypt button (8 tabs)
+          xdotool key Return
+      
+          # Wait for decryption to complete
+          sleep 5
+      
+          # Close the application
+          kill $APP_PID
+      
+          # Verify decryption
+          if [ -f "test.txt" ] && [ "$(cat test.txt)" = "test" ]; then
+            echo "Decryption successful"
+          else
+            echo "Decryption failed"
+            exit 1
+          fi
+      
+          # Clean up
+          rm test.txt test.txt.enc
+
+      - name: Run GUI tests (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          # Start Xquartz in the background (if needed)
+          open -a XQuartz
+          sleep 5
+          export DISPLAY=:0
+
+          # Create test file
+          echo "test" > test.txt
+
+          # Start the application
+          ./build/EncryptionApp &
+          APP_PID=$!
+
+          # Wait for the application to start
+          sleep 5
+
+          # Interact with the application using xdotool for encryption
+          xdotool key Tab  # Focus on file path input
+          xdotool type "$(pwd)/test.txt"
+          xdotool key Tab Tab  # Navigate to password field
+          xdotool type "testpassword"
+          xdotool key Tab Tab Tab Tab Tab Tab Tab  # Navigate to Encrypt button (7 tabs)
+          xdotool key Return
+
+          # Wait for encryption to complete
+          sleep 5
+
+          # Close the application
+          kill $APP_PID
+
+          # Verify encryption
+          if [ -f "test.txt.enc" ]; then
+            echo "Encryption successful"
+          else
+            echo "Encryption failed"
+            exit 1
+          fi
+
+          # Remove original file
+          rm test.txt
+
+          # Start the application again for decryption
+          ./build/EncryptionApp &
+          APP_PID=$!
+
+          # Wait for the application to start
+          sleep 5
+
+          # Interact with the application for decryption
+          xdotool key Tab  # Focus on file path input
+          xdotool type "$(pwd)/test.txt.enc"
+          xdotool key Tab Tab  # Navigate to password field
+          xdotool type "testpassword"
+          xdotool key Tab Tab Tab Tab Tab Tab Tab Tab  # Navigate to Decrypt button (8 tabs)
+          xdotool key Return
+
+          # Wait for decryption to complete
+          sleep 5
+
+          # Close the application
+          kill $APP_PID
+
+          # Verify decryption
+          if [ -f "test.txt" ] && [ "$(cat test.txt)" = "test" ]; then
+            echo "Decryption successful"
+          else
+            echo "Decryption failed"
+            exit 1
+          fi
+
+          # Clean up
+          rm test.txt test.txt.enc
+
+      - name: Run GUI tests (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          # Create test file
+          "test" | Out-File -FilePath test.txt
+
+          # Start the application
+          Start-Process .\build\EncryptionApp.exe
+          Start-Sleep -Seconds 5
+
+          # Function to send keystrokes
+          function Send-Keystrokes($keys) {
+            Add-Type -AssemblyName System.Windows.Forms
+            [System.Windows.Forms.SendKeys]::SendWait($keys)
+          }
+
+          # Interact with the application for encryption
+          Send-Keystrokes("{TAB}")  # Focus on file path input
+          Send-Keystrokes("$pwd\test.txt")
+          Send-Keystrokes("{TAB 2}")  # Navigate to password field
+          Send-Keystrokes("testpassword")
+          Send-Keystrokes("{TAB 7}")  # Navigate to Encrypt button (7 tabs)
+          Send-Keystrokes("{ENTER}")
+
+          # Wait for encryption to complete
+          Start-Sleep -Seconds 5
+
+          # Close the application
+          Stop-Process -Name EncryptionApp
+
+          # Verify encryption
+          if (Test-Path "test.txt.enc") {
+            Write-Host "Encryption successful"
+          } else {
+            Write-Host "Encryption failed"
+            exit 1
+          }
+
+          # Remove original file
+          Remove-Item test.txt
+
+          # Start the application again for decryption
+          Start-Process .\build\EncryptionApp.exe
+          Start-Sleep -Seconds 5
+
+          # Interact with the application for decryption
+          Send-Keystrokes("{TAB}")  # Focus on file path input
+          Send-Keystrokes("$pwd\test.txt.enc")
+          Send-Keystrokes("{TAB 2}")  # Navigate to password field
+          Send-Keystrokes("testpassword")
+          Send-Keystrokes("{TAB 8}")  # Navigate to Decrypt button (8 tabs)
+          Send-Keystrokes("{ENTER}")
+
+          # Wait for decryption to complete
+          Start-Sleep -Seconds 5
+
+          # Close the application
+          Stop-Process -Name EncryptionApp
+
+          # Verify decryption
+          if ((Test-Path "test.txt") -and ((Get-Content "test.txt") -eq "test")) {
+            Write-Host "Decryption successful"
+          } else {
+            Write-Host "Decryption failed"
+            exit 1
+          }
+
+          # Clean up
+          Remove-Item test.txt, test.txt.enc
+
       - name: Archive build artifacts
         uses: actions/upload-artifact@v4
         with:
