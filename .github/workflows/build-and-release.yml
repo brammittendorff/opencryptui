@@ -212,105 +212,89 @@ jobs:
         if: matrix.os == 'macos-latest'
         run: brew install xdotool
 
-      - name: Run GUI tests (Linux)
+      - name: Run GUI tests and capture screenshots (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
+          set -e  # Exit immediately if a command exits with a non-zero status
+          
+          # Function to upload screenshots
+          upload_screenshots() {
+            echo "Preparing screenshots..."
+            artifact_name="linux-screenshots-$(date +%s)"
+            tar -czf "$artifact_name.tar.gz" screenshots
+            echo "ARTIFACT_NAME=$artifact_name" >> $GITHUB_OUTPUT
+          }
+      
+          # Ensure screenshots are uploaded even if the script exits unexpectedly
+          trap upload_screenshots EXIT
+      
           # Start Xvfb
           Xvfb :99 &
           export DISPLAY=:99
       
-          # Create test file
+          # Create test file and screenshots directory
           echo "test" > test.txt
-      
-          # Create directory for screenshots
           mkdir -p screenshots
       
           # Start the application
           ./build/EncryptionApp &
           APP_PID=$!
-      
-          # Wait for the application to start
           sleep 5
       
           # Take initial screenshot
           scrot 'screenshots/initial.png'
       
-          # Interact with the application using xdotool for encryption
-          xdotool key Tab  # Focus on file path input
-          xdotool type "$(pwd)/test.txt"
-          xdotool key Tab Tab  # Navigate to password field
-          xdotool type "testpassword"
-          xdotool key Tab Tab Tab Tab Tab Tab Tab  # Navigate to Encrypt button (7 tabs)
-          
-          # Take screenshot before encryption
+          # Encryption process
+          xdotool key Tab type "$(pwd)/test.txt" Tab Tab type "testpassword" Tab Tab Tab Tab Tab Tab Tab
           scrot 'screenshots/before_encryption.png'
-          
           xdotool key Return
-      
-          # Wait for encryption to complete
           sleep 5
-      
-          # Take screenshot after encryption
           scrot 'screenshots/after_encryption.png'
       
           # Close the application
           kill $APP_PID
       
           # Verify encryption
-          if [ -f "test.txt.enc" ]; then
-            echo "Encryption successful"
-          else
+          if [ ! -f "test.txt.enc" ]; then
             echo "Encryption failed"
+            scrot 'screenshots/encryption_failure.png'
             exit 1
           fi
       
-          # Remove original file
           rm test.txt
       
-          # Start the application again for decryption
+          # Decryption process
           ./build/EncryptionApp &
           APP_PID=$!
-      
-          # Wait for the application to start
           sleep 5
       
-          # Take screenshot before decryption
           scrot 'screenshots/before_decryption.png'
-      
-          # Interact with the application for decryption
-          xdotool key Tab  # Focus on file path input
-          xdotool type "$(pwd)/test.txt.enc"
-          xdotool key Tab Tab  # Navigate to password field
-          xdotool type "testpassword"
-          xdotool key Tab Tab Tab Tab Tab Tab Tab Tab  # Navigate to Decrypt button (8 tabs)
+          xdotool key Tab type "$(pwd)/test.txt.enc" Tab Tab type "testpassword" Tab Tab Tab Tab Tab Tab Tab Tab
           xdotool key Return
-      
-          # Wait for decryption to complete
           sleep 5
-      
-          # Take screenshot after decryption
           scrot 'screenshots/after_decryption.png'
       
           # Close the application
           kill $APP_PID
       
           # Verify decryption
-          if [ -f "test.txt" ] && [ "$(cat test.txt)" = "test" ]; then
-            echo "Decryption successful"
-          else
+          if [ ! -f "test.txt" ] || [ "$(cat test.txt)" != "test" ]; then
             echo "Decryption failed"
+            scrot 'screenshots/decryption_failure.png'
             exit 1
           fi
       
           # Clean up
           rm test.txt test.txt.enc
       
+          echo "All tests passed successfully"
+      
       - name: Upload screenshots
-        if: matrix.os == 'ubuntu-latest'
+        if: always() && matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: linux-screenshots
-          path: screenshots/
+          name: ${{ steps.run_tests.outputs.ARTIFACT_NAME }}
+          path: ${{ steps.run_tests.outputs.ARTIFACT_NAME }}.tar.gz
 
       - name: Run GUI tests (macOS)
         if: matrix.os == 'macos-latest'
