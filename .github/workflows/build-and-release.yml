@@ -218,76 +218,88 @@ jobs:
         run: |
           set -e  # Exit immediately if a command exits with a non-zero status
           
-          # Function to upload screenshots
           prepare_screenshots() {
             echo "Preparing screenshots..."
             artifact_name="linux-screenshots-$(date +%s)"
             tar -czf "$artifact_name.tar.gz" screenshots
             echo "ARTIFACT_NAME=$artifact_name" >> $GITHUB_OUTPUT
           }
-      
-          # Ensure screenshots are prepared even if the script exits unexpectedly
+          
           trap prepare_screenshots EXIT
-      
-          # Start Xvfb
+          
           Xvfb :99 &
           export DISPLAY=:99
-      
-          # Create test file and screenshots directory
+          
           echo "test" > test.txt
           mkdir -p screenshots
-      
-          # Start the application
+          
+          # Start the application and get its window ID
           ./build/EncryptionApp &
-          APP_PID=$!
-          sleep 5
-      
-          # Take initial screenshot
+          sleep 5  # Wait for the application to start
+          
+          WINDOW_ID=$(xdotool search --name "Open Encryption UI" | head -n 1)
+          if [ -z "$WINDOW_ID" ]; then
+            echo "Failed to find application window"
+            scrot 'screenshots/window_not_found.png'
+            exit 1
+          fi
+          
+          echo "Found window ID: $WINDOW_ID"
+          xdotool windowactivate --sync $WINDOW_ID
+          
           scrot 'screenshots/initial.png'
-      
+          
           # Encryption process
-          xdotool key Tab type "$(pwd)/test.txt" Tab Tab type "testpassword" Tab Tab Tab Tab Tab Tab Tab
+          xdotool windowactivate --sync $WINDOW_ID key Tab
+          xdotool type "$(pwd)/test.txt"
+          xdotool key Tab Tab
+          xdotool type "testpassword"
+          xdotool key Tab Tab Tab Tab Tab Tab Tab
+          
           scrot 'screenshots/before_encryption.png'
+          
           xdotool key Return
           sleep 5
           scrot 'screenshots/after_encryption.png'
-      
-          # Close the application
-          kill $APP_PID
-      
+          
           # Verify encryption
           if [ ! -f "test.txt.enc" ]; then
             echo "Encryption failed"
             scrot 'screenshots/encryption_failure.png'
             exit 1
           fi
-      
+          
           rm test.txt
-      
-          # Decryption process
+          
+          # Close and restart the application for decryption
+          xdotool windowclose $WINDOW_ID
           ./build/EncryptionApp &
-          APP_PID=$!
           sleep 5
-      
+          
+          WINDOW_ID=$(xdotool search --name "Open Encryption UI" | head -n 1)
+          xdotool windowactivate --sync $WINDOW_ID
+          
           scrot 'screenshots/before_decryption.png'
-          xdotool key Tab type "$(pwd)/test.txt.enc" Tab Tab type "testpassword" Tab Tab Tab Tab Tab Tab Tab Tab
+          
+          xdotool key Tab
+          xdotool type "$(pwd)/test.txt.enc"
+          xdotool key Tab Tab
+          xdotool type "testpassword"
+          xdotool key Tab Tab Tab Tab Tab Tab Tab Tab
           xdotool key Return
+          
           sleep 5
           scrot 'screenshots/after_decryption.png'
-      
-          # Close the application
-          kill $APP_PID
-      
+          
           # Verify decryption
           if [ ! -f "test.txt" ] || [ "$(cat test.txt)" != "test" ]; then
             echo "Decryption failed"
             scrot 'screenshots/decryption_failure.png'
             exit 1
           fi
-      
-          # Clean up
+          
           rm test.txt test.txt.enc
-      
+          
           echo "All tests passed successfully"
       
       - name: Upload screenshots
