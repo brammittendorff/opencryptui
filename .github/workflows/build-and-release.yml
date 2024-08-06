@@ -213,20 +213,21 @@ jobs:
         run: brew install xdotool
 
       - name: Run GUI tests and capture screenshots (Linux)
+        id: run_tests
         if: matrix.os == 'ubuntu-latest'
         run: |
           set -e  # Exit immediately if a command exits with a non-zero status
           
           # Function to upload screenshots
-          upload_screenshots() {
+          prepare_screenshots() {
             echo "Preparing screenshots..."
             artifact_name="linux-screenshots-$(date +%s)"
             tar -czf "$artifact_name.tar.gz" screenshots
             echo "ARTIFACT_NAME=$artifact_name" >> $GITHUB_OUTPUT
           }
       
-          # Ensure screenshots are uploaded even if the script exits unexpectedly
-          trap upload_screenshots EXIT
+          # Ensure screenshots are prepared even if the script exits unexpectedly
+          trap prepare_screenshots EXIT
       
           # Start Xvfb
           Xvfb :99 &
@@ -293,8 +294,8 @@ jobs:
         if: always() && matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.run_tests.outputs.ARTIFACT_NAME }}
-          path: ${{ steps.run_tests.outputs.ARTIFACT_NAME }}.tar.gz
+          name: ${{ steps.run_tests.outputs.ARTIFACT_NAME || 'linux-screenshots' }}
+          path: ./*.tar.gz
 
       - name: Run GUI tests (macOS)
         if: matrix.os == 'macos-latest'
