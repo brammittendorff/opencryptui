@@ -8,6 +8,7 @@
 #include <QTextStream>
 #include <QTableWidgetItem>
 #include <QHeaderView>
+#include <QKeyEvent>
 #include "encryptionengine.h"
 
 // Add the static member initialization here
@@ -67,6 +68,14 @@ void MainWindow::setupUI()
     ui->fileEstimatedTimeLabel->setVisible(false);
     ui->folderProgressBar->setVisible(false);
     ui->folderEstimatedTimeLabel->setVisible(false);
+
+    // Install event filter on all relevant widgets
+    ui->filePasswordLineEdit->installEventFilter(this);
+    ui->folderPasswordLineEdit->installEventFilter(this);
+    ui->fileEncryptButton->installEventFilter(this);
+    ui->fileDecryptButton->installEventFilter(this);
+    ui->folderEncryptButton->installEventFilter(this);
+    ui->folderDecryptButton->installEventFilter(this);
 }
 
 void MainWindow::setupComboBoxes() {
@@ -99,12 +108,17 @@ void MainWindow::connectSignalsAndSlots()
 
     qDebug() << "Connecting signals and slots";
 
+    // File encryption/decryption
     safeConnect(ui->fileEncryptButton, SIGNAL(clicked()), this, SLOT(on_fileEncryptButton_clicked()));
     safeConnect(ui->fileDecryptButton, SIGNAL(clicked()), this, SLOT(on_fileDecryptButton_clicked()));
-    safeConnect(ui->fileBrowseButton, SIGNAL(clicked()), this, SLOT(on_fileBrowseButton_clicked()));
-    safeConnect(ui->fileKeyfileBrowseButton, SIGNAL(clicked()), this, SLOT(on_fileKeyfileBrowseButton_clicked()));
+
+    // Folder encryption/decryption
     safeConnect(ui->folderEncryptButton, SIGNAL(clicked()), this, SLOT(on_folderEncryptButton_clicked()));
     safeConnect(ui->folderDecryptButton, SIGNAL(clicked()), this, SLOT(on_folderDecryptButton_clicked()));
+
+    // Other button connections
+    safeConnect(ui->fileBrowseButton, SIGNAL(clicked()), this, SLOT(on_fileBrowseButton_clicked()));
+    safeConnect(ui->fileKeyfileBrowseButton, SIGNAL(clicked()), this, SLOT(on_fileKeyfileBrowseButton_clicked()));
     safeConnect(ui->folderBrowseButton, SIGNAL(clicked()), this, SLOT(on_folderBrowseButton_clicked()));
     safeConnect(ui->folderKeyfileBrowseButton, SIGNAL(clicked()), this, SLOT(on_folderKeyfileBrowseButton_clicked()));
     safeConnect(ui->benchmarkButton, SIGNAL(clicked()), this, SLOT(on_benchmarkButton_clicked()));
@@ -114,25 +128,25 @@ void MainWindow::connectSignalsAndSlots()
 
 void MainWindow::on_fileEncryptButton_clicked()
 {
-    qDebug() << "File Encrypt Button Clicked";
+    qDebug() << "File Encrypt Button Clicked or Enter pressed";
     startWorker(true, true);
 }
 
 void MainWindow::on_fileDecryptButton_clicked()
 {
-    qDebug() << "File Decrypt Button Clicked";
+    qDebug() << "File Decrypt Button Clicked or Enter pressed";
     startWorker(false, true);
 }
 
 void MainWindow::on_folderEncryptButton_clicked()
 {
-    qDebug() << "Folder Encrypt Button Clicked";
+    qDebug() << "Folder Encrypt Button Clicked or Enter pressed";
     startWorker(true, false);
 }
 
 void MainWindow::on_folderDecryptButton_clicked()
 {
-    qDebug() << "Folder Decrypt Button Clicked";
+    qDebug() << "Folder Decrypt Button Clicked or Enter pressed";
     startWorker(false, false);
 }
 
@@ -319,4 +333,31 @@ void MainWindow::safeConnect(const QObject* sender, const char* signal, const QO
 {
     disconnect(sender, signal, receiver, method);  // First disconnect any existing connection
     connect(sender, signal, receiver, method, Qt::UniqueConnection);  // Then connect with UniqueConnection
+}
+
+bool MainWindow::eventFilter(QObject *obj, QEvent *event)
+{
+    if (event->type() == QEvent::KeyPress) {
+        QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
+        if (keyEvent->key() == Qt::Key_Return || keyEvent->key() == Qt::Key_Enter) {
+            if (obj == ui->filePasswordLineEdit || obj == ui->fileEncryptButton) {
+                qDebug() << "Enter pressed for file encryption";
+                ui->fileEncryptButton->click();
+                return true;
+            } else if (obj == ui->fileDecryptButton) {
+                qDebug() << "Enter pressed for file decryption";
+                ui->fileDecryptButton->click();
+                return true;
+            } else if (obj == ui->folderPasswordLineEdit || obj == ui->folderEncryptButton) {
+                qDebug() << "Enter pressed for folder encryption";
+                ui->folderEncryptButton->click();
+                return true;
+            } else if (obj == ui->folderDecryptButton) {
+                qDebug() << "Enter pressed for folder decryption";
+                ui->folderDecryptButton->click();
+                return true;
+            }
+        }
+    }
+    return QObject::eventFilter(obj, event);
 }
