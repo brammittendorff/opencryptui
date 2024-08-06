@@ -206,7 +206,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb x11-utils xdotool
+          sudo apt-get install -y xvfb x11-utils xdotool scrot
 
       - name: Install GUI testing dependencies (macOS)
         if: matrix.os == 'macos-latest'
@@ -222,6 +222,9 @@ jobs:
           # Create test file
           echo "test" > test.txt
       
+          # Create directory for screenshots
+          mkdir -p screenshots
+      
           # Start the application
           ./build/EncryptionApp &
           APP_PID=$!
@@ -229,16 +232,26 @@ jobs:
           # Wait for the application to start
           sleep 5
       
+          # Take initial screenshot
+          scrot 'screenshots/initial.png'
+      
           # Interact with the application using xdotool for encryption
           xdotool key Tab  # Focus on file path input
           xdotool type "$(pwd)/test.txt"
           xdotool key Tab Tab  # Navigate to password field
           xdotool type "testpassword"
           xdotool key Tab Tab Tab Tab Tab Tab Tab  # Navigate to Encrypt button (7 tabs)
+          
+          # Take screenshot before encryption
+          scrot 'screenshots/before_encryption.png'
+          
           xdotool key Return
       
           # Wait for encryption to complete
           sleep 5
+      
+          # Take screenshot after encryption
+          scrot 'screenshots/after_encryption.png'
       
           # Close the application
           kill $APP_PID
@@ -261,6 +274,9 @@ jobs:
           # Wait for the application to start
           sleep 5
       
+          # Take screenshot before decryption
+          scrot 'screenshots/before_decryption.png'
+      
           # Interact with the application for decryption
           xdotool key Tab  # Focus on file path input
           xdotool type "$(pwd)/test.txt.enc"
@@ -271,6 +287,9 @@ jobs:
       
           # Wait for decryption to complete
           sleep 5
+      
+          # Take screenshot after decryption
+          scrot 'screenshots/after_decryption.png'
       
           # Close the application
           kill $APP_PID
@@ -285,6 +304,13 @@ jobs:
       
           # Clean up
           rm test.txt test.txt.enc
+      
+      - name: Upload screenshots
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-screenshots
+          path: screenshots/
 
       - name: Run GUI tests (macOS)
         if: matrix.os == 'macos-latest'
