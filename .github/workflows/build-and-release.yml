@@ -206,7 +206,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb x11-utils xdotool scrot libxcb-xinerama0
+          sudo apt-get install -y xvfb x11-utils xdotool scrot libxcb-xinerama0 libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-xfixes0 libxcb-xkb1
 
       - name: Run GUI tests and capture screenshots (Linux)
         id: run_tests
@@ -223,24 +223,50 @@ jobs:
           
           trap prepare_screenshots EXIT
 
-          # Start Xvfb
-          Xvfb :99 &
+          # Start Xvfb with a specific resolution
+          Xvfb :99 -screen 0 1024x768x24 &
+          sleep 5  # Wait for Xvfb to start
           export DISPLAY=:99
+
+          # Verify Xvfb is running
+          if ! xdpyinfo >/dev/null 2>&1; then
+            echo "Xvfb failed to start"
+            exit 1
+          fi
           
           echo "test" > test.txt
           mkdir -p screenshots
 
+          # Set Qt configurations
           export QT_DEBUG_PLUGINS=1
+          export QT_QPA_PLATFORM=xcb
+          export QT_XCB_DEBUG=1
+          export XDG_RUNTIME_DIR=/tmp/runtime-runner
 
           echo "Starting the application"
-          ./build/EncryptionApp &
-          sleep 10  # Wait for the application to start
+          timeout 30s ./build/EncryptionApp > app_output.log 2>&1 &
+          APP_PID=$!
+
+          # Wait for the application to start or timeout
+          for i in {1..30}; do
+            if xdotool search --name "Open Encryption UI" >/dev/null 2>&1; then
+              break
+            fi
+            if ! ps -p $APP_PID > /dev/null; then
+              echo "Application crashed. Check app_output.log for details."
+              cat app_output.log
+              scrot 'screenshots/app_crash.png'
+              exit 1
+            fi
+            sleep 1
+          done
 
           echo "Searching for application window"
           WINDOW_ID=$(xdotool search --name "Open Encryption UI" | head -n 1)
           if [ -z "$WINDOW_ID" ]; then
             echo "Failed to find application window"
             scrot 'screenshots/window_not_found.png'
+            cat app_output.log
             exit 1
           fi
           
@@ -316,13 +342,14 @@ jobs:
           
           echo "All tests passed successfully"
 
-      - name: Upload screenshots
+      - name: Upload screenshots and logs
         if: always() && matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.run_tests.outputs.ARTIFACT_NAME || 'linux-screenshots' }}
-          path: ./*.tar.gz
-
+          name: ${{ steps.run_tests.outputs.ARTIFACT_NAME || 'linux-screenshots-and-logs' }}
+          path: |
+            ./*.tar.gz
+            app_output.log
 
       # - name: Install GUI testing dependencies (macOS)
       #   if: matrix.os == 'macos-latest'
