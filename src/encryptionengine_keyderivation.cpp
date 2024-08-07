@@ -47,7 +47,6 @@ QByteArray EncryptionEngine::deriveKey(const QString& password, const QByteArray
         }
     }
 
-    qDebug() << "Key derived successfully using" << kdf << "key (hex):" << key.toHex();
     return key;
 }
 

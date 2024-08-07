@@ -232,14 +232,14 @@ jobs:
           sudo apt-get install -y xvfb
           xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" cmake --build build --target all
           cd build
-          ctest --verbose
+          xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" ctest --verbose
 
       - name: Run tests (macOS)
         if: matrix.os == 'macos-latest'
         run: |
           cmake --build build --target all
-          cd build
-          ctest --verbose
+          xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" cd build
+          xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" ctest --verbose
 
       - name: Run tests (Windows)
         if: matrix.os == 'windows-latest'
