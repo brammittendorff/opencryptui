@@ -5,13 +5,18 @@
 
 int main(int argc, char *argv[])
 {
-    OPENSSL_init_crypto(OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_ADD_ALL_DIGESTS | OPENSSL_INIT_LOAD_CRYPTO_STRINGS, NULL);
-    QApplication a(argc, argv);
+    // Initialize OpenSSL with error checking
+    if (!OPENSSL_init_crypto(OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_ADD_ALL_DIGESTS | OPENSSL_INIT_LOAD_CRYPTO_STRINGS, NULL)) {
+        qCritical() << "Failed to initialize OpenSSL";
+        return EXIT_FAILURE;
+    }
+
+    QApplication app(argc, argv);
 
     // Create an instance of MainWindow
-    MainWindow w;
+    MainWindow mainWindow;
 
-    // Check if there are any other instances of MainWindow
+    // Optionally, check if there are any other instances of MainWindow
     QWidgetList topLevelWidgets = QApplication::topLevelWidgets();
     int mainWindowCount = 0;
     for (QWidget *widget : topLevelWidgets) {
@@ -21,13 +26,10 @@ int main(int argc, char *argv[])
     }
 
     // Print the number of MainWindow instances
-    // Add this line to check if another instance of MainWindow is created
-    static int mainWindowInstanceCount = 0;
-    ++mainWindowInstanceCount;
     qDebug() << "Number of MainWindow instances:" << mainWindowCount;
 
     // Show the MainWindow
-    w.show();
+    mainWindow.show();
 
-    return a.exec();
+    return app.exec();
 }

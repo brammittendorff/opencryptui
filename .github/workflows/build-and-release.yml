@@ -137,6 +137,30 @@ jobs:
         run: |
           cmake -S . -B build -G Ninja
 
+      - name: Configure CMake for Tests
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          cmake -S . -B build -G Ninja -DBUILD_TESTING=ON
+
+      - name: Configure CMake for Tests (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          cmake -S . -B build -G Ninja -DBUILD_TESTING=ON
+
+      - name: Configure CMake for Tests (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: msys2 {0}
+        run: |
+          cmake -S . -B build -G "MinGW Makefiles" \
+            -DOPENSSL_ROOT_DIR="${{ env.OPENSSL_ROOT_DIR }}" \
+            -DOPENSSL_INCLUDE_DIR="${{ env.OPENSSL_INCLUDE_DIR }}" \
+            -DOPENSSL_CRYPTO_LIBRARY="${{ env.OPENSSL_CRYPTO_LIBRARY }}" \
+            -DOPENSSL_SSL_LIBRARY="${{ env.OPENSSL_SSL_LIBRARY }}" \
+            -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}" \
+            -DCMAKE_MODULE_PATH="${{ env.CMAKE_MODULE_PATH }}" \
+            -DQt5_DIR="${{ env.Qt5_DIR }}" \
+            -DBUILD_TESTING=ON
+
       - name: Build for Windows
         if: matrix.os == 'windows-latest'
         shell: msys2 {0}
@@ -202,275 +226,35 @@ jobs:
       
           echo "All DLLs and plugins copied successfully."
 
-      - name: Install GUI testing dependencies (Ubuntu)
+      - name: Run tests (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y xvfb x11-utils xdotool scrot libxcb-xinerama0 x11-apps wmctrl x11-xserver-utils
+          sudo apt-get install -y xvfb
+          xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" cmake --build build --target all
+          cd build
+          ctest --verbose
 
-      - name: Run GUI tests and capture screenshots (Linux)
-        id: run_tests
-        if: matrix.os == 'ubuntu-latest'
+      - name: Run tests (macOS)
+        if: matrix.os == 'macos-latest'
         run: |
-          set -x  # Print each command for debugging
-          
-          log_and_screenshot() {
-            echo "$1"
-            DISPLAY=:99 import -window root "screenshots/$(printf %02d $2)_$3.png"
-            sleep 2
-          }
+          cmake --build build --target all
+          cd build
+          ctest --verbose
 
-          prepare_screenshots() {
-            echo "Preparing screenshots..."
-            artifact_name="linux-screenshots-$(date +%s)"
-            tar -czf "$artifact_name.tar.gz" screenshots
-            echo "ARTIFACT_NAME=$artifact_name" >> $GITHUB_OUTPUT
-          }
-          
-          trap prepare_screenshots EXIT
+      - name: Run tests (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: msys2 {0}
+        run: |
+          cmake --build build --target all
+          cd build
+          ctest --verbose
 
-          # Start Xvfb with XTEST extension
-          Xvfb :99 -ac -screen 0 1024x768x24 +extension XTEST &
-          sleep 5  # Wait for Xvfb to start
-          export DISPLAY=:99
-
-          # Verify Xvfb is running
-          if ! xdpyinfo >/dev/null 2>&1; then
-            echo "Xvfb failed to start"
-            exit 1
-          fi
-          
-          echo "test" > test.txt
-          mkdir -p screenshots
-
-          # Set Qt configurations
-          export QT_DEBUG_PLUGINS=1
-          export QT_QPA_PLATFORM=xcb
-          export QT_XCB_DEBUG=1
-          export XDG_RUNTIME_DIR=/tmp/runtime-runner
-
-          log_and_screenshot "Starting the application" 1 "before_start"
-          ./build/EncryptionApp > app_output.log 2>&1 &
-          APP_PID=$!
-          sleep 10
-
-          log_and_screenshot "Application started" 2 "after_start"
-
-          # Get window information
-          WINDOW_ID=$(xdotool search --name "Open Encryption UI" | head -n 1)
-          if [ -z "$WINDOW_ID" ]; then
-            echo "Failed to find application window"
-            cat app_output.log
-            exit 1
-          fi
-          echo "Window ID: $WINDOW_ID"
-          xwininfo -id $WINDOW_ID
-          xprop -id $WINDOW_ID
-
-          # Debug: Check current focus
-          xdotool getactivewindow getwindowname
-
-          log_and_screenshot "Window info gathered" 3 "window_info"
-
-          # Use XTEST to send keystrokes
-          xdotool windowfocus --sync $WINDOW_ID
-          xdotool key --window $WINDOW_ID --delay 100 Tab
-          xdotool type --window $WINDOW_ID --delay 100 "$(pwd)/test.txt"
-          
-          log_and_screenshot "After file path input" 4 "after_file_path"
-
-          xdotool key --window $WINDOW_ID --delay 100 Tab Tab
-          xdotool type --window $WINDOW_ID --delay 100 "testpassword"
-          
-          log_and_screenshot "After password input" 5 "after_password"
-
-          # Navigate to Encrypt button and click
-          for i in {1..7}; do
-            xdotool key --window $WINDOW_ID --delay 100 Tab
-          done
-          xdotool key --window $WINDOW_ID --delay 100 Return
-          
-          sleep 5
-          log_and_screenshot "After encrypt click" 6 "after_encrypt_click"
-
-          if [ -f "test.txt.enc" ]; then
-            echo "Encryption successful"
-          else
-            echo "Encryption failed"
-            cat app_output.log
-          fi
-
-          log_and_screenshot "Test completed" 7 "final"
-
-          echo "Killing application"
-          kill $APP_PID
-
-          echo "Test script completed"
-
-      - name: Upload screenshots and logs
-        if: always() && matrix.os == 'ubuntu-latest'
+      - name: Upload test results
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.run_tests.outputs.ARTIFACT_NAME || 'linux-screenshots-and-logs' }}
-          path: |
-            ./*.tar.gz
-            app_output.log
-
-      # - name: Install GUI testing dependencies (macOS)
-      #   if: matrix.os == 'macos-latest'
-      #   run: brew install xdotool
-
-      # - name: Run GUI tests (macOS)
-      #   if: matrix.os == 'macos-latest'
-      #   run: |
-      #     # Start Xquartz in the background (if needed)
-      #     open -a XQuartz
-      #     sleep 5
-      #     export DISPLAY=:0
-
-      #     # Create test file
-      #     echo "test" > test.txt
-
-      #     # Start the application
-      #     ./build/EncryptionApp &
-      #     APP_PID=$!
-
-      #     # Wait for the application to start
-      #     sleep 5
-
-      #     # Interact with the application using xdotool for encryption
-      #     xdotool key Tab  # Focus on file path input
-      #     xdotool type "$(pwd)/test.txt"
-      #     xdotool key Tab Tab  # Navigate to password field
-      #     xdotool type "testpassword"
-      #     xdotool key Tab Tab Tab Tab Tab Tab Tab  # Navigate to Encrypt button (7 tabs)
-      #     xdotool key Return
-
-      #     # Wait for encryption to complete
-      #     sleep 5
-
-      #     # Close the application
-      #     kill $APP_PID
-
-      #     # Verify encryption
-      #     if [ -f "test.txt.enc" ]; then
-      #       echo "Encryption successful"
-      #     else
-      #       echo "Encryption failed"
-      #       exit 1
-      #     fi
-
-      #     # Remove original file
-      #     rm test.txt
-
-      #     # Start the application again for decryption
-      #     ./build/EncryptionApp &
-      #     APP_PID=$!
-
-      #     # Wait for the application to start
-      #     sleep 5
-
-      #     # Interact with the application for decryption
-      #     xdotool key Tab  # Focus on file path input
-      #     xdotool type "$(pwd)/test.txt.enc"
-      #     xdotool key Tab Tab  # Navigate to password field
-      #     xdotool type "testpassword"
-      #     xdotool key Tab Tab Tab Tab Tab Tab Tab Tab  # Navigate to Decrypt button (8 tabs)
-      #     xdotool key Return
-
-      #     # Wait for decryption to complete
-      #     sleep 5
-
-      #     # Close the application
-      #     kill $APP_PID
-
-      #     # Verify decryption
-      #     if [ -f "test.txt" ] && [ "$(cat test.txt)" = "test" ]; then
-      #       echo "Decryption successful"
-      #     else
-      #       echo "Decryption failed"
-      #       exit 1
-      #     fi
-
-      #     # Clean up
-      #     rm test.txt test.txt.enc
-
-      # - name: Run GUI tests (Windows)
-      #   if: matrix.os == 'windows-latest'
-      #   shell: pwsh
-      #   run: |
-      #     # Create test file
-      #     "test" | Out-File -FilePath test.txt
-
-      #     # Start the application
-      #     Start-Process .\build\EncryptionApp.exe
-      #     Start-Sleep -Seconds 5
-
-      #     # Function to send keystrokes
-      #     function Send-Keystrokes($keys) {
-      #       Add-Type -AssemblyName System.Windows.Forms
-      #       [System.Windows.Forms.SendKeys]::SendWait($keys)
-      #     }
-
-      #     # Interact with the application for encryption
-      #     Send-Keystrokes("{TAB}")  # Focus on file path input
-      #     Send-Keystrokes("$pwd\test.txt")
-      #     Send-Keystrokes("{TAB 2}")  # Navigate to password field
-      #     Send-Keystrokes("testpassword")
-      #     Send-Keystrokes("{TAB 7}")  # Navigate to Encrypt button (7 tabs)
-      #     Send-Keystrokes("{ENTER}")
-
-      #     # Wait for encryption to complete
-      #     Start-Sleep -Seconds 5
-
-      #     # Close the application
-      #     Stop-Process -Name EncryptionApp
-
-      #     # Verify encryption
-      #     if (Test-Path "test.txt.enc") {
-      #       Write-Host "Encryption successful"
-      #     } else {
-      #       Write-Host "Encryption failed"
-      #       exit 1
-      #     }
-
-      #     # Remove original file
-      #     Remove-Item test.txt
-
-      #     # Start the application again for decryption
-      #     Start-Process .\build\EncryptionApp.exe
-      #     Start-Sleep -Seconds 5
-
-      #     # Interact with the application for decryption
-      #     Send-Keystrokes("{TAB}")  # Focus on file path input
-      #     Send-Keystrokes("$pwd\test.txt.enc")
-      #     Send-Keystrokes("{TAB 2}")  # Navigate to password field
-      #     Send-Keystrokes("testpassword")
-      #     Send-Keystrokes("{TAB 8}")  # Navigate to Decrypt button (8 tabs)
-      #     Send-Keystrokes("{ENTER}")
-
-      #     # Wait for decryption to complete
-      #     Start-Sleep -Seconds 5
-
-      #     # Close the application
-      #     Stop-Process -Name EncryptionApp
-
-      #     # Verify decryption
-      #     if ((Test-Path "test.txt") -and ((Get-Content "test.txt") -eq "test")) {
-      #       Write-Host "Decryption successful"
-      #     } else {
-      #       Write-Host "Decryption failed"
-      #       exit 1
-      #     }
-
-      #     # Clean up
-      #     Remove-Item test.txt, test.txt.enc
-
-      # - name: Archive build artifacts
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: ${{ matrix.os }}-build
-      #     path: build/
+          name: test-results-${{ matrix.os }}
+          path: build/Testing/Temporary/LastTest.log
 
   release:
     needs: build

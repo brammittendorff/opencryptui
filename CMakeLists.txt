@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.14)
 project(EncryptionApp LANGUAGES CXX)
 
+# Enable position-independent code globally
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
@@ -10,7 +14,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find Qt packages
-find_package(Qt5 COMPONENTS Core Gui Widgets REQUIRED)
+find_package(Qt5 COMPONENTS Core Gui Widgets Test REQUIRED)
 
 # OpenSSL configuration
 if(WIN32)
@@ -42,8 +46,8 @@ endif()
 # Add this line to set the UI file directory
 set(CMAKE_AUTOUIC_SEARCH_PATHS ${CMAKE_CURRENT_SOURCE_DIR}/ui)
 
-set(PROJECT_SOURCES
-    src/main.cpp
+# Library sources
+set(LIBRARY_SOURCES
     src/mainwindow.cpp
     include/mainwindow.h
     src/encryptionengine_init.cpp
@@ -59,12 +63,19 @@ set(PROJECT_SOURCES
     ui/mainwindow.ui
 )
 
-add_executable(EncryptionApp ${PROJECT_SOURCES})
+# Create a library target for common code
+add_library(EncryptionLib STATIC ${LIBRARY_SOURCES})
+set_target_properties(EncryptionLib PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-target_include_directories(EncryptionApp PRIVATE 
+target_compile_options(EncryptionLib PRIVATE -fPIC)
+
+target_include_directories(EncryptionLib PRIVATE 
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/ui
+    ${Qt5Core_INCLUDE_DIRS}
+    ${Qt5Gui_INCLUDE_DIRS}
+    ${Qt5Widgets_INCLUDE_DIRS}
     ${ARGON2_INCLUDE_DIRS}
     ${SODIUM_INCLUDE_DIRS}
     ${ARGON2_INCLUDE_DIR}
@@ -72,12 +83,7 @@ target_include_directories(EncryptionApp PRIVATE
     ${OPENSSL_INCLUDE_DIR}
 )
 
-target_link_directories(EncryptionApp PRIVATE 
-    ${ARGON2_LIB_DIR}
-    ${SODIUM_LIB_DIR}
-)
-
-target_link_libraries(EncryptionApp PUBLIC 
+target_link_libraries(EncryptionLib PRIVATE 
     Qt5::Core
     Qt5::Gui
     Qt5::Widgets
@@ -88,6 +94,61 @@ target_link_libraries(EncryptionApp PUBLIC
     argon2
     sodium
 )
+
+# Create the main executable and link against the library
+add_executable(EncryptionApp src/main.cpp)
+set_target_properties(EncryptionApp PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+target_compile_options(EncryptionApp PRIVATE -fPIC)
+
+target_include_directories(EncryptionApp PRIVATE 
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui
+    ${Qt5Core_INCLUDE_DIRS}
+    ${Qt5Gui_INCLUDE_DIRS}
+    ${Qt5Widgets_INCLUDE_DIRS}
+)
+
+target_link_libraries(EncryptionApp PRIVATE EncryptionLib)
+
+# Add test source
+set(TEST_SOURCES
+    tests/test_encryption_app.cpp
+)
+
+# Create test executable
+add_executable(EncryptionAppTest ${TEST_SOURCES})
+set_target_properties(EncryptionAppTest PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+target_compile_options(EncryptionAppTest PRIVATE -fPIC)
+
+target_include_directories(EncryptionAppTest PRIVATE 
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui
+    ${Qt5Core_INCLUDE_DIRS}
+    ${Qt5Gui_INCLUDE_DIRS}
+    ${Qt5Widgets_INCLUDE_DIRS}
+)
+
+target_link_libraries(EncryptionAppTest PRIVATE 
+    EncryptionLib
+    Qt5::Core
+    Qt5::Gui
+    Qt5::Widgets
+    Qt5::Test
+    OpenSSL::SSL
+    OpenSSL::Crypto
+    ${ARGON2_LIBRARIES}
+    ${SODIUM_LIBRARIES}
+    argon2
+    sodium
+)
+
+# Add test to CTest
+enable_testing()
+add_test(NAME EncryptionAppTest COMMAND EncryptionAppTest)
 
 # Print paths for debugging
 message(STATUS "Qt5_DIR: ${Qt5_DIR}")
