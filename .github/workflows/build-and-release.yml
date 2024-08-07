@@ -121,18 +121,6 @@ jobs:
           echo "Qt5_DIR: ${{ env.Qt5_DIR }}"
           echo "PATH: ${{ env.PATH }}"
 
-      - name: Configure CMake for Windows
-        if: matrix.os == 'windows-latest'
-        shell: msys2 {0}
-        run: |
-          cmake -S . -B build -G "MinGW Makefiles" \
-            -DOPENSSL_ROOT_DIR="${{ env.OPENSSL_ROOT_DIR }}" \
-            -DOPENSSL_INCLUDE_DIR="${{ env.OPENSSL_INCLUDE_DIR }}" \
-            -DOPENSSL_CRYPTO_LIBRARY="${{ env.OPENSSL_CRYPTO_LIBRARY }}" \
-            -DOPENSSL_SSL_LIBRARY="${{ env.OPENSSL_SSL_LIBRARY }}" \
-            -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}" \
-            -DCMAKE_MODULE_PATH="${{ env.CMAKE_MODULE_PATH }}" \
-            -DQt5_DIR="${{ env.Qt5_DIR }}"
 
       - name: Configure CMake for Windows
         if: matrix.os == 'windows-latest'
