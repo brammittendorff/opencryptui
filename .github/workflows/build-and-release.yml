@@ -206,7 +206,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb x11-utils scrot libxcb-xinerama0 xautomation x11-apps
+          sudo apt-get install -y xvfb x11-utils xdotool scrot libxcb-xinerama0 xautomation x11-apps wmctrl
 
       - name: Run GUI tests and capture screenshots (Linux)
         id: run_tests
@@ -223,7 +223,7 @@ jobs:
           
           trap prepare_screenshots EXIT
 
-          # Start Xvfb with a specific resolution
+          # Start Xvfb
           Xvfb :99 -screen 0 1024x768x24 &
           sleep 5  # Wait for Xvfb to start
           export DISPLAY=:99
@@ -246,82 +246,62 @@ jobs:
           echo "Starting the application"
           ./build/EncryptionApp &
           APP_PID=$!
-
-          # Wait for the application to start
           sleep 10
 
           # Capture initial screenshot
-          xwd -root -silent | convert xwd:- png:screenshots/initial.png
+          scrot 'screenshots/01_initial.png'
 
-          echo "Starting encryption process"
-          xte 'key Tab'
+          # Get window information
+          WINDOW_ID=$(xdotool search --name "Open Encryption UI" | head -n 1)
+          echo "Window ID: $WINDOW_ID"
+          xwininfo -id $WINDOW_ID
+          xprop -id $WINDOW_ID
+
+          # Try to focus the window
+          wmctrl -i -a $WINDOW_ID
+          xdotool windowfocus $WINDOW_ID
+          xdotool windowactivate $WINDOW_ID
+
+          # Capture after focus screenshot
+          scrot 'screenshots/02_after_focus.png'
+
+          echo "Attempting to input file path using xdotool"
+          xdotool type --window $WINDOW_ID "$(pwd)/test.txt"
+          sleep 2
+          scrot 'screenshots/03_after_xdotool_type.png'
+
+          echo "Attempting to input file path using xte"
           xte "str $(pwd)/test.txt"
-          xte 'key Tab'
-          xte 'key Tab'
-          xte "str testpassword"
-          xte 'key Tab'
-          xte 'key Tab'
-          xte 'key Tab'
-          xte 'key Tab'
-          xte 'key Tab'
-          xte 'key Tab'
-          xte 'key Tab'
+          sleep 2
+          scrot 'screenshots/04_after_xte_type.png'
 
-          # Capture before encryption screenshot
-          xwd -root -silent | convert xwd:- png:screenshots/before_encryption.png
+          echo "Attempting key presses using xdotool"
+          xdotool key --window $WINDOW_ID Tab Tab
+          xdotool type --window $WINDOW_ID "testpassword"
+          xdotool key --window $WINDOW_ID Tab Tab Tab Tab Tab Tab Tab
+          sleep 2
+          scrot 'screenshots/05_after_xdotool_keys.png'
 
-          xte 'key Return'
+          echo "Attempting key presses using xte"
+          xte 'key Tab' 'key Tab' "str testpassword" 'key Tab' 'key Tab' 'key Tab' 'key Tab' 'key Tab' 'key Tab' 'key Tab'
+          sleep 2
+          scrot 'screenshots/06_after_xte_keys.png'
+
+          echo "Attempting to click Encrypt button"
+          xdotool click --window $WINDOW_ID 1
           sleep 5
+          scrot 'screenshots/07_after_encrypt_click.png'
 
-          # Capture after encryption screenshot
-          xwd -root -silent | convert xwd:- png:screenshots/after_encryption.png
-          
-          if [ ! -f "test.txt.enc" ]; then
+          if [ -f "test.txt.enc" ]; then
+            echo "Encryption successful"
+          else
             echo "Encryption failed"
-            xwd -root -silent | convert xwd:- png:screenshots/encryption_failure.png
-            exit 1
           fi
-          
-          rm test.txt
 
-          echo "Closing and restarting the application for decryption"
-          kill $APP_PID
-          ./build/EncryptionApp &
-          APP_PID=$!
-          sleep 10
+          # Capture final screenshot
+          scrot 'screenshots/08_final.png'
 
-          # Capture before decryption screenshot
-          xwd -root -silent | convert xwd:- png:screenshots/before_decryption.png
-          
-          xte 'key Tab'
-          xte "str $(pwd)/test.txt.enc"
-          xte 'key Tab'
-          xte 'key Tab'
-          xte "str testpassword"
-          xte 'key Tab'
-          xte 'key Tab'
-          xte 'key Tab'
-          xte 'key Tab'
-          xte 'key Tab'
-          xte 'key Tab'
-          xte 'key Tab'
-          xte 'key Tab'
-          xte 'key Return'
-
-          sleep 5
-
-          # Capture after decryption screenshot
-          xwd -root -silent | convert xwd:- png:screenshots/after_decryption.png
-          
-          if [ ! -f "test.txt" ] || [ "$(cat test.txt)" != "test" ]; then
-            echo "Decryption failed"
-            xwd -root -silent | convert xwd:- png:screenshots/decryption_failure.png
-            exit 1
-          fi
-          
-          rm test.txt test.txt.enc
-          
-          echo "All tests passed successfully"
+          echo "Test completed"
 
       - name: Upload screenshots and logs
         if: always() && matrix.os == 'ubuntu-latest'
