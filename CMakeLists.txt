@@ -36,6 +36,9 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(ARGON2_INCLUDE_DIR $ENV{ARGON2_INCLUDE_DIR})
     set(SODIUM_LIB_DIR $ENV{SODIUM_LIB_DIR})
     set(SODIUM_INCLUDE_DIR $ENV{SODIUM_INCLUDE_DIR})
+    set(OPENSSL_ROOT_DIR $ENV{OPENSSL_ROOT_DIR})
+    set(OPENSSL_INCLUDE_DIR $ENV{OPENSSL_INCLUDE_DIR})
+    set(OPENSSL_LIBRARIES $ENV{OPENSSL_LIBRARIES})
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Windows")
     set(ARGON2_LIB_DIR $ENV{ARGON2_LIB_DIR})
     set(ARGON2_INCLUDE_DIR $ENV{ARGON2_INCLUDE_DIR})
@@ -108,6 +111,7 @@ target_include_directories(EncryptionApp PRIVATE
     ${Qt5Core_INCLUDE_DIRS}
     ${Qt5Gui_INCLUDE_DIRS}
     ${Qt5Widgets_INCLUDE_DIRS}
+    ${OPENSSL_INCLUDE_DIR}
 )
 
 target_link_libraries(EncryptionApp PRIVATE EncryptionLib)
@@ -130,6 +134,7 @@ target_include_directories(EncryptionAppTest PRIVATE
     ${Qt5Core_INCLUDE_DIRS}
     ${Qt5Gui_INCLUDE_DIRS}
     ${Qt5Widgets_INCLUDE_DIRS}
+    ${OPENSSL_INCLUDE_DIR}
 )
 
 target_link_libraries(EncryptionAppTest PRIVATE 
