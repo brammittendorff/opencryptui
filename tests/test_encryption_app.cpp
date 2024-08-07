@@ -48,7 +48,7 @@ void TestEncryptionApp::testEncryptDecrypt()
     // Set up the timer to close message boxes
     messageBoxTimer = new QTimer(this);
     connect(messageBoxTimer, &QTimer::timeout, this, &TestEncryptionApp::closeMessageBoxes);
-    messageBoxTimer->start(500);  // Check every 500ms
+    messageBoxTimer->start(1000);  // Check every 1000ms (1 second)
 
     // Test encryption
     filePathInput->setText(QDir::currentPath() + "/test.txt");
