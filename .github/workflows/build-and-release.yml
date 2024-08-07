@@ -223,21 +223,19 @@ jobs:
           
           trap prepare_screenshots EXIT
 
-          # Start Xvfb and set DISPLAY
-          Xvfb :99 -screen 0 1024x768x16 &
+          # Start Xvfb
+          Xvfb :99 &
           export DISPLAY=:99
-          echo "Xvfb started and DISPLAY set to :99"
           
-          echo "Creating test file"
           echo "test" > test.txt
           mkdir -p screenshots
 
           export QT_DEBUG_PLUGINS=1
-          
+
           echo "Starting the application"
           ./build/EncryptionApp &
-          sleep 5  # Wait for the application to start
-          
+          sleep 10  # Wait for the application to start
+
           echo "Searching for application window"
           WINDOW_ID=$(xdotool search --name "Open Encryption UI" | head -n 1)
           if [ -z "$WINDOW_ID" ]; then
@@ -245,7 +243,7 @@ jobs:
             scrot 'screenshots/window_not_found.png'
             exit 1
           fi
-
+          
           echo "Found window ID: $WINDOW_ID"
           xdotool windowactivate --sync $WINDOW_ID || {
             echo "Window activation failed"
@@ -254,7 +252,6 @@ jobs:
           }
 
           scrot 'screenshots/initial.png'
-          echo "Initial screenshot taken"
           
           echo "Starting encryption process"
           xdotool windowactivate --sync $WINDOW_ID key Tab
@@ -262,14 +259,12 @@ jobs:
           xdotool key Tab Tab
           xdotool type "testpassword"
           xdotool key Tab Tab Tab Tab Tab Tab Tab
-          
+
           scrot 'screenshots/before_encryption.png'
-          echo "Screenshot before encryption taken"
-          
+
           xdotool key Return
           sleep 5
           scrot 'screenshots/after_encryption.png'
-          echo "Screenshot after encryption taken"
           
           if [ ! -f "test.txt.enc" ]; then
             echo "Encryption failed"
@@ -278,11 +273,11 @@ jobs:
           fi
           
           rm test.txt
-          
+
           echo "Closing and restarting the application for decryption"
           xdotool windowclose $WINDOW_ID
           ./build/EncryptionApp &
-          sleep 5
+          sleep 10
           
           echo "Searching for application window for decryption"
           WINDOW_ID=$(xdotool search --name "Open Encryption UI" | head -n 1)
@@ -298,9 +293,8 @@ jobs:
             scrot 'screenshots/window_activation_failed_for_decryption.png'
             exit 1
           }
-          
+
           scrot 'screenshots/before_decryption.png'
-          echo "Screenshot before decryption taken"
           
           xdotool key Tab
           xdotool type "$(pwd)/test.txt.enc"
@@ -308,10 +302,9 @@ jobs:
           xdotool type "testpassword"
           xdotool key Tab Tab Tab Tab Tab Tab Tab Tab
           xdotool key Return
-          
+
           sleep 5
           scrot 'screenshots/after_decryption.png'
-          echo "Screenshot after decryption taken"
           
           if [ ! -f "test.txt" ] || [ "$(cat test.txt)" != "test" ]; then
             echo "Decryption failed"
