@@ -218,8 +218,8 @@ jobs:
         if: matrix.os == 'macos-latest'
         run: |
           cmake --build build --target all
-          xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" cd build
-          xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" ctest --verbose
+          cd build
+          ctest --verbose
 
       - name: Run tests (Windows)
         if: matrix.os == 'windows-latest'
