@@ -212,8 +212,14 @@ jobs:
         id: run_tests
         if: matrix.os == 'ubuntu-latest'
         run: |
-          set -e  # Exit immediately if a command exits with a non-zero status
+          set -x  # Print each command for debugging
           
+          log_and_screenshot() {
+            echo "$1"
+            scrot "screenshots/$(printf %02d $2)_$3.png"
+            sleep 2
+          }
+
           prepare_screenshots() {
             echo "Preparing screenshots..."
             artifact_name="linux-screenshots-$(date +%s)"
@@ -243,65 +249,59 @@ jobs:
           export QT_XCB_DEBUG=1
           export XDG_RUNTIME_DIR=/tmp/runtime-runner
 
-          echo "Starting the application"
-          ./build/EncryptionApp &
+          log_and_screenshot "Starting the application" 1 "before_start"
+          ./build/EncryptionApp > app_output.log 2>&1 &
           APP_PID=$!
           sleep 10
 
-          # Capture initial screenshot
-          scrot 'screenshots/01_initial.png'
+          log_and_screenshot "Application started" 2 "after_start"
 
           # Get window information
           WINDOW_ID=$(xdotool search --name "Open Encryption UI" | head -n 1)
+          if [ -z "$WINDOW_ID" ]; then
+            echo "Failed to find application window"
+            cat app_output.log
+            exit 1
+          fi
           echo "Window ID: $WINDOW_ID"
           xwininfo -id $WINDOW_ID
           xprop -id $WINDOW_ID
 
-          # Try to focus the window
-          wmctrl -i -a $WINDOW_ID
-          xdotool windowfocus $WINDOW_ID
-          xdotool windowactivate $WINDOW_ID
+          log_and_screenshot "Window info gathered" 3 "window_info"
 
-          # Capture after focus screenshot
-          scrot 'screenshots/02_after_focus.png'
-
-          echo "Attempting to input file path using xdotool"
+          # Try to send keystrokes directly to the window
+          echo "Attempting to input file path"
+          xdotool key --window $WINDOW_ID Tab
           xdotool type --window $WINDOW_ID "$(pwd)/test.txt"
-          sleep 2
-          scrot 'screenshots/03_after_xdotool_type.png'
+          
+          log_and_screenshot "After file path input" 4 "after_file_path"
 
-          echo "Attempting to input file path using xte"
-          xte "str $(pwd)/test.txt"
-          sleep 2
-          scrot 'screenshots/04_after_xte_type.png'
-
-          echo "Attempting key presses using xdotool"
+          echo "Attempting to input password"
           xdotool key --window $WINDOW_ID Tab Tab
           xdotool type --window $WINDOW_ID "testpassword"
-          xdotool key --window $WINDOW_ID Tab Tab Tab Tab Tab Tab Tab
-          sleep 2
-          scrot 'screenshots/05_after_xdotool_keys.png'
-
-          echo "Attempting key presses using xte"
-          xte 'key Tab' 'key Tab' "str testpassword" 'key Tab' 'key Tab' 'key Tab' 'key Tab' 'key Tab' 'key Tab' 'key Tab'
-          sleep 2
-          scrot 'screenshots/06_after_xte_keys.png'
+          
+          log_and_screenshot "After password input" 5 "after_password"
 
           echo "Attempting to click Encrypt button"
-          xdotool click --window $WINDOW_ID 1
+          xdotool key --window $WINDOW_ID Tab Tab Tab Tab Tab Tab Tab
+          xdotool key --window $WINDOW_ID Return
           sleep 5
-          scrot 'screenshots/07_after_encrypt_click.png'
+          
+          log_and_screenshot "After encrypt click" 6 "after_encrypt_click"
 
           if [ -f "test.txt.enc" ]; then
             echo "Encryption successful"
           else
             echo "Encryption failed"
+            cat app_output.log
           fi
 
-          # Capture final screenshot
-          scrot 'screenshots/08_final.png'
+          log_and_screenshot "Test completed" 7 "final"
 
-          echo "Test completed"
+          echo "Killing application"
+          kill $APP_PID
+
+          echo "Test script completed"
 
       - name: Upload screenshots and logs
         if: always() && matrix.os == 'ubuntu-latest'
