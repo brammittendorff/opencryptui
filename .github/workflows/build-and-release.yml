@@ -206,7 +206,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb x11-utils xdotool scrot libxcb-xinerama0 libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-xfixes0 libxcb-xkb1
+          sudo apt-get install -y xvfb x11-utils scrot libxcb-xinerama0 xautomation x11-apps
 
       - name: Run GUI tests and capture screenshots (Linux)
         id: run_tests
@@ -244,97 +244,78 @@ jobs:
           export XDG_RUNTIME_DIR=/tmp/runtime-runner
 
           echo "Starting the application"
-          timeout 30s ./build/EncryptionApp > app_output.log 2>&1 &
+          ./build/EncryptionApp &
           APP_PID=$!
 
-          # Wait for the application to start or timeout
-          for i in {1..30}; do
-            if xdotool search --name "Open Encryption UI" >/dev/null 2>&1; then
-              break
-            fi
-            if ! ps -p $APP_PID > /dev/null; then
-              echo "Application crashed. Check app_output.log for details."
-              cat app_output.log
-              scrot 'screenshots/app_crash.png'
-              exit 1
-            fi
-            sleep 1
-          done
+          # Wait for the application to start
+          sleep 10
 
-          echo "Searching for application window"
-          WINDOW_ID=$(xdotool search --name "Open Encryption UI" | head -n 1)
-          if [ -z "$WINDOW_ID" ]; then
-            echo "Failed to find application window"
-            scrot 'screenshots/window_not_found.png'
-            cat app_output.log
-            exit 1
-          fi
-          
-          echo "Found window ID: $WINDOW_ID"
-          xdotool windowactivate --sync $WINDOW_ID || {
-            echo "Window activation failed"
-            scrot 'screenshots/window_activation_failed.png'
-            exit 1
-          }
+          # Capture initial screenshot
+          xwd -root -silent | convert xwd:- png:screenshots/initial.png
 
-          scrot 'screenshots/initial.png'
-          
           echo "Starting encryption process"
-          xdotool windowactivate --sync $WINDOW_ID key Tab
-          xdotool type "$(pwd)/test.txt"
-          xdotool key Tab Tab
-          xdotool type "testpassword"
-          xdotool key Tab Tab Tab Tab Tab Tab Tab
+          xte 'key Tab'
+          xte "str $(pwd)/test.txt"
+          xte 'key Tab'
+          xte 'key Tab'
+          xte "str testpassword"
+          xte 'key Tab'
+          xte 'key Tab'
+          xte 'key Tab'
+          xte 'key Tab'
+          xte 'key Tab'
+          xte 'key Tab'
+          xte 'key Tab'
 
-          scrot 'screenshots/before_encryption.png'
+          # Capture before encryption screenshot
+          xwd -root -silent | convert xwd:- png:screenshots/before_encryption.png
 
-          xdotool key Return
+          xte 'key Return'
           sleep 5
-          scrot 'screenshots/after_encryption.png'
+
+          # Capture after encryption screenshot
+          xwd -root -silent | convert xwd:- png:screenshots/after_encryption.png
           
           if [ ! -f "test.txt.enc" ]; then
             echo "Encryption failed"
-            scrot 'screenshots/encryption_failure.png'
+            xwd -root -silent | convert xwd:- png:screenshots/encryption_failure.png
             exit 1
           fi
           
           rm test.txt
 
           echo "Closing and restarting the application for decryption"
-          xdotool windowclose $WINDOW_ID
+          kill $APP_PID
           ./build/EncryptionApp &
+          APP_PID=$!
           sleep 10
-          
-          echo "Searching for application window for decryption"
-          WINDOW_ID=$(xdotool search --name "Open Encryption UI" | head -n 1)
-          if [ -z "$WINDOW_ID" ]; then
-            echo "Failed to find application window for decryption"
-            scrot 'screenshots/window_not_found_for_decryption.png'
-            exit 1
-          fi
 
-          echo "Found window ID: $WINDOW_ID"
-          xdotool windowactivate --sync $WINDOW_ID || {
-            echo "Window activation failed for decryption"
-            scrot 'screenshots/window_activation_failed_for_decryption.png'
-            exit 1
-          }
-
-          scrot 'screenshots/before_decryption.png'
+          # Capture before decryption screenshot
+          xwd -root -silent | convert xwd:- png:screenshots/before_decryption.png
           
-          xdotool key Tab
-          xdotool type "$(pwd)/test.txt.enc"
-          xdotool key Tab Tab
-          xdotool type "testpassword"
-          xdotool key Tab Tab Tab Tab Tab Tab Tab Tab
-          xdotool key Return
+          xte 'key Tab'
+          xte "str $(pwd)/test.txt.enc"
+          xte 'key Tab'
+          xte 'key Tab'
+          xte "str testpassword"
+          xte 'key Tab'
+          xte 'key Tab'
+          xte 'key Tab'
+          xte 'key Tab'
+          xte 'key Tab'
+          xte 'key Tab'
+          xte 'key Tab'
+          xte 'key Tab'
+          xte 'key Return'
 
           sleep 5
-          scrot 'screenshots/after_decryption.png'
+
+          # Capture after decryption screenshot
+          xwd -root -silent | convert xwd:- png:screenshots/after_decryption.png
           
           if [ ! -f "test.txt" ] || [ "$(cat test.txt)" != "test" ]; then
             echo "Decryption failed"
-            scrot 'screenshots/decryption_failure.png'
+            xwd -root -silent | convert xwd:- png:screenshots/decryption_failure.png
             exit 1
           fi
           
