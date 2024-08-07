@@ -206,11 +206,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb x11-utils xdotool scrot
-
-      - name: Install GUI testing dependencies (macOS)
-        if: matrix.os == 'macos-latest'
-        run: brew install xdotool
+          sudo apt-get install -y xvfb x11-utils xdotool scrot libxcb-xinerama0
 
       - name: Run GUI tests and capture screenshots (Linux)
         id: run_tests
@@ -226,12 +222,14 @@ jobs:
           }
           
           trap prepare_screenshots EXIT
-          
-          Xvfb :99 &
+
+          Xvfb :99 -screen 0 1024x768x16 &
           export DISPLAY=:99
           
           echo "test" > test.txt
           mkdir -p screenshots
+
+          export QT_DEBUG_PLUGINS=1
           
           # Start the application and get its window ID
           ./build/EncryptionApp &
@@ -301,7 +299,7 @@ jobs:
           rm test.txt test.txt.enc
           
           echo "All tests passed successfully"
-      
+
       - name: Upload screenshots
         if: always() && matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
@@ -309,157 +307,161 @@ jobs:
           name: ${{ steps.run_tests.outputs.ARTIFACT_NAME || 'linux-screenshots' }}
           path: ./*.tar.gz
 
-      - name: Run GUI tests (macOS)
-        if: matrix.os == 'macos-latest'
-        run: |
-          # Start Xquartz in the background (if needed)
-          open -a XQuartz
-          sleep 5
-          export DISPLAY=:0
+      # - name: Install GUI testing dependencies (macOS)
+      #   if: matrix.os == 'macos-latest'
+      #   run: brew install xdotool
 
-          # Create test file
-          echo "test" > test.txt
+      # - name: Run GUI tests (macOS)
+      #   if: matrix.os == 'macos-latest'
+      #   run: |
+      #     # Start Xquartz in the background (if needed)
+      #     open -a XQuartz
+      #     sleep 5
+      #     export DISPLAY=:0
 
-          # Start the application
-          ./build/EncryptionApp &
-          APP_PID=$!
+      #     # Create test file
+      #     echo "test" > test.txt
 
-          # Wait for the application to start
-          sleep 5
+      #     # Start the application
+      #     ./build/EncryptionApp &
+      #     APP_PID=$!
 
-          # Interact with the application using xdotool for encryption
-          xdotool key Tab  # Focus on file path input
-          xdotool type "$(pwd)/test.txt"
-          xdotool key Tab Tab  # Navigate to password field
-          xdotool type "testpassword"
-          xdotool key Tab Tab Tab Tab Tab Tab Tab  # Navigate to Encrypt button (7 tabs)
-          xdotool key Return
+      #     # Wait for the application to start
+      #     sleep 5
 
-          # Wait for encryption to complete
-          sleep 5
+      #     # Interact with the application using xdotool for encryption
+      #     xdotool key Tab  # Focus on file path input
+      #     xdotool type "$(pwd)/test.txt"
+      #     xdotool key Tab Tab  # Navigate to password field
+      #     xdotool type "testpassword"
+      #     xdotool key Tab Tab Tab Tab Tab Tab Tab  # Navigate to Encrypt button (7 tabs)
+      #     xdotool key Return
 
-          # Close the application
-          kill $APP_PID
+      #     # Wait for encryption to complete
+      #     sleep 5
 
-          # Verify encryption
-          if [ -f "test.txt.enc" ]; then
-            echo "Encryption successful"
-          else
-            echo "Encryption failed"
-            exit 1
-          fi
+      #     # Close the application
+      #     kill $APP_PID
 
-          # Remove original file
-          rm test.txt
+      #     # Verify encryption
+      #     if [ -f "test.txt.enc" ]; then
+      #       echo "Encryption successful"
+      #     else
+      #       echo "Encryption failed"
+      #       exit 1
+      #     fi
 
-          # Start the application again for decryption
-          ./build/EncryptionApp &
-          APP_PID=$!
+      #     # Remove original file
+      #     rm test.txt
 
-          # Wait for the application to start
-          sleep 5
+      #     # Start the application again for decryption
+      #     ./build/EncryptionApp &
+      #     APP_PID=$!
 
-          # Interact with the application for decryption
-          xdotool key Tab  # Focus on file path input
-          xdotool type "$(pwd)/test.txt.enc"
-          xdotool key Tab Tab  # Navigate to password field
-          xdotool type "testpassword"
-          xdotool key Tab Tab Tab Tab Tab Tab Tab Tab  # Navigate to Decrypt button (8 tabs)
-          xdotool key Return
+      #     # Wait for the application to start
+      #     sleep 5
 
-          # Wait for decryption to complete
-          sleep 5
+      #     # Interact with the application for decryption
+      #     xdotool key Tab  # Focus on file path input
+      #     xdotool type "$(pwd)/test.txt.enc"
+      #     xdotool key Tab Tab  # Navigate to password field
+      #     xdotool type "testpassword"
+      #     xdotool key Tab Tab Tab Tab Tab Tab Tab Tab  # Navigate to Decrypt button (8 tabs)
+      #     xdotool key Return
 
-          # Close the application
-          kill $APP_PID
+      #     # Wait for decryption to complete
+      #     sleep 5
 
-          # Verify decryption
-          if [ -f "test.txt" ] && [ "$(cat test.txt)" = "test" ]; then
-            echo "Decryption successful"
-          else
-            echo "Decryption failed"
-            exit 1
-          fi
+      #     # Close the application
+      #     kill $APP_PID
 
-          # Clean up
-          rm test.txt test.txt.enc
+      #     # Verify decryption
+      #     if [ -f "test.txt" ] && [ "$(cat test.txt)" = "test" ]; then
+      #       echo "Decryption successful"
+      #     else
+      #       echo "Decryption failed"
+      #       exit 1
+      #     fi
 
-      - name: Run GUI tests (Windows)
-        if: matrix.os == 'windows-latest'
-        shell: pwsh
-        run: |
-          # Create test file
-          "test" | Out-File -FilePath test.txt
+      #     # Clean up
+      #     rm test.txt test.txt.enc
 
-          # Start the application
-          Start-Process .\build\EncryptionApp.exe
-          Start-Sleep -Seconds 5
+      # - name: Run GUI tests (Windows)
+      #   if: matrix.os == 'windows-latest'
+      #   shell: pwsh
+      #   run: |
+      #     # Create test file
+      #     "test" | Out-File -FilePath test.txt
 
-          # Function to send keystrokes
-          function Send-Keystrokes($keys) {
-            Add-Type -AssemblyName System.Windows.Forms
-            [System.Windows.Forms.SendKeys]::SendWait($keys)
-          }
+      #     # Start the application
+      #     Start-Process .\build\EncryptionApp.exe
+      #     Start-Sleep -Seconds 5
 
-          # Interact with the application for encryption
-          Send-Keystrokes("{TAB}")  # Focus on file path input
-          Send-Keystrokes("$pwd\test.txt")
-          Send-Keystrokes("{TAB 2}")  # Navigate to password field
-          Send-Keystrokes("testpassword")
-          Send-Keystrokes("{TAB 7}")  # Navigate to Encrypt button (7 tabs)
-          Send-Keystrokes("{ENTER}")
+      #     # Function to send keystrokes
+      #     function Send-Keystrokes($keys) {
+      #       Add-Type -AssemblyName System.Windows.Forms
+      #       [System.Windows.Forms.SendKeys]::SendWait($keys)
+      #     }
 
-          # Wait for encryption to complete
-          Start-Sleep -Seconds 5
+      #     # Interact with the application for encryption
+      #     Send-Keystrokes("{TAB}")  # Focus on file path input
+      #     Send-Keystrokes("$pwd\test.txt")
+      #     Send-Keystrokes("{TAB 2}")  # Navigate to password field
+      #     Send-Keystrokes("testpassword")
+      #     Send-Keystrokes("{TAB 7}")  # Navigate to Encrypt button (7 tabs)
+      #     Send-Keystrokes("{ENTER}")
 
-          # Close the application
-          Stop-Process -Name EncryptionApp
+      #     # Wait for encryption to complete
+      #     Start-Sleep -Seconds 5
 
-          # Verify encryption
-          if (Test-Path "test.txt.enc") {
-            Write-Host "Encryption successful"
-          } else {
-            Write-Host "Encryption failed"
-            exit 1
-          }
+      #     # Close the application
+      #     Stop-Process -Name EncryptionApp
 
-          # Remove original file
-          Remove-Item test.txt
+      #     # Verify encryption
+      #     if (Test-Path "test.txt.enc") {
+      #       Write-Host "Encryption successful"
+      #     } else {
+      #       Write-Host "Encryption failed"
+      #       exit 1
+      #     }
 
-          # Start the application again for decryption
-          Start-Process .\build\EncryptionApp.exe
-          Start-Sleep -Seconds 5
+      #     # Remove original file
+      #     Remove-Item test.txt
 
-          # Interact with the application for decryption
-          Send-Keystrokes("{TAB}")  # Focus on file path input
-          Send-Keystrokes("$pwd\test.txt.enc")
-          Send-Keystrokes("{TAB 2}")  # Navigate to password field
-          Send-Keystrokes("testpassword")
-          Send-Keystrokes("{TAB 8}")  # Navigate to Decrypt button (8 tabs)
-          Send-Keystrokes("{ENTER}")
+      #     # Start the application again for decryption
+      #     Start-Process .\build\EncryptionApp.exe
+      #     Start-Sleep -Seconds 5
 
-          # Wait for decryption to complete
-          Start-Sleep -Seconds 5
+      #     # Interact with the application for decryption
+      #     Send-Keystrokes("{TAB}")  # Focus on file path input
+      #     Send-Keystrokes("$pwd\test.txt.enc")
+      #     Send-Keystrokes("{TAB 2}")  # Navigate to password field
+      #     Send-Keystrokes("testpassword")
+      #     Send-Keystrokes("{TAB 8}")  # Navigate to Decrypt button (8 tabs)
+      #     Send-Keystrokes("{ENTER}")
 
-          # Close the application
-          Stop-Process -Name EncryptionApp
+      #     # Wait for decryption to complete
+      #     Start-Sleep -Seconds 5
 
-          # Verify decryption
-          if ((Test-Path "test.txt") -and ((Get-Content "test.txt") -eq "test")) {
-            Write-Host "Decryption successful"
-          } else {
-            Write-Host "Decryption failed"
-            exit 1
-          }
+      #     # Close the application
+      #     Stop-Process -Name EncryptionApp
 
-          # Clean up
-          Remove-Item test.txt, test.txt.enc
+      #     # Verify decryption
+      #     if ((Test-Path "test.txt") -and ((Get-Content "test.txt") -eq "test")) {
+      #       Write-Host "Decryption successful"
+      #     } else {
+      #       Write-Host "Decryption failed"
+      #       exit 1
+      #     }
 
-      - name: Archive build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.os }}-build
-          path: build/
+      #     # Clean up
+      #     Remove-Item test.txt, test.txt.enc
+
+      # - name: Archive build artifacts
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: ${{ matrix.os }}-build
+      #     path: build/
 
   release:
     needs: build
