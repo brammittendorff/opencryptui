@@ -131,23 +131,7 @@ jobs:
             -DCMAKE_MODULE_PATH="${{ env.CMAKE_MODULE_PATH }}" \
             -DQt5_DIR="${{ env.Qt5_DIR }}"
 
-      - name: Configure CMake for macOS/Linux
-        if: matrix.os != 'windows-latest'
-        shell: bash
-        run: |
-          cmake -S . -B build -G Ninja
-
-      - name: Configure CMake for Tests
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          cmake -S . -B build -G Ninja -DBUILD_TESTING=ON
-
-      - name: Configure CMake for Tests (macOS)
-        if: matrix.os == 'macos-latest'
-        run: |
-          cmake -S . -B build -G Ninja -DBUILD_TESTING=ON
-
-      - name: Configure CMake for Tests (Windows)
+      - name: Configure CMake for Windows
         if: matrix.os == 'windows-latest'
         shell: msys2 {0}
         run: |
@@ -158,8 +142,13 @@ jobs:
             -DOPENSSL_SSL_LIBRARY="${{ env.OPENSSL_SSL_LIBRARY }}" \
             -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}" \
             -DCMAKE_MODULE_PATH="${{ env.CMAKE_MODULE_PATH }}" \
-            -DQt5_DIR="${{ env.Qt5_DIR }}" \
-            -DBUILD_TESTING=ON
+            -DQt5_DIR="${{ env.Qt5_DIR }}"
+
+      - name: Configure CMake for macOS/Linux
+        if: matrix.os != 'windows-latest'
+        shell: bash
+        run: |
+          cmake -S . -B build -G Ninja
 
       - name: Build for Windows
         if: matrix.os == 'windows-latest'
