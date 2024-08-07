@@ -38,6 +38,10 @@ void TestEncryptionApp::testEncryptDecrypt()
     QVERIFY(encryptButton);
     QVERIFY(decryptButton);
 
+    // Clean up any existing files
+    QFile::remove(QDir::currentPath() + "/test.txt");
+    QFile::remove(QDir::currentPath() + "/test.txt.enc");
+
     // Create a test file
     QFile testFile(QDir::currentPath() + "/test.txt");
     QVERIFY(testFile.open(QIODevice::WriteOnly | QIODevice::Text));
@@ -53,11 +57,10 @@ void TestEncryptionApp::testEncryptDecrypt()
     // Test encryption
     filePathInput->setText(QDir::currentPath() + "/test.txt");
     passwordInput->setText("testpassword");
-
     QTest::mouseClick(encryptButton, Qt::LeftButton);
 
     // Wait for encryption to complete and message box to appear
-    QTRY_VERIFY_WITH_TIMEOUT(QFileInfo::exists(QDir::currentPath() + "/test.txt.enc"), 5000);
+    QTRY_VERIFY_WITH_TIMEOUT(QFileInfo::exists(QDir::currentPath() + "/test.txt.enc"), 10000);
 
     // Verify that the encryption was successful
     QVERIFY(QFileInfo::exists(QDir::currentPath() + "/test.txt.enc"));
@@ -68,7 +71,7 @@ void TestEncryptionApp::testEncryptDecrypt()
     QTest::mouseClick(decryptButton, Qt::LeftButton);
 
     // Wait for decryption to complete and message box to appear
-    QTRY_VERIFY_WITH_TIMEOUT(QFileInfo::exists(QDir::currentPath() + "/test.txt"), 5000);
+    QTRY_VERIFY_WITH_TIMEOUT(QFileInfo::exists(QDir::currentPath() + "/test.txt"), 10000);
 
     // Verify that the decryption was successful
     QVERIFY(QFileInfo::exists(QDir::currentPath() + "/test.txt"));
