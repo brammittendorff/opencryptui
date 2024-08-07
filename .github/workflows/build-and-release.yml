@@ -206,7 +206,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb x11-utils xdotool scrot libxcb-xinerama0 xautomation x11-apps wmctrl
+          sudo apt-get install -y xvfb x11-utils xdotool scrot libxcb-xinerama0 x11-apps wmctrl x11-xserver-utils
 
       - name: Run GUI tests and capture screenshots (Linux)
         id: run_tests
@@ -216,7 +216,7 @@ jobs:
           
           log_and_screenshot() {
             echo "$1"
-            scrot "screenshots/$(printf %02d $2)_$3.png"
+            DISPLAY=:99 import -window root "screenshots/$(printf %02d $2)_$3.png"
             sleep 2
           }
 
@@ -229,8 +229,8 @@ jobs:
           
           trap prepare_screenshots EXIT
 
-          # Start Xvfb
-          Xvfb :99 -screen 0 1024x768x24 &
+          # Start Xvfb with XTEST extension
+          Xvfb :99 -ac -screen 0 1024x768x24 +extension XTEST &
           sleep 5  # Wait for Xvfb to start
           export DISPLAY=:99
 
@@ -267,26 +267,30 @@ jobs:
           xwininfo -id $WINDOW_ID
           xprop -id $WINDOW_ID
 
+          # Debug: Check current focus
+          xdotool getactivewindow getwindowname
+
           log_and_screenshot "Window info gathered" 3 "window_info"
 
-          # Try to send keystrokes directly to the window
-          echo "Attempting to input file path"
-          xdotool key --window $WINDOW_ID Tab
-          xdotool type --window $WINDOW_ID "$(pwd)/test.txt"
+          # Use XTEST to send keystrokes
+          xdotool windowfocus --sync $WINDOW_ID
+          xdotool key --window $WINDOW_ID --delay 100 Tab
+          xdotool type --window $WINDOW_ID --delay 100 "$(pwd)/test.txt"
           
           log_and_screenshot "After file path input" 4 "after_file_path"
 
-          echo "Attempting to input password"
-          xdotool key --window $WINDOW_ID Tab Tab
-          xdotool type --window $WINDOW_ID "testpassword"
+          xdotool key --window $WINDOW_ID --delay 100 Tab Tab
+          xdotool type --window $WINDOW_ID --delay 100 "testpassword"
           
           log_and_screenshot "After password input" 5 "after_password"
 
-          echo "Attempting to click Encrypt button"
-          xdotool key --window $WINDOW_ID Tab Tab Tab Tab Tab Tab Tab
-          xdotool key --window $WINDOW_ID Return
-          sleep 5
+          # Navigate to Encrypt button and click
+          for i in {1..7}; do
+            xdotool key --window $WINDOW_ID --delay 100 Tab
+          done
+          xdotool key --window $WINDOW_ID --delay 100 Return
           
+          sleep 5
           log_and_screenshot "After encrypt click" 6 "after_encrypt_click"
 
           if [ -f "test.txt.enc" ]; then
