@@ -223,31 +223,40 @@ jobs:
           
           trap prepare_screenshots EXIT
 
+          # Start Xvfb and set DISPLAY
           Xvfb :99 -screen 0 1024x768x16 &
           export DISPLAY=:99
+          echo "Xvfb started and DISPLAY set to :99"
           
+          echo "Creating test file"
           echo "test" > test.txt
           mkdir -p screenshots
 
           export QT_DEBUG_PLUGINS=1
           
-          # Start the application and get its window ID
+          echo "Starting the application"
           ./build/EncryptionApp &
           sleep 5  # Wait for the application to start
           
+          echo "Searching for application window"
           WINDOW_ID=$(xdotool search --name "Open Encryption UI" | head -n 1)
           if [ -z "$WINDOW_ID" ]; then
             echo "Failed to find application window"
             scrot 'screenshots/window_not_found.png'
             exit 1
           fi
-          
+
           echo "Found window ID: $WINDOW_ID"
-          xdotool windowactivate --sync $WINDOW_ID
-          
+          xdotool windowactivate --sync $WINDOW_ID || {
+            echo "Window activation failed"
+            scrot 'screenshots/window_activation_failed.png'
+            exit 1
+          }
+
           scrot 'screenshots/initial.png'
+          echo "Initial screenshot taken"
           
-          # Encryption process
+          echo "Starting encryption process"
           xdotool windowactivate --sync $WINDOW_ID key Tab
           xdotool type "$(pwd)/test.txt"
           xdotool key Tab Tab
@@ -255,12 +264,13 @@ jobs:
           xdotool key Tab Tab Tab Tab Tab Tab Tab
           
           scrot 'screenshots/before_encryption.png'
+          echo "Screenshot before encryption taken"
           
           xdotool key Return
           sleep 5
           scrot 'screenshots/after_encryption.png'
+          echo "Screenshot after encryption taken"
           
-          # Verify encryption
           if [ ! -f "test.txt.enc" ]; then
             echo "Encryption failed"
             scrot 'screenshots/encryption_failure.png'
@@ -269,15 +279,28 @@ jobs:
           
           rm test.txt
           
-          # Close and restart the application for decryption
+          echo "Closing and restarting the application for decryption"
           xdotool windowclose $WINDOW_ID
           ./build/EncryptionApp &
           sleep 5
           
+          echo "Searching for application window for decryption"
           WINDOW_ID=$(xdotool search --name "Open Encryption UI" | head -n 1)
-          xdotool windowactivate --sync $WINDOW_ID
+          if [ -z "$WINDOW_ID" ]; then
+            echo "Failed to find application window for decryption"
+            scrot 'screenshots/window_not_found_for_decryption.png'
+            exit 1
+          fi
+
+          echo "Found window ID: $WINDOW_ID"
+          xdotool windowactivate --sync $WINDOW_ID || {
+            echo "Window activation failed for decryption"
+            scrot 'screenshots/window_activation_failed_for_decryption.png'
+            exit 1
+          }
           
           scrot 'screenshots/before_decryption.png'
+          echo "Screenshot before decryption taken"
           
           xdotool key Tab
           xdotool type "$(pwd)/test.txt.enc"
@@ -288,8 +311,8 @@ jobs:
           
           sleep 5
           scrot 'screenshots/after_decryption.png'
+          echo "Screenshot after decryption taken"
           
-          # Verify decryption
           if [ ! -f "test.txt" ] || [ "$(cat test.txt)" != "test" ]; then
             echo "Decryption failed"
             scrot 'screenshots/decryption_failure.png'
@@ -306,6 +329,7 @@ jobs:
         with:
           name: ${{ steps.run_tests.outputs.ARTIFACT_NAME || 'linux-screenshots' }}
           path: ./*.tar.gz
+
 
       # - name: Install GUI testing dependencies (macOS)
       #   if: matrix.os == 'macos-latest'
