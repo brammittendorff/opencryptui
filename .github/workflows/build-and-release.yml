@@ -73,6 +73,7 @@ jobs:
             cmake
             gcc
             mingw-w64-x86_64-ntldd
+            git
 
       - name: Find Qt5 CMake directory
         if: matrix.os == 'windows-latest'
