@@ -167,15 +167,15 @@ jobs:
           fi
           echo "ntldd.exe found at $NTLDD_PATH"
       
-          echo "Checking if build/EncryptionApp.exe exists..."
-          if [ ! -f "build/EncryptionApp.exe" ]; then
-              echo "build/EncryptionApp.exe not found!"
+          echo "Checking if build/OpenCryptUI.exe exists..."
+          if [ ! -f "build/OpenCryptUI.exe" ]; then
+              echo "build/OpenCryptUI.exe not found!"
               exit 1
           fi
       
           echo "Running ntldd and capturing DLLs..."
           DLL_PATHS=$(mktemp)
-          "$NTLDD_PATH" -R build/EncryptionApp.exe | while IFS= read -r line
+          "$NTLDD_PATH" -R build/OpenCryptUI.exe | while IFS= read -r line
           do
               if [[ "$line" =~ [A-Za-z]:\\[^[:space:]]+\.dll ]]; then
                   dll_path="${BASH_REMATCH[0]}"

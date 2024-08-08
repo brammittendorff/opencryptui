@@ -9,7 +9,7 @@
 #include <QTimer>
 #include <QWindow>
 
-class TestEncryptionApp : public QObject
+class TestOpenCryptUI : public QObject
 {
     Q_OBJECT
 
@@ -21,7 +21,7 @@ private:
     QTimer *messageBoxTimer;
 };
 
-void TestEncryptionApp::testEncryptDecrypt()
+void TestOpenCryptUI::testEncryptDecrypt()
 {
     MainWindow mainWindow;
     mainWindow.show();
@@ -53,7 +53,7 @@ void TestEncryptionApp::testEncryptDecrypt()
 
     // Set up for message box handling
     messageBoxTimer = new QTimer(this);
-    connect(messageBoxTimer, &QTimer::timeout, this, &TestEncryptionApp::closeMessageBoxes);
+    connect(messageBoxTimer, &QTimer::timeout, this, &TestOpenCryptUI::closeMessageBoxes);
     messageBoxTimer->start(1000);
 
     filePathInput->setText(testFilePath);
@@ -93,7 +93,7 @@ void TestEncryptionApp::testEncryptDecrypt()
     messageBoxTimer->stop();
 }
 
-void TestEncryptionApp::closeMessageBoxes()
+void TestOpenCryptUI::closeMessageBoxes()
 {
     foreach (QWidget *widget, QApplication::topLevelWidgets()) {
         if (widget->isVisible()) {
@@ -121,5 +121,5 @@ void TestEncryptionApp::closeMessageBoxes()
     qDebug() << "No QMessageBox found";
 }
 
-QTEST_MAIN(TestEncryptionApp)
+QTEST_MAIN(TestOpenCryptUI)
 #include "test_encryption_app.moc"

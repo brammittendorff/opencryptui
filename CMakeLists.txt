@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-project(EncryptionApp LANGUAGES CXX)
+project(OpenCryptUI LANGUAGES CXX)
 
 # Enable position-independent code globally
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -105,12 +105,12 @@ target_link_libraries(EncryptionLib PRIVATE
 )
 
 # Create the main executable and link against the library
-add_executable(EncryptionApp WIN32 src/main.cpp)
-set_target_properties(EncryptionApp PROPERTIES POSITION_INDEPENDENT_CODE ON)
+add_executable(OpenCryptUI WIN32 src/main.cpp)
+set_target_properties(OpenCryptUI PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-target_compile_options(EncryptionApp PRIVATE -fPIC)
+target_compile_options(OpenCryptUI PRIVATE -fPIC)
 
-target_include_directories(EncryptionApp PRIVATE 
+target_include_directories(OpenCryptUI PRIVATE 
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/ui
@@ -120,7 +120,7 @@ target_include_directories(EncryptionApp PRIVATE
     ${OPENSSL_INCLUDE_DIR}
 )
 
-target_link_libraries(EncryptionApp PRIVATE EncryptionLib)
+target_link_libraries(OpenCryptUI PRIVATE EncryptionLib)
 
 # Add test source
 set(TEST_SOURCES
@@ -128,12 +128,12 @@ set(TEST_SOURCES
 )
 
 # Create test executable
-add_executable(EncryptionAppTest ${TEST_SOURCES})
-set_target_properties(EncryptionAppTest PROPERTIES POSITION_INDEPENDENT_CODE ON)
+add_executable(OpenCryptUITest ${TEST_SOURCES})
+set_target_properties(OpenCryptUITest PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-target_compile_options(EncryptionAppTest PRIVATE -fPIC)
+target_compile_options(OpenCryptUITest PRIVATE -fPIC)
 
-target_include_directories(EncryptionAppTest PRIVATE 
+target_include_directories(OpenCryptUITest PRIVATE 
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/ui
@@ -143,7 +143,7 @@ target_include_directories(EncryptionAppTest PRIVATE
     ${OPENSSL_INCLUDE_DIR}
 )
 
-target_link_libraries(EncryptionAppTest PRIVATE 
+target_link_libraries(OpenCryptUITest PRIVATE 
     EncryptionLib
     Qt5::Core
     Qt5::Gui
@@ -159,7 +159,7 @@ target_link_libraries(EncryptionAppTest PRIVATE
 
 # Add test to CTest
 enable_testing()
-add_test(NAME EncryptionAppTest COMMAND EncryptionAppTest)
+add_test(NAME OpenCryptUITest COMMAND OpenCryptUITest)
 
 # Print paths for debugging
 message(STATUS "Qt5_DIR: ${Qt5_DIR}")

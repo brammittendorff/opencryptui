@@ -5,15 +5,17 @@ QMainWindow {
 }
 
 /* General widget background and text color */
-QLabel, QLineEdit, QComboBox, QSpinBox, QCheckBox, QPushButton, QTabWidget::pane, QTableWidget, QMenuBar, QMenu, QMenu::item, QStatusBar, QProgressBar {
+QLabel, QLineEdit, QComboBox, QSpinBox, QCheckBox, QPushButton, QTabWidget::pane, QTableWidget, QProgressBar, QDialog, QDialogButtonBox {
     background-color: #2d2d2d;
     color: #d3d3d3;
+    padding: 5px;
 }
 
 /* LineEdit, ComboBox, SpinBox, CheckBox, and PushButton borders and padding */
 QLineEdit, QComboBox, QSpinBox, QCheckBox, QPushButton {
     border: 1px solid #555555;
-    padding: 2px;
+    padding: 5px;
+    border-radius: 5px;
 }
 
 /* ProgressBar styling */
@@ -22,16 +24,45 @@ QProgressBar {
     border: 1px solid #555555;
     color: #d3d3d3;
     text-align: center;
+    padding: 5px;
+    border-radius: 5px;
 }
 
 /* MenuBar, Menu, and Menu item styling */
-QMenuBar, QMenu, QMenu::item {
+QMenuBar {
     background-color: #2d2d2d;
+    color: #d3d3d3;
+    padding: 5px;
+    border-bottom: 1px solid #555555;
+}
+
+QMenuBar::item {
+    background-color: #2d2d2d;
+    color: #d3d3d3;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+QMenuBar::item:selected, QMenuBar::item:pressed, QMenuBar::item:hover {
+    background-color: #555555;
     color: #d3d3d3;
 }
 
-/* Selected Menu item styling */
-QMenu::item:selected {
+/* Menu item styling */
+QMenu {
+    background-color: #2d2d2d;
+    color: #d3d3d3;
+    padding: 10px;
+}
+
+QMenu::item {
+    background-color: #2d2d2d;
+    color: #d3d3d3;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+QMenu::item:selected, QMenu::item:hover {
     background-color: #555555;
     color: #d3d3d3;
 }
@@ -53,10 +84,20 @@ QTabBar::tab {
     background: #2d2d2d;
     color: #d3d3d3;
     padding: 10px;
+    border: 1px solid #555555;
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
 }
 
 QTabBar::tab:selected {
     background: #555555;
+    color: #d3d3d3;
+    border-bottom: 2px solid #d3d3d3;
+}
+
+QTabBar::tab:hover {
+    background: #444444;
+    color: #d3d3d3;
 }
 
 /* TableWidget header and item styling */
@@ -64,6 +105,7 @@ QHeaderView::section {
     background-color: #2d2d2d;
     color: #d3d3d3;
     border: 1px solid #555555;
+    padding: 5px;
 }
 
 QTableWidget {
@@ -74,6 +116,20 @@ QTableWidget::item {
     background-color: #2d2d2d;
     color: #d3d3d3;
     border: 1px solid #555555;
+    padding: 5px;
+}
+
+QTableWidget::item:selected {
+    background-color: #555555;
+    color: #d3d3d3;
+}
+
+/* ComboBox drop-down styling */
+QComboBox QAbstractItemView {
+    background-color: #2d2d2d;
+    color: #d3d3d3;
+    selection-background-color: #555555;
+    selection-color: #d3d3d3;
 }
 
 /* CustomListWidget styling */
@@ -81,4 +137,20 @@ CustomListWidget {
     background-color: #2d2d2d;
     color: #d3d3d3;
     border: 1px solid #555555;
+    padding: 5px;
+    border-radius: 5px;
+}
+
+/* Large Encrypt and Decrypt buttons */
+QPushButton#fileEncryptButton, QPushButton#fileDecryptButton, QPushButton#folderEncryptButton, QPushButton#folderDecryptButton {
+    font-size: 18px;
+    padding: 15px;
+    border: 2px solid #777777;
+    background-color: #444444;
+    border-radius: 10px;
+}
+
+QPushButton#fileEncryptButton:hover, QPushButton#fileDecryptButton:hover, QPushButton#folderEncryptButton:hover, QPushButton#folderDecryptButton:hover {
+    background-color: #555555;
+    border: 2px solid #888888;
 }

@@ -48,7 +48,7 @@ To build the project, follow these steps:
 
 5. Run the application:
    ```bash
-   ./EncryptionApp
+   ./OpenCryptUI
    ```
 
 ## Detailed Installation Instructions
@@ -63,7 +63,7 @@ For detailed installation instructions, please refer to the following:
 
 1. Launch the application:
    ```bash
-   ./EncryptionApp
+   ./OpenCryptUI
    ```
 
 2. Use the "File Encryption" tab to encrypt or decrypt individual files:

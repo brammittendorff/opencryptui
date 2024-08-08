@@ -79,7 +79,7 @@
    fi
 
    DLL_PATHS=$(mktemp)
-   "$NTLDD_PATH" -R build/EncryptionApp.exe | while IFS= read -r line
+   "$NTLDD_PATH" -R build/OpenCryptUI.exe | while IFS= read -r line
    do
      if [[ "$line" =~ [A-Za-z]:\\[^[:space:]]+\.dll ]]; then
        dll_path="${BASH_REMATCH[0]}"

@@ -424,7 +424,7 @@ void MainWindow::applyTheme(const QString &theme) {
 
 void MainWindow::loadPreferences()
 {
-    QString settingsDirPath = QDir::homePath() + "/.encryptionapp";
+    QString settingsDirPath = QDir::homePath() + "/.opencryptui";
     QString settingsFilePath = settingsDirPath + "/config.json";
 
     QDir settingsDir(settingsDirPath);
@@ -462,7 +462,7 @@ void MainWindow::loadPreferences()
 
 void MainWindow::savePreferences()
 {
-    QString settingsDirPath = QDir::homePath() + "/.encryptionapp";
+    QString settingsDirPath = QDir::homePath() + "/.opencryptui";
     QString settingsFilePath = settingsDirPath + "/config.json";
 
     QDir settingsDir(settingsDirPath);
