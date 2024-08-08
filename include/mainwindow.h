@@ -9,6 +9,11 @@
 #include "encryptionworker.h"
 #include <QThread>
 #include "customlistwidget.h"
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QFile>
+#include <QDir>
+
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -39,6 +44,11 @@ private slots:
     void showEstimatedTime(double seconds);
     void on_benchmarkButton_clicked();
 
+    // New slots for menu actions
+    void on_actionExit_triggered();
+    void on_actionPreferences_triggered();
+    void applyTheme(const QString &theme);
+
 private:
     Ui::MainWindow *ui;
     EncryptionEngine encryptionEngine;
@@ -46,7 +56,8 @@ private:
     QThread workerThread;
     EncryptionWorker *worker;
     static QTextStream* s_logStream;
-    bool m_signalsConnected;  // Add this line
+    bool m_signalsConnected;
+    QString currentTheme;
 
     void setupUI();
     void setupComboBoxes();
@@ -59,6 +70,9 @@ private:
     void updateBenchmarkTable(int iterations, double mbps, double ms, const QString &cipher, const QString &kdf);
 
     void safeConnect(const QObject* sender, const char* signal, const QObject* receiver, const char* method);
+
+    void loadPreferences();
+    void savePreferences();
 };
 
 #endif // MAINWINDOW_H

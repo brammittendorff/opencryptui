@@ -51,6 +51,9 @@ endif()
 # Add this line to set the UI file directory
 set(CMAKE_AUTOUIC_SEARCH_PATHS ${CMAKE_CURRENT_SOURCE_DIR}/ui)
 
+# Add the resources file
+qt5_add_resources(RESOURCES resources/resources.qrc)
+
 # Library sources
 set(LIBRARY_SOURCES
     src/mainwindow.cpp
@@ -66,6 +69,7 @@ set(LIBRARY_SOURCES
     src/customlistwidget.cpp
     include/customlistwidget.h
     ui/mainwindow.ui
+    ${RESOURCES}
 )
 
 # Create a library target for common code
@@ -101,7 +105,7 @@ target_link_libraries(EncryptionLib PRIVATE
 )
 
 # Create the main executable and link against the library
-add_executable(EncryptionApp src/main.cpp)
+add_executable(EncryptionApp WIN32 src/main.cpp)
 set_target_properties(EncryptionApp PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 target_compile_options(EncryptionApp PRIVATE -fPIC)

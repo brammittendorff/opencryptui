@@ -1,0 +1,84 @@
+/* Main window background */
+QMainWindow {
+    background-color: #2d2d2d;
+    color: #d3d3d3;
+}
+
+/* General widget background and text color */
+QLabel, QLineEdit, QComboBox, QSpinBox, QCheckBox, QPushButton, QTabWidget::pane, QTableWidget, QMenuBar, QMenu, QMenu::item, QStatusBar, QProgressBar {
+    background-color: #2d2d2d;
+    color: #d3d3d3;
+}
+
+/* LineEdit, ComboBox, SpinBox, CheckBox, and PushButton borders and padding */
+QLineEdit, QComboBox, QSpinBox, QCheckBox, QPushButton {
+    border: 1px solid #555555;
+    padding: 2px;
+}
+
+/* ProgressBar styling */
+QProgressBar {
+    background-color: #555555;
+    border: 1px solid #555555;
+    color: #d3d3d3;
+    text-align: center;
+}
+
+/* MenuBar, Menu, and Menu item styling */
+QMenuBar, QMenu, QMenu::item {
+    background-color: #2d2d2d;
+    color: #d3d3d3;
+}
+
+/* Selected Menu item styling */
+QMenu::item:selected {
+    background-color: #555555;
+    color: #d3d3d3;
+}
+
+/* StatusBar styling */
+QStatusBar {
+    background-color: #2d2d2d;
+    color: #d3d3d3;
+}
+
+/* TabWidget pane styling */
+QTabWidget::pane {
+    background-color: #2d2d2d;
+    border: 1px solid #555555;
+}
+
+/* TabBar styling */
+QTabBar::tab {
+    background: #2d2d2d;
+    color: #d3d3d3;
+    padding: 10px;
+}
+
+QTabBar::tab:selected {
+    background: #555555;
+}
+
+/* TableWidget header and item styling */
+QHeaderView::section {
+    background-color: #2d2d2d;
+    color: #d3d3d3;
+    border: 1px solid #555555;
+}
+
+QTableWidget {
+    gridline-color: #555555;
+}
+
+QTableWidget::item {
+    background-color: #2d2d2d;
+    color: #d3d3d3;
+    border: 1px solid #555555;
+}
+
+/* CustomListWidget styling */
+CustomListWidget {
+    background-color: #2d2d2d;
+    color: #d3d3d3;
+    border: 1px solid #555555;
+}

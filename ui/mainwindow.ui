@@ -1,332 +1,358 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>MainWindow</class>
- <widget class="QMainWindow" name="MainWindow">
-  <property name="geometry">
-   <rect>
-    <x>0</x>
-    <y>0</y>
-    <width>800</width>
-    <height>600</height>
-   </rect>
-  </property>
-  <property name="windowTitle">
-   <string>Open Encryption UI</string>
-  </property>
-  <widget class="QWidget" name="centralwidget">
-   <layout class="QVBoxLayout" name="verticalLayout">
-    <item>
-     <widget class="QLabel" name="hardwareAccelerationLabel">
-      <property name="text">
-       <string>Hardware Acceleration: Checking...</string>
-      </property>
-      <property name="alignment">
-       <set>Qt::AlignCenter</set>
-      </property>
-     </widget>
-    </item>
-    <item>
-     <widget class="QTabWidget" name="tabWidget">
-      <property name="currentIndex">
-       <number>0</number>
-      </property>
-      <widget class="QWidget" name="fileTab">
-       <attribute name="title">
-        <string>File Encryption</string>
-       </attribute>
-       <layout class="QVBoxLayout" name="verticalLayout_3">
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_5">
-          <item>
-           <widget class="QLineEdit" name="filePathLineEdit">
-            <property name="placeholderText">
-             <string>File Path</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="fileBrowseButton">
+    <class>MainWindow</class>
+    <widget class="QMainWindow" name="MainWindow">
+        <property name="geometry">
+            <rect>
+                <x>0</x>
+                <y>0</y>
+                <width>800</width>
+                <height>600</height>
+            </rect>
+        </property>
+        <property name="windowTitle">
+            <string>Open Encryption UI</string>
+        </property>
+        <widget class="QWidget" name="centralwidget">
+            <layout class="QVBoxLayout" name="verticalLayout">
+                <item>
+                    <widget class="QLabel" name="hardwareAccelerationLabel">
+                        <property name="text">
+                            <string>Hardware Acceleration: Checking...</string>
+                        </property>
+                        <property name="alignment">
+                            <set>Qt::AlignCenter</set>
+                        </property>
+                    </widget>
+                </item>
+                <item>
+                    <widget class="QTabWidget" name="tabWidget">
+                        <property name="currentIndex">
+                            <number>0</number>
+                        </property>
+                        <widget class="QWidget" name="fileTab">
+                            <attribute name="title">
+                                <string>File Encryption</string>
+                            </attribute>
+                            <layout class="QVBoxLayout" name="verticalLayout_3">
+                                <item>
+                                    <layout class="QHBoxLayout" name="horizontalLayout_5">
+                                        <item>
+                                            <widget class="QLineEdit" name="filePathLineEdit">
+                                                <property name="placeholderText">
+                                                    <string>File Path</string>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                        <item>
+                                            <widget class="QPushButton" name="fileBrowseButton">
+                                                <property name="text">
+                                                    <string>Browse</string>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                    </layout>
+                                </item>
+                                <item>
+                                    <widget class="QLineEdit" name="filePasswordLineEdit">
+                                        <property name="echoMode">
+                                            <enum>QLineEdit::Password</enum>
+                                        </property>
+                                        <property name="placeholderText">
+                                            <string>Password</string>
+                                        </property>
+                                    </widget>
+                                </item>
+                                <item>
+                                    <widget class="QComboBox" name="fileAlgorithmComboBox"/>
+                                </item>
+                                <item>
+                                    <widget class="QComboBox" name="kdfComboBox">
+                                        <property name="toolTip">
+                                            <string>Select Key Derivation Function</string>
+                                        </property>
+                                    </widget>
+                                </item>
+                                <item>
+                                    <layout class="QHBoxLayout" name="horizontalLayout_9">
+                                        <item>
+                                            <widget class="QLabel" name="iterationsLabel">
+                                                <property name="text">
+                                                    <string>Iterations:</string>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                        <item>
+                                            <widget class="QSpinBox" name="iterationsSpinBox">
+                                                <property name="minimum">
+                                                    <number>10</number>
+                                                </property>
+                                                <property name="maximum">
+                                                    <number>1000000</number>
+                                                </property>
+                                                <property name="value">
+                                                    <number>10</number>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                    </layout>
+                                </item>
+                                <item>
+                                    <widget class="QCheckBox" name="hmacCheckBox">
+                                        <property name="text">
+                                            <string>Enable HMAC Integrity Check</string>
+                                        </property>
+                                    </widget>
+                                </item>
+                                <item>
+                                    <widget class="QPushButton" name="fileKeyfileBrowseButton">
+                                        <property name="text">
+                                            <string>Browse Keyfiles</string>
+                                        </property>
+                                    </widget>
+                                </item>
+                                <item>
+                                    <widget class="CustomListWidget" name="fileKeyfileListWidget"/>
+                                </item>
+                                <item>
+                                    <widget class="QProgressBar" name="fileProgressBar">
+                                        <property name="visible">
+                                            <bool>false</bool>
+                                        </property>
+                                    </widget>
+                                </item>
+                                <item>
+                                    <widget class="QLabel" name="fileEstimatedTimeLabel">
+                                        <property name="text">
+                                            <string>Estimated time: </string>
+                                        </property>
+                                        <property name="visible">
+                                            <bool>false</bool>
+                                        </property>
+                                    </widget>
+                                </item>
+                                <item>
+                                    <layout class="QHBoxLayout" name="horizontalLayout_6">
+                                        <item>
+                                            <widget class="QPushButton" name="fileEncryptButton">
+                                                <property name="text">
+                                                    <string>Encrypt</string>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                        <item>
+                                            <widget class="QPushButton" name="fileDecryptButton">
+                                                <property name="text">
+                                                    <string>Decrypt</string>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                    </layout>
+                                </item>
+                            </layout>
+                        </widget>
+                        <widget class="QWidget" name="folderTab">
+                            <attribute name="title">
+                                <string>Folder Encryption</string>
+                            </attribute>
+                            <layout class="QVBoxLayout" name="verticalLayout_4">
+                                <item>
+                                    <layout class="QHBoxLayout" name="horizontalLayout_7">
+                                        <item>
+                                            <widget class="QLineEdit" name="folderPathLineEdit">
+                                                <property name="placeholderText">
+                                                    <string>Folder Path</string>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                        <item>
+                                            <widget class="QPushButton" name="folderBrowseButton">
+                                                <property name="text">
+                                                    <string>Browse</string>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                    </layout>
+                                </item>
+                                <item>
+                                    <widget class="QLineEdit" name="folderPasswordLineEdit">
+                                        <property name="echoMode">
+                                            <enum>QLineEdit::Password</enum>
+                                        </property>
+                                        <property name="placeholderText">
+                                            <string>Password</string>
+                                        </property>
+                                    </widget>
+                                </item>
+                                <item>
+                                    <widget class="QComboBox" name="folderAlgorithmComboBox"/>
+                                </item>
+                                <item>
+                                    <widget class="QComboBox" name="folderKdfComboBox">
+                                        <property name="toolTip">
+                                            <string>Select Key Derivation Function</string>
+                                        </property>
+                                    </widget>
+                                </item>
+                                <item>
+                                    <layout class="QHBoxLayout" name="folderHorizontalLayout_9">
+                                        <item>
+                                            <widget class="QLabel" name="folderIterationsLabel">
+                                                <property name="text">
+                                                    <string>Iterations:</string>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                        <item>
+                                            <widget class="QSpinBox" name="folderIterationsSpinBox">
+                                                <property name="minimum">
+                                                    <number>10</number>
+                                                </property>
+                                                <property name="maximum">
+                                                    <number>1000000</number>
+                                                </property>
+                                                <property name="value">
+                                                    <number>10</number>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                    </layout>
+                                </item>
+                                <item>
+                                    <widget class="QCheckBox" name="folderHmacCheckBox">
+                                        <property name="text">
+                                            <string>Enable HMAC Integrity Check</string>
+                                        </property>
+                                    </widget>
+                                </item>
+                                <item>
+                                    <widget class="QPushButton" name="folderKeyfileBrowseButton">
+                                        <property name="text">
+                                            <string>Browse Keyfiles</string>
+                                        </property>
+                                    </widget>
+                                </item>
+                                <item>
+                                    <widget class="CustomListWidget" name="folderKeyfileListWidget"/>
+                                </item>
+                                <item>
+                                    <widget class="QProgressBar" name="folderProgressBar">
+                                        <property name="visible">
+                                            <bool>false</bool>
+                                        </property>
+                                    </widget>
+                                </item>
+                                <item>
+                                    <widget class="QLabel" name="folderEstimatedTimeLabel">
+                                        <property name="text">
+                                            <string>Estimated time: </string>
+                                        </property>
+                                        <property name="visible">
+                                            <bool>false</bool>
+                                        </property>
+                                    </widget>
+                                </item>
+                                <item>
+                                    <layout class="QHBoxLayout" name="horizontalLayout_8">
+                                        <item>
+                                            <widget class="QPushButton" name="folderEncryptButton">
+                                                <property name="text">
+                                                    <string>Encrypt Folder</string>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                        <item>
+                                            <widget class="QPushButton" name="folderDecryptButton">
+                                                <property name="text">
+                                                    <string>Decrypt Folder</string>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                    </layout>
+                                </item>
+                            </layout>
+                        </widget>
+                        <widget class="QWidget" name="benchmarkTab">
+                            <attribute name="title">
+                                <string>Benchmark</string>
+                            </attribute>
+                            <layout class="QVBoxLayout" name="verticalLayout_5">
+                                <item>
+                                    <widget class="QPushButton" name="benchmarkButton">
+                                        <property name="text">
+                                            <string>Run Benchmark</string>
+                                        </property>
+                                    </widget>
+                                </item>
+                                <item>
+                                    <widget class="QTableWidget" name="benchmarkTable">
+                                        <column>
+                                            <property name="text">
+                                                <string>Iterations</string>
+                                            </property>
+                                        </column>
+                                        <column>
+                                            <property name="text">
+                                                <string>MB/s</string>
+                                            </property>
+                                        </column>
+                                        <column>
+                                            <property name="text">
+                                                <string>ms</string>
+                                            </property>
+                                        </column>
+                                        <column>
+                                            <property name="text">
+                                                <string>Cipher</string>
+                                            </property>
+                                        </column>
+                                        <column>
+                                            <property name="text">
+                                                <string>KDF</string>
+                                            </property>
+                                        </column>
+                                    </widget>
+                                </item>
+                            </layout>
+                        </widget>
+                    </widget>
+                </item>
+            </layout>
+        </widget>
+        <widget class="QMenuBar" name="menuBar">
+            <widget class="QMenu" name="menuFile">
+                <property name="title">
+                    <string>File</string>
+                </property>
+                <addaction name="actionExit"/>
+            </widget>
+            <widget class="QMenu" name="menuEdit">
+                <property name="title">
+                    <string>Edit</string>
+                </property>
+                <addaction name="actionPreferences"/>
+            </widget>
+            <addaction name="menuFile"/>
+            <addaction name="menuEdit"/>
+        </widget>
+        <widget class="QStatusBar" name="statusbar"/>
+        <action name="actionExit">
             <property name="text">
-             <string>Browse</string>
+                <string>Exit</string>
             </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="filePasswordLineEdit">
-          <property name="echoMode">
-           <enum>QLineEdit::Password</enum>
-          </property>
-          <property name="placeholderText">
-           <string>Password</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QComboBox" name="fileAlgorithmComboBox"/>
-        </item>
-        <item>
-         <widget class="QComboBox" name="kdfComboBox">
-          <property name="toolTip">
-           <string>Select Key Derivation Function</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_9">
-          <item>
-           <widget class="QLabel" name="iterationsLabel">
+        </action>
+        <action name="actionPreferences">
             <property name="text">
-             <string>Iterations:</string>
+                <string>Preferences</string>
             </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QSpinBox" name="iterationsSpinBox">
-            <property name="minimum">
-             <number>10</number>
-            </property>
-            <property name="maximum">
-             <number>1000000</number>
-            </property>
-            <property name="value">
-             <number>10</number>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item>
-         <widget class="QCheckBox" name="hmacCheckBox">
-          <property name="text">
-           <string>Enable HMAC Integrity Check</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="fileKeyfileBrowseButton">
-          <property name="text">
-           <string>Browse Keyfiles</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="CustomListWidget" name="fileKeyfileListWidget"/>
-        </item>
-        <item>
-         <widget class="QProgressBar" name="fileProgressBar">
-          <property name="visible">
-           <bool>false</bool>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLabel" name="fileEstimatedTimeLabel">
-          <property name="text">
-           <string>Estimated time: </string>
-          </property>
-          <property name="visible">
-           <bool>false</bool>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_6">
-          <item>
-           <widget class="QPushButton" name="fileEncryptButton">
-            <property name="text">
-             <string>Encrypt</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="fileDecryptButton">
-            <property name="text">
-             <string>Decrypt</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-       </layout>
-      </widget>
-      <widget class="QWidget" name="folderTab">
-       <attribute name="title">
-        <string>Folder Encryption</string>
-       </attribute>
-       <layout class="QVBoxLayout" name="verticalLayout_4">
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_7">
-          <item>
-           <widget class="QLineEdit" name="folderPathLineEdit">
-            <property name="placeholderText">
-             <string>Folder Path</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="folderBrowseButton">
-            <property name="text">
-             <string>Browse</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="folderPasswordLineEdit">
-          <property name="echoMode">
-           <enum>QLineEdit::Password</enum>
-          </property>
-          <property name="placeholderText">
-           <string>Password</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QComboBox" name="folderAlgorithmComboBox"/>
-        </item>
-        <item>
-         <widget class="QComboBox" name="folderKdfComboBox">
-          <property name="toolTip">
-           <string>Select Key Derivation Function</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <layout class="QHBoxLayout" name="folderHorizontalLayout_9">
-          <item>
-           <widget class="QLabel" name="folderIterationsLabel">
-            <property name="text">
-             <string>Iterations:</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QSpinBox" name="folderIterationsSpinBox">
-            <property name="minimum">
-             <number>10</number>
-            </property>
-            <property name="maximum">
-             <number>1000000</number>
-            </property>
-            <property name="value">
-             <number>10</number>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item>
-         <widget class="QCheckBox" name="folderHmacCheckBox">
-          <property name="text">
-           <string>Enable HMAC Integrity Check</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="folderKeyfileBrowseButton">
-          <property name="text">
-           <string>Browse Keyfiles</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="CustomListWidget" name="folderKeyfileListWidget"/>
-        </item>
-        <item>
-         <widget class="QProgressBar" name="folderProgressBar">
-          <property name="visible">
-           <bool>false</bool>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLabel" name="folderEstimatedTimeLabel">
-          <property name="text">
-           <string>Estimated time: </string>
-          </property>
-          <property name="visible">
-           <bool>false</bool>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_8">
-          <item>
-           <widget class="QPushButton" name="folderEncryptButton">
-            <property name="text">
-             <string>Encrypt Folder</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="folderDecryptButton">
-            <property name="text">
-             <string>Decrypt Folder</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-       </layout>
-      </widget>
-      <widget class="QWidget" name="benchmarkTab">
-       <attribute name="title">
-        <string>Benchmark</string>
-       </attribute>
-       <layout class="QVBoxLayout" name="verticalLayout_5">
-        <item>
-         <widget class="QPushButton" name="benchmarkButton">
-          <property name="text">
-           <string>Run Benchmark</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QTableWidget" name="benchmarkTable">
-          <column>
-           <property name="text">
-            <string>Iterations</string>
-           </property>
-          </column>
-          <column>
-           <property name="text">
-            <string>MB/s</string>
-           </property>
-          </column>
-          <column>
-           <property name="text">
-            <string>ms</string>
-           </property>
-          </column>
-          <column>
-           <property name="text">
-            <string>Cipher</string>
-           </property>
-          </column>
-          <column>
-           <property name="text">
-            <string>KDF</string>
-           </property>
-          </column>
-         </widget>
-        </item>
-       </layout>
-      </widget>
-     </widget>
-    </item>
-   </layout>
-  </widget>
-  <widget class="QStatusBar" name="statusbar"/>
- </widget>
- <customwidgets>
-  <customwidget>
-   <class>CustomListWidget</class>
-   <extends>QListWidget</extends>
-   <header>customlistwidget.h</header>
-  </customwidget>
- </customwidgets>
- <resources/>
+        </action>
+    </widget>
+    <customwidgets>
+        <customwidget>
+            <class>CustomListWidget</class>
+            <extends>QListWidget</extends>
+            <header>customlistwidget.h</header>
+        </customwidget>
+    </customwidgets>
+    <resources/>
 </ui>

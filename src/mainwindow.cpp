@@ -9,6 +9,13 @@
 #include <QTableWidgetItem>
 #include <QHeaderView>
 #include <QKeyEvent>
+#include <QInputDialog>
+#include <QCoreApplication>
+#include <QDirIterator>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QFile>
+#include <QDir>
 #include "encryptionengine.h"
 
 // Add the static member initialization here
@@ -23,6 +30,9 @@ MainWindow::MainWindow(QWidget *parent)
     qDebug() << "MainWindow Constructor";
     ui->setupUi(this);
     setupUI();
+
+    // Load theme preference
+    loadPreferences();
 
     // Set default values for iterations
     ui->iterationsSpinBox->setValue(10);
@@ -55,6 +65,9 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
+    // Save preferences before closing
+    savePreferences();
+
     workerThread.quit();
     workerThread.wait();
     qDebug() << "MainWindow Destructor";
@@ -122,6 +135,10 @@ void MainWindow::connectSignalsAndSlots()
     safeConnect(ui->folderBrowseButton, SIGNAL(clicked()), this, SLOT(on_folderBrowseButton_clicked()));
     safeConnect(ui->folderKeyfileBrowseButton, SIGNAL(clicked()), this, SLOT(on_folderKeyfileBrowseButton_clicked()));
     safeConnect(ui->benchmarkButton, SIGNAL(clicked()), this, SLOT(on_benchmarkButton_clicked()));
+
+    // Menu actions
+    safeConnect(ui->actionExit, SIGNAL(triggered()), this, SLOT(on_actionExit_triggered()));
+    safeConnect(ui->actionPreferences, SIGNAL(triggered()), this, SLOT(on_actionPreferences_triggered()));
 
     m_signalsConnected = true;
 }
@@ -360,4 +377,114 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
         }
     }
     return QObject::eventFilter(obj, event);
+}
+
+void MainWindow::on_actionExit_triggered()
+{
+    QApplication::quit();
+}
+
+void MainWindow::on_actionPreferences_triggered()
+{
+    QStringList themes = {"Light", "Dark"};
+    bool ok;
+    QString theme = QInputDialog::getItem(this, "Select Theme", "Theme:", themes, 0, false, &ok);
+    if (ok && !theme.isEmpty()) {
+        applyTheme(theme);
+    }
+}
+
+void MainWindow::applyTheme(const QString &theme) {
+    QString themeFilePath;
+    if (theme == "Dark") {
+        themeFilePath = ":/resources/darktheme.qss";
+    } else {
+        themeFilePath = ":/resources/lighttheme.qss";
+    }
+
+    qDebug() << "Trying to load stylesheet from:" << themeFilePath;
+
+    QFile file(themeFilePath);
+
+    if (!file.exists()) {
+        qDebug() << "QSS file does not exist at path:" << themeFilePath;
+        return;
+    }
+
+    if (file.open(QFile::ReadOnly)) {
+        QString styleSheet = QLatin1String(file.readAll());
+        qApp->setStyleSheet(styleSheet);
+        file.close();
+        currentTheme = theme;  // Update current theme
+        qDebug() << "Successfully applied theme from:" << themeFilePath;
+    } else {
+        qDebug() << "Failed to open theme file:" << file.errorString();
+    }
+}
+
+void MainWindow::loadPreferences()
+{
+    QString settingsDirPath = QDir::homePath() + "/.encryptionapp";
+    QString settingsFilePath = settingsDirPath + "/config.json";
+
+    QDir settingsDir(settingsDirPath);
+    if (!settingsDir.exists()) {
+        if (!settingsDir.mkpath(settingsDirPath)) {
+            qDebug() << "Failed to create settings directory:" << settingsDirPath;
+            applyTheme("Light");
+            return;
+        }
+    }
+
+    QFile settingsFile(settingsFilePath);
+
+    if (!settingsFile.exists()) {
+        qDebug() << "Settings file not found, applying default theme.";
+        applyTheme("Light");
+        return;
+    }
+
+    if (!settingsFile.open(QIODevice::ReadOnly)) {
+        qDebug() << "Failed to open settings file for reading:" << settingsFile.errorString();
+        applyTheme("Light");
+        return;
+    }
+
+    QByteArray settingsData = settingsFile.readAll();
+    QJsonDocument settingsDoc = QJsonDocument::fromJson(settingsData);
+    QJsonObject settingsObj = settingsDoc.object();
+
+    QString theme = settingsObj.value("theme").toString("Light");
+    applyTheme(theme);
+
+    settingsFile.close();
+}
+
+void MainWindow::savePreferences()
+{
+    QString settingsDirPath = QDir::homePath() + "/.encryptionapp";
+    QString settingsFilePath = settingsDirPath + "/config.json";
+
+    QDir settingsDir(settingsDirPath);
+    if (!settingsDir.exists()) {
+        if (!settingsDir.mkpath(settingsDirPath)) {
+            qDebug() << "Failed to create settings directory:" << settingsDirPath;
+            return;
+        }
+    }
+
+    QFile settingsFile(settingsFilePath);
+
+    if (!settingsFile.open(QIODevice::WriteOnly)) {
+        qDebug() << "Failed to open settings file for writing:" << settingsFile.errorString();
+        return;
+    }
+
+    QJsonObject settingsObj;
+    settingsObj["theme"] = currentTheme; // Assuming currentTheme is a member variable holding the current theme
+
+    QJsonDocument settingsDoc(settingsObj);
+    settingsFile.write(settingsDoc.toJson());
+
+    settingsFile.close();
 }
