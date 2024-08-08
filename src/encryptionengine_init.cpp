@@ -42,18 +42,3 @@ bool EncryptionEngine::checkHardwareSupport() {
 #endif
     return false;
 }
-
-const EVP_CIPHER* EncryptionEngine::getHardwareAcceleratedCipher(const QString& algorithm) {
-    if (m_aesNiSupported) {
-        if (algorithm == "AES-256-CBC") return EVP_aes_256_cbc();
-        if (algorithm == "AES-256-GCM") return EVP_aes_256_gcm();
-        if (algorithm == "AES-256-CTR") return EVP_aes_256_ctr();
-        if (algorithm == "AES-128-CBC") return EVP_aes_128_cbc();
-        if (algorithm == "AES-128-GCM") return EVP_aes_128_gcm();
-        if (algorithm == "AES-128-CTR") return EVP_aes_128_ctr();
-        if (algorithm == "AES-192-CBC") return EVP_aes_192_cbc();
-        if (algorithm == "AES-192-GCM") return EVP_aes_192_gcm();
-        if (algorithm == "AES-192-CTR") return EVP_aes_192_ctr();
-    }
-    return nullptr;
-}

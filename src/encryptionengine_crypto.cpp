@@ -216,20 +216,18 @@ bool EncryptionEngine::performAuthenticatedDecryption(EVP_CIPHER_CTX* ctx, const
 }
 
 const EVP_CIPHER* EncryptionEngine::getCipher(const QString& algorithm) {
-    const EVP_CIPHER* hardwareCipher = getHardwareAcceleratedCipher(algorithm);
-    if (hardwareCipher) {
-        return hardwareCipher;
-    }
-
-    if (algorithm == "AES-256-CBC") return EVP_aes_256_cbc();
     if (algorithm == "AES-256-GCM") return EVP_aes_256_gcm();
-    if (algorithm == "AES-256-CTR") return EVP_aes_256_ctr();
     if (algorithm == "ChaCha20-Poly1305") return EVP_chacha20_poly1305();
-    if (algorithm == "Twofish") return EVP_get_cipherbyname("twofish");
-    if (algorithm == "Serpent") return EVP_get_cipherbyname("serpent");
-    if (algorithm == "Blowfish") return EVP_bf_cbc();
-    if (algorithm == "Camellia-256-CBC") return EVP_camellia_256_cbc();
+    if (algorithm == "AES-256-CTR") return EVP_aes_256_ctr();
+    if (algorithm == "AES-256-CBC") return EVP_aes_256_cbc();
+    if (algorithm == "AES-128-GCM") return EVP_aes_128_gcm();
+    if (algorithm == "AES-128-CTR") return EVP_aes_128_ctr();
+    if (algorithm == "AES-192-GCM") return EVP_aes_192_gcm();
+    if (algorithm == "AES-192-CTR") return EVP_aes_192_ctr();
     if (algorithm == "AES-128-CBC") return EVP_aes_128_cbc();
-    
+    if (algorithm == "AES-192-CBC") return EVP_aes_192_cbc();
+    if (algorithm == "Camellia-256-CBC") return EVP_camellia_256_cbc();
+    if (algorithm == "Camellia-128-CBC") return EVP_camellia_128_cbc();
+
     return nullptr; // Ensure this correctly returns nullptr for unsupported ciphers
 }

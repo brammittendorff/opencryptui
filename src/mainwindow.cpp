@@ -100,10 +100,9 @@ void MainWindow::setupUI()
 
 void MainWindow::setupComboBoxes() {
     QStringList algorithms = {
-        "AES-256-CBC", "AES-256-GCM", "AES-256-CTR", 
-        "ChaCha20-Poly1305", "Twofish", 
-        "Serpent", "Blowfish", 
-        "Camellia-256-CBC", "AES-128-CBC"
+        "AES-256-GCM", "ChaCha20-Poly1305", "AES-256-CTR", "AES-256-CBC",
+        "AES-128-GCM", "AES-128-CTR", "AES-192-GCM", "AES-192-CTR",
+        "AES-128-CBC", "AES-192-CBC", "Camellia-256-CBC", "Camellia-128-CBC"
     };
     ui->fileAlgorithmComboBox->addItems(algorithms);
     ui->folderAlgorithmComboBox->addItems(algorithms);
@@ -286,11 +285,9 @@ void MainWindow::on_benchmarkButton_clicked()
     qDebug() << "Running benchmark...";
 
     QStringList algorithms = {
-        "AES-256-CBC", "AES-256-GCM", "AES-256-CTR",
-        "AES-192-CBC", "AES-192-GCM", "AES-192-CTR",
-        "AES-128-CBC", "AES-128-GCM", "AES-128-CTR",
-        "ChaCha20-Poly1305", "Twofish", "Serpent",
-        "Blowfish", "Camellia-256-CBC"
+        "AES-256-GCM", "ChaCha20-Poly1305", "AES-256-CTR", "AES-256-CBC",
+        "AES-128-GCM", "AES-128-CTR", "AES-192-GCM", "AES-192-CTR",
+        "AES-128-CBC", "AES-192-CBC", "Camellia-256-CBC", "Camellia-128-CBC"
     };
 
     QStringList kdfs = {"PBKDF2", "Argon2", "Scrypt"};

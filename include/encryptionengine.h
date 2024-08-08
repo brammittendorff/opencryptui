@@ -30,8 +30,7 @@ public:
     void runBenchmark();
     void benchmarkCipher(const QString& algorithm, const QString& kdf, bool useHardwareAcceleration);
 
-    const EVP_CIPHER* getCipher(const QString& algorithm);  // Move to public
-    const EVP_CIPHER* getHardwareAcceleratedCipher(const QString& algorithm);  // Move to public
+    const EVP_CIPHER* getCipher(const QString& algorithm);
 
 private:
     QByteArray lastIv; // Store the last used IV

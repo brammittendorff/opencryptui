@@ -87,7 +87,12 @@ void EncryptionWorker::runBenchmark() {
     for (const auto &algo : benchmarkAlgorithms) {
         for (const auto &kdf : benchmarkKdfs) {
             benchmarkCipher(algo, kdf, true);
-            if (algo.startsWith("AES") || algo == "ChaCha20-Poly1305" || algo == "Twofish" || algo == "Serpent" || algo == "Blowfish" || algo == "Camellia-256-CBC") {
+            if (algo == "AES-256-GCM" || algo == "ChaCha20-Poly1305" || 
+                algo == "AES-256-CTR" || algo == "AES-256-CBC" || 
+                algo == "AES-128-GCM" || algo == "AES-128-CTR" || 
+                algo == "AES-192-GCM" || algo == "AES-192-CTR" || 
+                algo == "AES-128-CBC" || algo == "AES-192-CBC" || 
+                algo == "Camellia-256-CBC" || algo == "Camellia-128-CBC") {
                 benchmarkCipher(algo, kdf, false);
             }
         }
@@ -111,7 +116,7 @@ void EncryptionWorker::benchmarkCipher(const QString &algorithm, const QString &
     QElapsedTimer timer;
     timer.start();
 
-    const EVP_CIPHER *cipher = useHardwareAcceleration ? engine.getHardwareAcceleratedCipher(algorithm) : engine.getCipher(algorithm);
+    const EVP_CIPHER *cipher = engine.getCipher(algorithm);
 
     if (!cipher) {
         qDebug() << "Skipping" << algorithm << "- not supported";

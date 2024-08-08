@@ -317,6 +317,9 @@
                             <layout class="QVBoxLayout" name="verticalLayout_5">
                                 <item>
                                     <widget class="QTableWidget" name="benchmarkTable">
+                                        <property name="sortingEnabled">
+                                            <bool>true</bool>
+                                        </property>
                                         <column>
                                             <property name="text">
                                                 <string>Iterations</string>
