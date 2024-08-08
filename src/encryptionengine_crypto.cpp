@@ -67,9 +67,11 @@ bool EncryptionEngine::cryptOperation(const QString& inputPath, const QString& o
 
     bool success = false;
     if (encrypt) {
-        success = performStandardEncryption(ctx, cipher, key, iv, inputFile, outputFile);
+        success = useHMAC ? performAuthenticatedEncryption(ctx, cipher, key, iv, inputFile, outputFile)
+                          : performStandardEncryption(ctx, cipher, key, iv, inputFile, outputFile);
     } else {
-        success = performStandardDecryption(ctx, cipher, key, iv, inputFile, outputFile);
+        success = useHMAC ? performAuthenticatedDecryption(ctx, cipher, key, iv, inputFile, outputFile)
+                          : performStandardDecryption(ctx, cipher, key, iv, inputFile, outputFile);
     }
 
     EVP_CIPHER_CTX_free(ctx);
@@ -228,6 +230,6 @@ const EVP_CIPHER* EncryptionEngine::getCipher(const QString& algorithm) {
     if (algorithm == "Blowfish") return EVP_bf_cbc();
     if (algorithm == "Camellia-256-CBC") return EVP_camellia_256_cbc();
     if (algorithm == "AES-128-CBC") return EVP_aes_128_cbc();
-
-    return nullptr;
+    
+    return nullptr; // Ensure this correctly returns nullptr for unsupported ciphers
 }

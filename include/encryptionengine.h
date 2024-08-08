@@ -30,6 +30,9 @@ public:
     void runBenchmark();
     void benchmarkCipher(const QString& algorithm, const QString& kdf, bool useHardwareAcceleration);
 
+    const EVP_CIPHER* getCipher(const QString& algorithm);  // Move to public
+    const EVP_CIPHER* getHardwareAcceleratedCipher(const QString& algorithm);  // Move to public
+
 private:
     QByteArray lastIv; // Store the last used IV
     bool m_aesNiSupported;
@@ -39,15 +42,12 @@ private:
     bool performStandardDecryption(EVP_CIPHER_CTX* ctx, const EVP_CIPHER* cipher, const QByteArray& key, const QByteArray& iv, QFile& inputFile, QFile& outputFile);
     bool performAuthenticatedEncryption(EVP_CIPHER_CTX* ctx, const EVP_CIPHER* cipher, const QByteArray& key, const QByteArray& iv, QFile& inputFile, QFile& outputFile);
     bool performAuthenticatedDecryption(EVP_CIPHER_CTX* ctx, const EVP_CIPHER* cipher, const QByteArray& key, const QByteArray& iv, QFile& inputFile, QFile& outputFile);
+    QByteArray performKeyDerivation(const QByteArray& passwordWithKeyfile, const QByteArray& salt, const QString& kdf, int iterations, int keySize);
 
     QByteArray deriveKey(const QString& password, const QByteArray& salt, const QStringList& keyfilePaths, const QString& kdf, int iterations);
     QByteArray readKeyfile(const QString& keyfilePath);
-    const EVP_CIPHER* getCipher(const QString& algorithm);
 
     bool checkHardwareSupport();
-    const EVP_CIPHER* getHardwareAcceleratedCipher(const QString& algorithm);
-
-    void benchmarkCipher(const QString& algorithm, bool useHardwareAcceleration);
 };
 
 #endif // ENCRYPTIONENGINE_H

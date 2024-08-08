@@ -61,7 +61,6 @@ set(LIBRARY_SOURCES
     src/encryptionengine_fileops.cpp
     src/encryptionengine_keyderivation.cpp
     src/encryptionengine_crypto.cpp
-    src/encryptionengine_benchmark.cpp
     include/encryptionengine.h
     src/encryptionworker.cpp
     include/encryptionworker.h

@@ -13,9 +13,11 @@ public:
     explicit EncryptionWorker(QObject *parent = nullptr);
     void setParameters(const QString &path, const QString &password, const QString &algorithm,
                        const QString &kdf, int iterations, bool useHMAC, bool encrypt, bool isFile, const QString &customHeader, const QStringList &keyfilePaths);
+    void setBenchmarkParameters(const QStringList &algorithms, const QStringList &kdfs);
 
 public slots:
     void process();
+    void runBenchmark();
 
 signals:
     void progress(int value);
@@ -36,7 +38,11 @@ private:
     QStringList keyfilePaths;
     EncryptionEngine engine;
 
+    QStringList benchmarkAlgorithms;
+    QStringList benchmarkKdfs;
+
     qint64 getFileSizeInBytes(const QString &path);
+    void benchmarkCipher(const QString &algorithm, const QString &kdf, bool useHardwareAcceleration);
 };
 
 #endif // ENCRYPTIONWORKER_H

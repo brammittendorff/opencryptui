@@ -23,6 +23,11 @@ void EncryptionWorker::setParameters(const QString &path, const QString &passwor
     this->keyfilePaths = keyfilePaths;
 }
 
+void EncryptionWorker::setBenchmarkParameters(const QStringList &algorithms, const QStringList &kdfs) {
+    this->benchmarkAlgorithms = algorithms;
+    this->benchmarkKdfs = kdfs;
+}
+
 qint64 EncryptionWorker::getFileSizeInBytes(const QString &path) {
     QFileInfo fileInfo(path);
     return fileInfo.size();
@@ -75,4 +80,86 @@ void EncryptionWorker::process()
     } else {
         emit finished(false, "Encryption/Decryption failed");
     }
+}
+
+void EncryptionWorker::runBenchmark() {
+    qDebug() << "Starting benchmark...";
+    for (const auto &algo : benchmarkAlgorithms) {
+        for (const auto &kdf : benchmarkKdfs) {
+            benchmarkCipher(algo, kdf, true);
+            if (algo.startsWith("AES") || algo == "ChaCha20-Poly1305" || algo == "Twofish" || algo == "Serpent" || algo == "Blowfish" || algo == "Camellia-256-CBC") {
+                benchmarkCipher(algo, kdf, false);
+            }
+        }
+    }
+    qDebug() << "Benchmark complete.";
+}
+
+void EncryptionWorker::benchmarkCipher(const QString &algorithm, const QString &kdf, bool useHardwareAcceleration) {
+    if (kdf != "PBKDF2" && kdf != "Argon2" && kdf != "Scrypt") {
+        qDebug() << "Skipping unknown KDF:" << kdf;
+        return;
+    }
+
+    const int dataSize = 100 * 1024 * 1024; // 100 MB
+    QByteArray testData(dataSize, 'A');
+    QByteArray key(32, 'K');
+    QByteArray iv(16, 'I');
+    QByteArray salt(16, 'S');
+    int iterations = 10;
+
+    QElapsedTimer timer;
+    timer.start();
+
+    const EVP_CIPHER *cipher = useHardwareAcceleration ? engine.getHardwareAcceleratedCipher(algorithm) : engine.getCipher(algorithm);
+
+    if (!cipher) {
+        qDebug() << "Skipping" << algorithm << "- not supported";
+        return;
+    }
+
+    key = engine.deriveKey("password", salt, kdf, iterations, key.size());
+    if (key.isEmpty()) {
+        qDebug() << "Key derivation failed for KDF:" << kdf;
+        return;
+    }
+
+    // Perform encryption
+    EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+    if (!ctx) {
+        qDebug() << "Failed to create EVP_CIPHER_CTX";
+        return;
+    }
+
+    if (!EVP_EncryptInit_ex(ctx, cipher, nullptr,
+                            reinterpret_cast<const unsigned char *>(key.data()),
+                            reinterpret_cast<const unsigned char *>(iv.data()))) {
+        qDebug() << "EVP_EncryptInit_ex failed";
+        EVP_CIPHER_CTX_free(ctx);
+        return;
+    }
+
+    QByteArray ciphertext(testData.size() + EVP_MAX_BLOCK_LENGTH, 0);
+    int len;
+    int ciphertextLen = 0;
+    if (!EVP_EncryptUpdate(ctx, reinterpret_cast<unsigned char *>(ciphertext.data()), &len,
+                           reinterpret_cast<const unsigned char *>(testData.data()), testData.size())) {
+        qDebug() << "EVP_EncryptUpdate failed";
+        EVP_CIPHER_CTX_free(ctx);
+        return;
+    }
+    ciphertextLen += len;
+    if (!EVP_EncryptFinal_ex(ctx, reinterpret_cast<unsigned char *>(ciphertext.data()) + len, &len)) {
+        qDebug() << "EVP_EncryptFinal_ex failed";
+        EVP_CIPHER_CTX_free(ctx);
+        return;
+    }
+    ciphertextLen += len;
+
+    EVP_CIPHER_CTX_free(ctx);
+
+    qint64 elapsed = timer.elapsed();
+    double throughput = (dataSize / (1024.0 * 1024.0)) / (elapsed / 1000.0);
+
+    emit benchmarkResultReady(iterations, throughput, elapsed, algorithm, kdf); // Emit the result
 }

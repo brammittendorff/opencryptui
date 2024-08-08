@@ -20,6 +20,7 @@
 #include <QDirIterator>
 #include <QProcess>
 #include "version.h"
+#include "encryptionworker.h"
 
 // Add the static member initialization here
 QTextStream* MainWindow::s_logStream = nullptr;
@@ -64,6 +65,9 @@ MainWindow::MainWindow(QWidget *parent)
     QStringList headers = {"Iterations", "MB/s", "ms", "Cipher", "KDF"};
     ui->benchmarkTable->setHorizontalHeaderLabels(headers);
     ui->benchmarkTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+
+    // Enable sorting
+    ui->benchmarkTable->setSortingEnabled(true);
 }
 
 MainWindow::~MainWindow()
@@ -97,9 +101,9 @@ void MainWindow::setupUI()
 void MainWindow::setupComboBoxes() {
     QStringList algorithms = {
         "AES-256-CBC", "AES-256-GCM", "AES-256-CTR", 
-        "ChaCha20-Poly1305", "Twofish-256-CBC", 
-        "Serpent-256-CBC", "Blowfish-256-CBC", 
-        "Camellia-256-CBC", "Camellia-256-GCM", "AES-128-CBC"
+        "ChaCha20-Poly1305", "Twofish", 
+        "Serpent", "Blowfish", 
+        "Camellia-256-CBC", "AES-128-CBC"
     };
     ui->fileAlgorithmComboBox->addItems(algorithms);
     ui->folderAlgorithmComboBox->addItems(algorithms);
@@ -281,52 +285,18 @@ void MainWindow::on_benchmarkButton_clicked()
     ui->benchmarkTable->setRowCount(0); // Clear previous results
     qDebug() << "Running benchmark...";
 
-    // Create a buffer and a stream
-    QBuffer buffer;
-    buffer.open(QIODevice::ReadWrite);
-    QTextStream stream(&buffer);
+    QStringList algorithms = {
+        "AES-256-CBC", "AES-256-GCM", "AES-256-CTR",
+        "AES-192-CBC", "AES-192-GCM", "AES-192-CTR",
+        "AES-128-CBC", "AES-128-GCM", "AES-128-CTR",
+        "ChaCha20-Poly1305", "Twofish", "Serpent",
+        "Blowfish", "Camellia-256-CBC"
+    };
 
-    // Set the static stream pointer
-    s_logStream = &stream;
+    QStringList kdfs = {"PBKDF2", "Argon2", "Scrypt"};
 
-    // Install the message handler
-    QtMessageHandler oldMessageHandler = qInstallMessageHandler(messageHandler);
-
-    // Run the benchmark
-    encryptionEngine.runBenchmark();
-
-    // Reset the message handler and stream pointer
-    qInstallMessageHandler(oldMessageHandler);
-    s_logStream = nullptr;
-
-    // Get the benchmark results from the buffer
-    buffer.seek(0);
-    QString benchmarkResults = stream.readAll();
-    
-    qDebug() << "Raw benchmark results:";
-    qDebug() << benchmarkResults;
-
-    // Parse and display the results in the table
-    QStringList lines = benchmarkResults.split("\n");
-    for (const QString& line : lines) {
-        if (line.startsWith("\"Algorithm:")) {
-            // Remove quotes at the beginning and end
-            QString cleanLine = line.mid(1, line.length() - 2);
-            QStringList parts = cleanLine.split(" ");
-            if (parts.size() >= 9) {
-                QString algorithm = parts[1];
-                QString kdf = parts[3];
-                double time = parts[5].toDouble();
-                double throughput = parts[8].toDouble();
-                
-                qDebug() << "Parsed values:" << algorithm << kdf << time << throughput;
-                
-                updateBenchmarkTable(1, throughput, time, algorithm, kdf);
-            }
-        }
-    }
-
-    qDebug() << "Benchmark complete.";
+    worker->setBenchmarkParameters(algorithms, kdfs);
+    QMetaObject::invokeMethod(worker, "runBenchmark", Qt::QueuedConnection);
 }
 
 void MainWindow::messageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg)

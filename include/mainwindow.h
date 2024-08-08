@@ -67,7 +67,7 @@ private:
     void checkHardwareAcceleration();
 
     static void messageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg);
-    void updateBenchmarkTable(int iterations, double mbps, double ms, const QString &cipher, const QString &kdf);
+    void updateBenchmarkTable(int iterations, double mbps, double ms, const QString &cipher, const QString &kdf); // Add this line
 
     void safeConnect(const QObject* sender, const char* signal, const QObject* receiver, const char* method);
 
