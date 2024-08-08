@@ -2,6 +2,7 @@
 #include <QApplication>
 #include <QDebug>
 #include <openssl/crypto.h>
+#include "version.h"
 
 int main(int argc, char *argv[])
 {

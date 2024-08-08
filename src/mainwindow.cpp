@@ -19,6 +19,7 @@
 #include "encryptionengine.h"
 #include <QDirIterator>
 #include <QProcess>
+#include "version.h"
 
 // Add the static member initialization here
 QTextStream* MainWindow::s_logStream = nullptr;
@@ -399,33 +400,13 @@ void MainWindow::on_actionPreferences_triggered()
 
 void MainWindow::on_actionAbout_triggered()
 {
-    // Execute git command to get the latest tag
-    QProcess tagProcess;
-    tagProcess.setWorkingDirectory(QDir::currentPath());
-    tagProcess.start("git", QStringList() << "describe" << "--tags" << "--abbrev=0");
-    tagProcess.waitForFinished();
-    QString version = tagProcess.readAllStandardOutput().trimmed();
-    if (version.isEmpty()) {
-        version = "Unknown";
-    }
-
-    // Execute git command to get the latest commit hash
-    QProcess hashProcess;
-    hashProcess.setWorkingDirectory(QDir::currentPath());
-    hashProcess.start("git", QStringList() << "rev-parse" << "HEAD");
-    hashProcess.waitForFinished();
-    QString commitHash = hashProcess.readAllStandardOutput().trimmed();
-    if (commitHash.isEmpty()) {
-        commitHash = "Unknown";
-    }
-
     QString aboutText = QString(
         "Open Encryption UI\n"
         "Version: %1\n"
         "Latest Commit: %2\n"
         "Hardware Acceleration: %3"
-    ).arg(version)
-     .arg(commitHash)
+    ).arg(GIT_TAG)
+     .arg(GIT_COMMIT_HASH)
      .arg(encryptionEngine.isHardwareAccelerationSupported() ? "Supported" : "Not supported");
 
     QMessageBox::about(this, "About", aboutText);

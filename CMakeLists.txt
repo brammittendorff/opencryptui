@@ -53,7 +53,6 @@ set(CMAKE_AUTOUIC_SEARCH_PATHS ${CMAKE_CURRENT_SOURCE_DIR}/ui)
 
 # Add the resources file
 qt5_add_resources(RESOURCES resources/resources.qrc)
-
 # Library sources
 set(LIBRARY_SOURCES
     src/mainwindow.cpp
@@ -70,6 +69,7 @@ set(LIBRARY_SOURCES
     include/customlistwidget.h
     ui/mainwindow.ui
     ${RESOURCES}
+    ${CMAKE_CURRENT_BINARY_DIR}/version.h
 )
 
 # Create a library target for common code
@@ -121,6 +121,29 @@ target_include_directories(OpenCryptUI PRIVATE
 )
 
 target_link_libraries(OpenCryptUI PRIVATE EncryptionLib)
+
+# Ensure GenerateVersionHeader is built before the main executable
+add_dependencies(OpenCryptUI GenerateVersionHeader)
+
+find_package(PythonInterp REQUIRED)
+set(PYTHON_EXECUTABLE ${PYTHON_EXECUTABLE})
+
+# Add custom command to generate version.h using Python script
+add_custom_command(
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/version.h
+    COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/scripts ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/generate_version_header.py
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/scripts/generate_version_header.py
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+# Add custom target to ensure version.h is generated
+add_custom_target(GenerateVersionHeader ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/version.h)
+
+# Ensure GenerateVersionHeader is built before the main executable
+add_dependencies(OpenCryptUI GenerateVersionHeader)
+
+# Include version.h
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 # Add test source
 set(TEST_SOURCES
