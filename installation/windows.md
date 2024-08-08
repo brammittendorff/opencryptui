@@ -18,7 +18,8 @@
      mingw-w64-x86_64-qt5-tools \
      cmake \
      gcc \
-     mingw-w64-x86_64-ntldd
+     mingw-w64-x86_64-ntldd \
+     git
    ```
 
 ## Build Steps
