@@ -276,24 +276,24 @@ jobs:
       - name: Zip Linux build
         run: |
           cd build-linux
-          zip -r ../release/linux-build.zip .
+          zip -r ../release/opencryptui-linux-build.zip .
 
       - name: Zip macOS build
         run: |
           cd build-macos
-          zip -r ../release/macos-build.zip .
+          zip -r ../release/opencryptui-macos-build.zip .
 
       - name: Zip Windows build
         run: |
           cd build-windows
-          zip -r ../release/windows-build.zip .
+          zip -r ../release/opencryptui-windows-build.zip .
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            release/linux-build.zip
-            release/macos-build.zip
-            release/windows-build.zip
+            release/opencryptui-linux-build.zip
+            release/opencryptui-macos-build.zip
+            release/opencryptui-windows-build.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
