@@ -14,7 +14,6 @@
 #include <QFile>
 #include <QDir>
 
-
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
@@ -47,6 +46,7 @@ private slots:
     // New slots for menu actions
     void on_actionExit_triggered();
     void on_actionPreferences_triggered();
+    void on_actionAbout_triggered();
     void applyTheme(const QString &theme);
 
 private:

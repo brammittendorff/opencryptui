@@ -16,16 +16,6 @@
         <widget class="QWidget" name="centralwidget">
             <layout class="QVBoxLayout" name="verticalLayout">
                 <item>
-                    <widget class="QLabel" name="hardwareAccelerationLabel">
-                        <property name="text">
-                            <string>Hardware Acceleration: Checking...</string>
-                        </property>
-                        <property name="alignment">
-                            <set>Qt::AlignCenter</set>
-                        </property>
-                    </widget>
-                </item>
-                <item>
                     <widget class="QTabWidget" name="tabWidget">
                         <property name="currentIndex">
                             <number>0</number>
@@ -138,12 +128,36 @@
                                                 <property name="text">
                                                     <string>Encrypt</string>
                                                 </property>
+                                                <property name="sizePolicy">
+                                                    <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                                                        <horstretch>0</horstretch>
+                                                        <verstretch>0</verstretch>
+                                                    </sizepolicy>
+                                                </property>
+                                                <property name="minimumSize">
+                                                    <size>
+                                                        <width>0</width>
+                                                        <height>50</height>
+                                                    </size>
+                                                </property>
                                             </widget>
                                         </item>
                                         <item>
                                             <widget class="QPushButton" name="fileDecryptButton">
                                                 <property name="text">
                                                     <string>Decrypt</string>
+                                                </property>
+                                                <property name="sizePolicy">
+                                                    <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                                                        <horstretch>0</horstretch>
+                                                        <verstretch>0</verstretch>
+                                                    </sizepolicy>
+                                                </property>
+                                                <property name="minimumSize">
+                                                    <size>
+                                                        <width>0</width>
+                                                        <height>50</height>
+                                                    </size>
                                                 </property>
                                             </widget>
                                         </item>
@@ -259,12 +273,36 @@
                                                 <property name="text">
                                                     <string>Encrypt Folder</string>
                                                 </property>
+                                                <property name="sizePolicy">
+                                                    <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                                                        <horstretch>0</horstretch>
+                                                        <verstretch>0</verstretch>
+                                                    </sizepolicy>
+                                                </property>
+                                                <property name="minimumSize">
+                                                    <size>
+                                                        <width>0</width>
+                                                        <height>50</height>
+                                                    </size>
+                                                </property>
                                             </widget>
                                         </item>
                                         <item>
                                             <widget class="QPushButton" name="folderDecryptButton">
                                                 <property name="text">
                                                     <string>Decrypt Folder</string>
+                                                </property>
+                                                <property name="sizePolicy">
+                                                    <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                                                        <horstretch>0</horstretch>
+                                                        <verstretch>0</verstretch>
+                                                    </sizepolicy>
+                                                </property>
+                                                <property name="minimumSize">
+                                                    <size>
+                                                        <width>0</width>
+                                                        <height>50</height>
+                                                    </size>
                                                 </property>
                                             </widget>
                                         </item>
@@ -332,8 +370,15 @@
                 </property>
                 <addaction name="actionPreferences"/>
             </widget>
+            <widget class="QMenu" name="menuHelp">
+                <property name="title">
+                    <string>Help</string>
+                </property>
+                <addaction name="actionAbout"/>
+            </widget>
             <addaction name="menuFile"/>
             <addaction name="menuEdit"/>
+            <addaction name="menuHelp"/>
         </widget>
         <widget class="QStatusBar" name="statusbar"/>
         <action name="actionExit">
@@ -344,6 +389,11 @@
         <action name="actionPreferences">
             <property name="text">
                 <string>Preferences</string>
+            </property>
+        </action>
+        <action name="actionAbout">
+            <property name="text">
+                <string>About</string>
             </property>
         </action>
     </widget>

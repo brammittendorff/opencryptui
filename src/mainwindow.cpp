@@ -17,6 +17,8 @@
 #include <QFile>
 #include <QDir>
 #include "encryptionengine.h"
+#include <QDirIterator>
+#include <QProcess>
 
 // Add the static member initialization here
 QTextStream* MainWindow::s_logStream = nullptr;
@@ -65,7 +67,7 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
-    // Save preferences before closing
+        // Save preferences before closing
     savePreferences();
 
     workerThread.quit();
@@ -139,6 +141,7 @@ void MainWindow::connectSignalsAndSlots()
     // Menu actions
     safeConnect(ui->actionExit, SIGNAL(triggered()), this, SLOT(on_actionExit_triggered()));
     safeConnect(ui->actionPreferences, SIGNAL(triggered()), this, SLOT(on_actionPreferences_triggered()));
+    safeConnect(ui->actionAbout, SIGNAL(triggered()), this, SLOT(on_actionAbout_triggered()));
 
     m_signalsConnected = true;
 }
@@ -269,7 +272,7 @@ void MainWindow::on_folderKeyfileBrowseButton_clicked()
 void MainWindow::checkHardwareAcceleration() {
     bool supported = encryptionEngine.isHardwareAccelerationSupported();
     QString status = supported ? "Supported" : "Not supported";
-    ui->hardwareAccelerationLabel->setText("Hardware Acceleration: " + status);
+    qDebug() << "Hardware Acceleration: " + status;
 }
 
 void MainWindow::on_benchmarkButton_clicked()
@@ -392,6 +395,40 @@ void MainWindow::on_actionPreferences_triggered()
     if (ok && !theme.isEmpty()) {
         applyTheme(theme);
     }
+}
+
+void MainWindow::on_actionAbout_triggered()
+{
+    // Execute git command to get the latest tag
+    QProcess tagProcess;
+    tagProcess.setWorkingDirectory(QDir::currentPath());
+    tagProcess.start("git", QStringList() << "describe" << "--tags" << "--abbrev=0");
+    tagProcess.waitForFinished();
+    QString version = tagProcess.readAllStandardOutput().trimmed();
+    if (version.isEmpty()) {
+        version = "Unknown";
+    }
+
+    // Execute git command to get the latest commit hash
+    QProcess hashProcess;
+    hashProcess.setWorkingDirectory(QDir::currentPath());
+    hashProcess.start("git", QStringList() << "rev-parse" << "HEAD");
+    hashProcess.waitForFinished();
+    QString commitHash = hashProcess.readAllStandardOutput().trimmed();
+    if (commitHash.isEmpty()) {
+        commitHash = "Unknown";
+    }
+
+    QString aboutText = QString(
+        "Open Encryption UI\n"
+        "Version: %1\n"
+        "Latest Commit: %2\n"
+        "Hardware Acceleration: %3"
+    ).arg(version)
+     .arg(commitHash)
+     .arg(encryptionEngine.isHardwareAccelerationSupported() ? "Supported" : "Not supported");
+
+    QMessageBox::about(this, "About", aboutText);
 }
 
 void MainWindow::applyTheme(const QString &theme) {
