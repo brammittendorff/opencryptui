@@ -2,6 +2,8 @@
 
 OpenCryptUI is a Qt-based graphical user interface application for file and folder encryption. It supports various encryption algorithms and key derivation functions.
 
+![Open Crypt UI](opencryptui.png)
+
 ## Features
 
 - Encrypt and decrypt files and folders.
