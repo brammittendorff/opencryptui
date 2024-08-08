@@ -33,11 +33,11 @@ private slots:
     void on_fileEncryptButton_clicked();
     void on_fileDecryptButton_clicked();
     void on_fileBrowseButton_clicked();
-    void on_fileKeyfileBrowseButton_clicked(); // New slot
+    void on_fileKeyfileBrowseButton_clicked();
     void on_folderEncryptButton_clicked();
     void on_folderDecryptButton_clicked();
     void on_folderBrowseButton_clicked();
-    void on_folderKeyfileBrowseButton_clicked(); // New slot
+    void on_folderKeyfileBrowseButton_clicked();
     void updateProgress(int value);
     void handleFinished(bool success, const QString &errorMessage);
     void showEstimatedTime(double seconds);
@@ -47,6 +47,8 @@ private slots:
     void on_actionExit_triggered();
     void on_actionPreferences_triggered();
     void on_actionAbout_triggered();
+    void on_actionAboutCiphers_triggered(); // New slot
+    void on_actionAboutKDFs_triggered();    // New slot
     void applyTheme(const QString &theme);
 
 private:
@@ -67,7 +69,7 @@ private:
     void checkHardwareAcceleration();
 
     static void messageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg);
-    void updateBenchmarkTable(int iterations, double mbps, double ms, const QString &cipher, const QString &kdf); // Add this line
+    void updateBenchmarkTable(int iterations, double mbps, double ms, const QString &cipher, const QString &kdf);
 
     void safeConnect(const QObject* sender, const char* signal, const QObject* receiver, const char* method);
 

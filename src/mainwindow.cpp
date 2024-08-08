@@ -107,7 +107,8 @@ void MainWindow::setupComboBoxes() {
     ui->fileAlgorithmComboBox->addItems(algorithms);
     ui->folderAlgorithmComboBox->addItems(algorithms);
 
-    QStringList kdfs = {"PBKDF2", "Argon2", "Scrypt"};
+    QStringList kdfs = {"Argon2", "Scrypt", "PBKDF2"};
+
     ui->kdfComboBox->addItems(kdfs);
     ui->folderKdfComboBox->addItems(kdfs);
 
@@ -146,6 +147,8 @@ void MainWindow::connectSignalsAndSlots()
     safeConnect(ui->actionExit, SIGNAL(triggered()), this, SLOT(on_actionExit_triggered()));
     safeConnect(ui->actionPreferences, SIGNAL(triggered()), this, SLOT(on_actionPreferences_triggered()));
     safeConnect(ui->actionAbout, SIGNAL(triggered()), this, SLOT(on_actionAbout_triggered()));
+    safeConnect(ui->actionAboutCiphers, SIGNAL(triggered()), this, SLOT(on_actionAboutCiphers_triggered())); // New connection
+    safeConnect(ui->actionAboutKDFs, SIGNAL(triggered()), this, SLOT(on_actionAboutKDFs_triggered()));       // New connection
 
     m_signalsConnected = true;
 }
@@ -290,7 +293,7 @@ void MainWindow::on_benchmarkButton_clicked()
         "AES-128-CBC", "AES-192-CBC", "Camellia-256-CBC", "Camellia-128-CBC"
     };
 
-    QStringList kdfs = {"PBKDF2", "Argon2", "Scrypt"};
+    QStringList kdfs = {"Argon2", "Scrypt", "PBKDF2"};
 
     worker->setBenchmarkParameters(algorithms, kdfs);
     QMetaObject::invokeMethod(worker, "runBenchmark", Qt::QueuedConnection);
@@ -472,4 +475,40 @@ void MainWindow::savePreferences()
     settingsFile.write(settingsDoc.toJson());
 
     settingsFile.close();
+}
+
+void MainWindow::on_actionAboutCiphers_triggered() {
+    QString aboutCiphersText = QString(
+        "Top Ciphers for File Encryption:\n\n"
+        "AES-256-GCM: Provides strong encryption with built-in data integrity and authentication. Highly recommended for file encryption due to its security and performance.\n\n"
+        "ChaCha20-Poly1305: A secure cipher that is resistant to timing attacks. It is highly efficient on both software and hardware, and is suitable for environments where performance is critical.\n\n"
+        "AES-256-CTR: A strong encryption mode suitable for stream encryption. It does not provide data integrity or authentication by itself, so it should be used with additional integrity checks.\n\n"
+        "AES-256-CBC: A widely used encryption mode that provides strong encryption but does not include data integrity or authentication. It is suitable for file encryption but should be combined with a message authentication code (MAC) to ensure data integrity.\n\n"
+        "Recommendation: For maximum security in file encryption, use AES-256-GCM or ChaCha20-Poly1305, as they provide both strong encryption and built-in data integrity and authentication."
+    );
+
+    QMessageBox::information(this, "About Ciphers", aboutCiphersText);
+}
+
+void MainWindow::on_actionAboutKDFs_triggered() {
+    QString aboutKDFsText = QString(
+        "Key Derivation Function (KDF) Information:\n\n"
+        "Argon2:\n"
+        "  - Designed to resist both GPU and ASIC attacks.\n"
+        "  - Highly secure and the winner of the Password Hashing Competition (PHC).\n"
+        "  - Recommended for new applications requiring strong password hashing.\n\n"
+        "Scrypt:\n"
+        "  - Designed to be highly memory-intensive, making it resistant to hardware attacks.\n"
+        "  - Suitable for environments where memory usage is not a constraint.\n\n"
+        "PBKDF2:\n"
+        "  - Widely used and well-established.\n"
+        "  - Provides basic protection against brute-force attacks by increasing the computation required.\n"
+        "  - Recommended for compatibility with older systems and applications.\n\n"
+        "Recommendation:\n"
+        "For maximum security, Argon2 is the best choice due to its resistance to various types of attacks. "
+        "If memory usage is a concern, Scrypt offers a good balance of security and performance. PBKDF2 should "
+        "be used primarily for compatibility with existing systems."
+    );
+
+    QMessageBox::information(this, "About KDFs", aboutKDFsText);
 }
