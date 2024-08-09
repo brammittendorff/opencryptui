@@ -54,7 +54,8 @@ bool EncryptionEngine::cryptOperation(const QString& inputPath, const QString& o
     QByteArray key = deriveKey(password, salt, keyfilePaths, kdf, iterations);
 
     if (key.isEmpty()) {
-        qDebug() << "Key derivation failed.";
+        sodium_munlock(key.data(), key.size());
+        OPENSSL_cleanse(key.data(), key.size());
         return false;
     }
 
@@ -138,8 +139,6 @@ bool EncryptionEngine::performStandardEncryption(EVP_CIPHER_CTX* ctx, const EVP_
 
 bool EncryptionEngine::performStandardDecryption(EVP_CIPHER_CTX* ctx, const EVP_CIPHER* cipher, const QByteArray& key, const QByteArray& iv, QFile& inputFile, QFile& outputFile) {
     qDebug() << "Starting decryption process...";
-    qDebug() << "Key (Hex):" << key.toHex();
-    qDebug() << "IV (Hex):" << iv.toHex();
 
     // Initialize the decryption operation
     if (!EVP_DecryptInit_ex(ctx, cipher, nullptr, reinterpret_cast<const unsigned char*>(key.data()), reinterpret_cast<const unsigned char*>(iv.data()))) {

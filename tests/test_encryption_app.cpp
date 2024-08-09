@@ -306,30 +306,23 @@ void TestOpenCryptUI::testAllCiphersAndKDFs()
 
 void TestOpenCryptUI::closeMessageBoxes()
 {
+    // Iterate through all top-level widgets
     foreach (QWidget *widget, QApplication::topLevelWidgets()) {
-        if (widget->isVisible()) {
-            QMessageBox *msgBox = qobject_cast<QMessageBox*>(widget);
-            if (msgBox) {
-                qDebug() << "Found QMessageBox with title:" << msgBox->windowTitle();
-                if (msgBox->isVisible()) {
-                    qDebug() << "QMessageBox is visible";
+        // Check if the widget is a visible QMessageBox
+        QMessageBox *msgBox = qobject_cast<QMessageBox*>(widget);
+        if (msgBox && msgBox->isVisible()) {
+            qDebug() << "Found and closing QMessageBox with title:" << msgBox->windowTitle();
 
-                    QAbstractButton *okButton = msgBox->button(QMessageBox::Ok);
-                    if (okButton) {
-                        qDebug() << "Clicking OK button";
-                        QTest::mouseClick(okButton, Qt::LeftButton);
-                        return;
-                    } else {
-                        qDebug() << "OK button not found in QMessageBox";
-                    }
-                } else {
-                    qDebug() << "QMessageBox is not visible";
-                }
+            // Find the OK button and click it
+            QAbstractButton *okButton = msgBox->button(QMessageBox::Ok);
+            if (okButton) {
+                qDebug() << "Clicking OK button";
+                QTest::mouseClick(okButton, Qt::LeftButton);
+            } else {
+                qDebug() << "OK button not found in QMessageBox";
             }
         }
     }
-
-    qDebug() << "No QMessageBox found";
 }
 
 QTEST_MAIN(TestOpenCryptUI)

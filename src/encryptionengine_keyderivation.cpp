@@ -63,43 +63,57 @@ QByteArray EncryptionEngine::performKeyDerivation(const QByteArray& passwordWith
     // Initialize a QByteArray to hold the derived key
     QByteArray key(keySize, 0);
 
+    // Attempt to lock the key memory to prevent it from being swapped to disk
+    if (sodium_mlock(key.data(), key.size()) != 0) {
+        qDebug() << "Failed to lock key in memory";
+        return QByteArray(); // Return an empty QByteArray on failure
+    }
+
+    bool success = false;
+
     // Perform key derivation based on the selected KDF
     if (kdf == "PBKDF2") {
         // PBKDF2 key derivation using SHA-256
-        if (!PKCS5_PBKDF2_HMAC(passwordWithKeyfile.data(), passwordWithKeyfile.size(),
-                               reinterpret_cast<const unsigned char*>(salt.data()), salt.size(),
-                               iterations, EVP_sha256(), key.size(),
-                               reinterpret_cast<unsigned char*>(key.data()))) {
-            qDebug() << "PBKDF2 key derivation failed";
-            return QByteArray(); // Return an empty QByteArray on failure
-        }
+        success = PKCS5_PBKDF2_HMAC(passwordWithKeyfile.data(), passwordWithKeyfile.size(),
+                                    reinterpret_cast<const unsigned char*>(salt.data()), salt.size(),
+                                    iterations, EVP_sha256(), key.size(),
+                                    reinterpret_cast<unsigned char*>(key.data())) != 0;
     } else if (kdf == "Argon2") {
         // Argon2i key derivation
-        if (argon2i_hash_raw(iterations, 1 << 16, 1,
-                             passwordWithKeyfile.data(), passwordWithKeyfile.size(),
-                             reinterpret_cast<const unsigned char*>(salt.data()), salt.size(),
-                             reinterpret_cast<unsigned char*>(key.data()), key.size()) != ARGON2_OK) {
-            qDebug() << "Argon2 key derivation failed";
-            return QByteArray(); // Return an empty QByteArray on failure
-        }
+        success = argon2i_hash_raw(iterations, 1 << 16, 1,
+                                   passwordWithKeyfile.data(), passwordWithKeyfile.size(),
+                                   reinterpret_cast<const unsigned char*>(salt.data()), salt.size(),
+                                   reinterpret_cast<unsigned char*>(key.data()), key.size()) == ARGON2_OK;
     } else if (kdf == "Scrypt") {
         // Scrypt key derivation
         unsigned long long opslimit = iterations;
-        if (crypto_pwhash_scryptsalsa208sha256(reinterpret_cast<unsigned char*>(key.data()),
-                                               static_cast<unsigned long long>(key.size()),
-                                               passwordWithKeyfile.constData(),
-                                               static_cast<unsigned long long>(passwordWithKeyfile.size()),
-                                               reinterpret_cast<const unsigned char*>(salt.data()), 
-                                               opslimit,
-                                               crypto_pwhash_scryptsalsa208sha256_MEMLIMIT_INTERACTIVE) != 0) {
-            qDebug() << "Scrypt key derivation failed";
-            return QByteArray(); // Return an empty QByteArray on failure
-        }
+        success = crypto_pwhash_scryptsalsa208sha256(reinterpret_cast<unsigned char*>(key.data()),
+                                                     static_cast<unsigned long long>(key.size()),
+                                                     passwordWithKeyfile.constData(),
+                                                     static_cast<unsigned long long>(passwordWithKeyfile.size()),
+                                                     reinterpret_cast<const unsigned char*>(salt.data()), 
+                                                     opslimit,
+                                                     crypto_pwhash_scryptsalsa208sha256_MEMLIMIT_INTERACTIVE) == 0;
     } else {
         // If an unknown KDF is provided, log an error
         qDebug() << "Unknown KDF specified:" << kdf;
+    }
+
+    if (!success) {
+        qDebug() << kdf << " key derivation failed";
+
+        // Unlock and cleanse key before returning
+        sodium_munlock(key.data(), key.size());
+        OPENSSL_cleanse(key.data(), key.size());
+
         return QByteArray(); // Return an empty QByteArray on failure
     }
+
+    // Clear sensitive data in passwordWithKeyfile
+    OPENSSL_cleanse(const_cast<char*>(passwordWithKeyfile.constData()), passwordWithKeyfile.size());
+
+    // Unlock the key memory before returning it
+    sodium_munlock(key.data(), key.size());
 
     return key;
 }
