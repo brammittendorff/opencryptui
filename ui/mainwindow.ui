@@ -396,11 +396,17 @@
                 <addaction name="actionAbout"/>
                 <addaction name="actionAboutCiphers"/>
                 <addaction name="actionAboutKDFs"/>
+                <addaction name="actionAboutIterations"/> <!-- Add this line -->
             </widget>
             <addaction name="menuFile"/>
             <addaction name="menuEdit"/>
             <addaction name="menuHelp"/>
         </widget>
+        <action name="actionAboutIterations"> <!-- Add this block -->
+            <property name="text">
+                <string>About Iterations</string>
+            </property>
+        </action>
         <action name="actionExit">
             <property name="text">
                 <string>Exit</string>

@@ -47,8 +47,9 @@ private slots:
     void on_actionExit_triggered();
     void on_actionPreferences_triggered();
     void on_actionAbout_triggered();
-    void on_actionAboutCiphers_triggered(); // New slot
-    void on_actionAboutKDFs_triggered();    // New slot
+    void on_actionAboutCiphers_triggered();
+    void on_actionAboutKDFs_triggered();
+    void on_actionAboutIterations_triggered();  // Add this line
     void applyTheme(const QString &theme);
 
 private:

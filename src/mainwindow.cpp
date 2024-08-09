@@ -147,8 +147,9 @@ void MainWindow::connectSignalsAndSlots()
     safeConnect(ui->actionExit, SIGNAL(triggered()), this, SLOT(on_actionExit_triggered()));
     safeConnect(ui->actionPreferences, SIGNAL(triggered()), this, SLOT(on_actionPreferences_triggered()));
     safeConnect(ui->actionAbout, SIGNAL(triggered()), this, SLOT(on_actionAbout_triggered()));
-    safeConnect(ui->actionAboutCiphers, SIGNAL(triggered()), this, SLOT(on_actionAboutCiphers_triggered())); // New connection
-    safeConnect(ui->actionAboutKDFs, SIGNAL(triggered()), this, SLOT(on_actionAboutKDFs_triggered()));       // New connection
+    safeConnect(ui->actionAboutCiphers, SIGNAL(triggered()), this, SLOT(on_actionAboutCiphers_triggered()));
+    safeConnect(ui->actionAboutKDFs, SIGNAL(triggered()), this, SLOT(on_actionAboutKDFs_triggered()));
+    safeConnect(ui->actionAboutIterations, SIGNAL(triggered()), this, SLOT(on_actionAboutIterations_triggered()));
 
     m_signalsConnected = true;
 }
@@ -511,4 +512,21 @@ void MainWindow::on_actionAboutKDFs_triggered() {
     );
 
     QMessageBox::information(this, "About KDFs", aboutKDFsText);
+}
+
+void MainWindow::on_actionAboutIterations_triggered()
+{
+    QString aboutIterationsText = QString(
+        "About Iterations:\n\n"
+        "The number of iterations used in key derivation functions (KDFs) is a critical factor in the security "
+        "of the encryption process. Iterations increase the computational effort required to derive the encryption "
+        "key, making brute-force attacks more difficult.\n\n"
+        "Recommended Iteration Counts:\n"
+        "- Argon2: 10 or more iterations. Argon2 is memory-hard, and higher iterations further increase security.\n"
+        "- Scrypt: N = 2^20 (1,048,576) or higher. Scrypt is also memory-hard, and high iteration counts make it more resistant to attacks.\n"
+        "- PBKDF2: 10,000,000 or more iterations. PBKDF2 relies on high iteration counts to increase security.\n\n"
+        "For maximum security, consider using higher iteration counts, especially if performance is not a critical concern."
+    );
+
+    QMessageBox::information(this, "About Iterations", aboutIterationsText);
 }
