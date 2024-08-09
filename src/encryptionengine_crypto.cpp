@@ -170,7 +170,18 @@ bool EncryptionEngine::performStandardDecryption(EVP_CIPHER_CTX* ctx, const EVP_
 }
 
 bool EncryptionEngine::performAuthenticatedEncryption(EVP_CIPHER_CTX* ctx, const EVP_CIPHER* cipher, const QByteArray& key, const QByteArray& iv, QFile& inputFile, QFile& outputFile) {
-    QByteArray tag(16, 0);  // GCM mode requires a 16-byte tag
+    int cipherMode = EVP_CIPHER_mode(cipher);
+    QByteArray tag;
+    bool isAuthenticatedMode = false;
+
+    if (cipherMode == EVP_CIPH_GCM_MODE || cipherMode == EVP_CIPH_CCM_MODE || 
+        EVP_CIPHER_nid(cipher) == NID_chacha20_poly1305) {
+        tag.resize(16);
+        isAuthenticatedMode = true;
+        qDebug() << "Authenticated mode detected:" << EVP_CIPHER_name(cipher);
+    } else {
+        qDebug() << "Non-authenticated mode detected:" << EVP_CIPHER_name(cipher);
+    }
 
     // Initialize encryption operation
     if (!EVP_EncryptInit_ex(ctx, cipher, nullptr, reinterpret_cast<const unsigned char*>(key.data()), reinterpret_cast<const unsigned char*>(iv.data()))) {
@@ -219,11 +230,29 @@ bool EncryptionEngine::performAuthenticatedEncryption(EVP_CIPHER_CTX* ctx, const
     // Append the tag to the end of the file
     outputFile.write(tag);
 
+    // At the end of the function
+    qDebug() << "Encryption completed successfully";
+    qDebug() << "Encrypted file size:" << outputFile.size() << "bytes";
+    if (isAuthenticatedMode) {
+        qDebug() << "Authentication tag:" << tag.toHex();
+    }
+
     return true;
 }
 
 bool EncryptionEngine::performAuthenticatedDecryption(EVP_CIPHER_CTX* ctx, const EVP_CIPHER* cipher, const QByteArray& key, const QByteArray& iv, QFile& inputFile, QFile& outputFile) {
-    QByteArray tag(16, 0);  // GCM mode requires a 16-byte tag
+    int cipherMode = EVP_CIPHER_mode(cipher);
+    QByteArray tag;
+    bool isAuthenticatedMode = false;
+
+    if (cipherMode == EVP_CIPH_GCM_MODE || cipherMode == EVP_CIPH_CCM_MODE || 
+        EVP_CIPHER_nid(cipher) == NID_chacha20_poly1305) {
+        tag.resize(16);
+        isAuthenticatedMode = true;
+        qDebug() << "Authenticated mode detected:" << EVP_CIPHER_name(cipher);
+    } else {
+        qDebug() << "Non-authenticated mode detected:" << EVP_CIPHER_name(cipher);
+    }
 
     // Read the entire encrypted content
     QByteArray encryptedContent = inputFile.readAll();
