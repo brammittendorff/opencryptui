@@ -2,6 +2,7 @@
 #include <QFile>
 #include <QProcess>
 #include <QDebug>
+#include <openssl/rand.h>
 
 bool EncryptionEngine::compressFolder(const QString& folderPath, const QString& outputFilePath) {
     QProcess process;

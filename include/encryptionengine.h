@@ -25,7 +25,8 @@ public:
 
     bool isHardwareAccelerationSupported() const;
 
-    QByteArray deriveKey(const QString &password, const QString &salt, const QString &kdf, int iterations, int keySize);
+    QByteArray deriveKey(const QString& password, const QByteArray& salt, const QStringList& keyfilePaths, const QString& kdf, int iterations);
+    QByteArray deriveKeyWithoutKeyfile(const QString &password, const QString &salt, const QString &kdf, int iterations, int keySize);
 
     void runBenchmark();
     void benchmarkCipher(const QString& algorithm, const QString& kdf, bool useHardwareAcceleration);
@@ -43,8 +44,8 @@ private:
     bool performAuthenticatedDecryption(EVP_CIPHER_CTX* ctx, const EVP_CIPHER* cipher, const QByteArray& key, const QByteArray& iv, QFile& inputFile, QFile& outputFile);
     QByteArray performKeyDerivation(const QByteArray& passwordWithKeyfile, const QByteArray& salt, const QString& kdf, int iterations, int keySize);
 
-    QByteArray deriveKey(const QString& password, const QByteArray& salt, const QStringList& keyfilePaths, const QString& kdf, int iterations);
     QByteArray readKeyfile(const QString& keyfilePath);
+
 
     bool checkHardwareSupport();
 };

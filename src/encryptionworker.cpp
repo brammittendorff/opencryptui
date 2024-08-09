@@ -2,6 +2,7 @@
 #include <QDebug>
 #include <QElapsedTimer>
 #include <QFileInfo>
+#include <openssl/rand.h>
 
 EncryptionWorker::EncryptionWorker(QObject *parent)
     : QObject(parent)
@@ -40,11 +41,31 @@ void EncryptionWorker::process()
 
     bool success = false;
     QString errorMessage;
+    QByteArray salt(32, 0); // Salt for key derivation
 
-    // Derive the key
-    QString salt = "some_salt"; // You should generate a proper salt in a real application
-    int keySize = 32; // Key size in bytes
-    QByteArray key = engine.deriveKey(password, salt, kdf, iterations, keySize);
+    if (encrypt) {
+        if (RAND_bytes(reinterpret_cast<unsigned char*>(salt.data()), salt.size()) != 1) {
+            emit finished(false, "Failed to generate random salt");
+            return;
+        }
+    } else {
+        QFile inputFile(path);
+        if (!inputFile.open(QIODevice::ReadOnly)) {
+            emit finished(false, "Failed to open input file");
+            return;
+        }
+
+        // Read the salt
+        if (inputFile.read(salt.data(), salt.size()) != salt.size()) {
+            emit finished(false, "Failed to read salt from file");
+            return;
+        }
+
+        inputFile.close();
+    }
+
+    // Derive the key using the password and keyfile(s)
+    QByteArray key = engine.deriveKey(password, salt, keyfilePaths, kdf, iterations);
 
     if (key.isEmpty()) {
         emit finished(false, "Key derivation failed");
@@ -53,15 +74,15 @@ void EncryptionWorker::process()
 
     if (isFile) {
         if (encrypt) {
-            success = engine.encryptFile(path, key, algorithm, kdf, iterations, useHMAC, customHeader, keyfilePaths);
+            success = engine.encryptFile(path, password, algorithm, kdf, iterations, useHMAC, customHeader, keyfilePaths);
         } else {
-            success = engine.decryptFile(path, key, algorithm, kdf, iterations, useHMAC, customHeader, keyfilePaths);
+            success = engine.decryptFile(path, password, algorithm, kdf, iterations, useHMAC, customHeader, keyfilePaths);
         }
     } else {
         if (encrypt) {
-            success = engine.encryptFolder(path, key, algorithm, kdf, iterations, useHMAC, customHeader, keyfilePaths);
+            success = engine.encryptFolder(path, password, algorithm, kdf, iterations, useHMAC, customHeader, keyfilePaths);
         } else {
-            success = engine.decryptFolder(path, key, algorithm, kdf, iterations, useHMAC, customHeader, keyfilePaths);
+            success = engine.decryptFolder(path, password, algorithm, kdf, iterations, useHMAC, customHeader, keyfilePaths);
         }
     }
 
@@ -72,7 +93,6 @@ void EncryptionWorker::process()
         emit progress(100);
         emit finished(true, QString());
 
-        // Calculate the file size in MB
         double fileSizeMB = getFileSizeInBytes(path) / (1024.0 * 1024.0);
         double mbps = fileSizeMB / seconds;
         emit benchmarkResultReady(iterations, mbps, seconds * 1000, algorithm, kdf);
@@ -123,7 +143,8 @@ void EncryptionWorker::benchmarkCipher(const QString &algorithm, const QString &
         return;
     }
 
-    key = engine.deriveKey("password", salt, kdf, iterations, key.size());
+    QStringList keyfilePaths; // If no keyfiles, use an empty QStringList
+    key = engine.deriveKey("password", salt, keyfilePaths, kdf, iterations);
     if (key.isEmpty()) {
         qDebug() << "Key derivation failed for KDF:" << kdf;
         return;
