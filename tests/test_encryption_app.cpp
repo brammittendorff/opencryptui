@@ -38,7 +38,7 @@ void TestOpenCryptUI::initTestCase()
 
     messageBoxTimer = new QTimer(this);
     connect(messageBoxTimer, &QTimer::timeout, this, &TestOpenCryptUI::closeMessageBoxes);
-    messageBoxTimer->start(1000);
+    messageBoxTimer->start(100);
 }
 
 void TestOpenCryptUI::cleanupTestCase()
