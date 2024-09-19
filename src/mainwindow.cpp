@@ -257,22 +257,28 @@ void MainWindow::on_folderBrowseButton_clicked()
 
 void MainWindow::on_fileKeyfileBrowseButton_clicked()
 {
-    qDebug() << "File Keyfile Browse Button Clicked";
     QStringList keyfilePaths = QFileDialog::getOpenFileNames(this, "Select Keyfiles");
     if (!keyfilePaths.isEmpty()) {
         for (const QString &path : keyfilePaths) {
-            ui->fileKeyfileListWidget->addItem(path);
+            if (ui->fileKeyfileListWidget->getAllItems().contains(path)) {
+                QMessageBox::warning(this, "Duplicate Keyfile", "The keyfile " + path + " is already in the list.");
+            } else {
+                ui->fileKeyfileListWidget->addItem(path);
+            }
         }
     }
 }
 
 void MainWindow::on_folderKeyfileBrowseButton_clicked()
 {
-    qDebug() << "Folder Keyfile Browse Button Clicked";
     QStringList keyfilePaths = QFileDialog::getOpenFileNames(this, "Select Keyfiles");
     if (!keyfilePaths.isEmpty()) {
         for (const QString &path : keyfilePaths) {
-            ui->folderKeyfileListWidget->addItem(path);
+            if (ui->folderKeyfileListWidget->getAllItems().contains(path)) {
+                QMessageBox::warning(this, "Duplicate Keyfile", "The keyfile " + path + " is already in the list.");
+            } else {
+                ui->folderKeyfileListWidget->addItem(path);
+            }
         }
     }
 }
