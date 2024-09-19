@@ -226,6 +226,22 @@ jobs:
           cd build
           xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" ctest --verbose
 
+      # Add logging for debug on macOS
+      - name: Debug build environment (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          echo "ARGON2_LIB_DIR: ${{ env.ARGON2_LIB_DIR }}"
+          echo "ARGON2_INCLUDE_DIR: ${{ env.ARGON2_INCLUDE_DIR }}"
+          echo "SODIUM_LIB_DIR: ${{ env.SODIUM_LIB_DIR }}"
+          echo "SODIUM_INCLUDE_DIR: ${{ env.SODIUM_INCLUDE_DIR }}"
+          echo "OPENSSL_ROOT_DIR: ${{ env.OPENSSL_ROOT_DIR }}"
+          echo "OPENSSL_INCLUDE_DIR: ${{ env.OPENSSL_INCLUDE_DIR }}"
+          echo "OPENSSL_CRYPTO_LIBRARY: ${{ env.OPENSSL_CRYPTO_LIBRARY }}"
+          echo "OPENSSL_SSL_LIBRARY: ${{ env.OPENSSL_SSL_LIBRARY }}"
+          echo "CMAKE_PREFIX_PATH: ${{ env.CMAKE_PREFIX_PATH }}"
+          echo "Qt5_DIR: ${{ env.Qt5_DIR }}"
+          echo "PATH: ${{ env.PATH }}"
+
       - name: Run tests (macOS)
         if: matrix.os == 'macos-latest'
         run: |
