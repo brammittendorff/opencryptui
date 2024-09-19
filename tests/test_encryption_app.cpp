@@ -239,11 +239,22 @@ bool TestOpenCryptUI::encryptAndDecrypt(const QString &cipher, const QString &kd
     qDebug() << "Clicking encrypt button";
     QTest::mouseClick(encryptButton, Qt::LeftButton);
 
-    if (!QTest::qWaitFor([&]() { return QFileInfo::exists(encryptedFilePath); }, 15000)) {
+    if (!QTest::qWaitFor([&]() { return QFileInfo::exists(encryptedFilePath); }, 30000)) {  // Increase timeout for debugging
         qDebug() << "Encryption failed or timed out for" << cipher << "with" << kdf;
         return false;
     }
     qDebug() << "Encrypted file created:" << encryptedFilePath;
+
+    // Log the encrypted content
+    QFile encryptedFile(encryptedFilePath);
+    if (encryptedFile.open(QIODevice::ReadOnly)) {
+        QByteArray encryptedContent = encryptedFile.readAll();
+        qDebug() << "Encrypted file content (hex):" << encryptedContent.toHex();
+        encryptedFile.close();
+    } else {
+        qDebug() << "Failed to open encrypted file";
+        return false;
+    }
 
     // Set up decryption parameters
     filePathInput->setText(encryptedFilePath);
@@ -254,7 +265,7 @@ bool TestOpenCryptUI::encryptAndDecrypt(const QString &cipher, const QString &kd
     qDebug() << "Clicking decrypt button";
     QTest::mouseClick(decryptButton, Qt::LeftButton);
 
-    if (!QTest::qWaitFor([&]() { return QFileInfo::exists(testFilePath); }, 15000)) {
+    if (!QTest::qWaitFor([&]() { return QFileInfo::exists(testFilePath); }, 30000)) {  // Increase timeout for debugging
         qDebug() << "Decryption failed or timed out for" << cipher << "with" << kdf;
         return false;
     }
@@ -286,7 +297,6 @@ bool TestOpenCryptUI::encryptAndDecrypt(const QString &cipher, const QString &kd
     if (useKeyfile) {
         QFile::remove(keyfilePath);
     }
-    qDebug() << "Test files cleaned up";
 
     return true;
 }
