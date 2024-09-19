@@ -20,6 +20,8 @@ find_package(Qt5 COMPONENTS Core Gui Widgets Test REQUIRED)
 if(WIN32)
     set(OPENSSL_USE_STATIC_LIBS TRUE)
     set(OPENSSL_MSVC_STATIC_RT TRUE)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded") # Static runtime
+    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a") # Force static libraries
 endif()
 
 # Find OpenSSL package
@@ -124,13 +126,13 @@ target_link_libraries(OpenCryptUI PRIVATE EncryptionLib)
 # Ensure GenerateVersionHeader is built before the main executable
 add_dependencies(OpenCryptUI GenerateVersionHeader)
 
-find_package(PythonInterp REQUIRED)
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
 set(PYTHON_EXECUTABLE ${PYTHON_EXECUTABLE})
 
 # Add custom command to generate version.h using Python script
 add_custom_command(
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/version.h
-    COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/scripts ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/generate_version_header.py
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/generate_version_header.py
     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/scripts/generate_version_header.py
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
