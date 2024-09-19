@@ -2,8 +2,13 @@ name: Build and Release
 
 on:
   push:
+    branches:
+      - '**'   # Runs the build for all branches when pushed
     tags:
-      - 'v*'
+      - 'v*'   # Triggers release when a tag is pushed
+  pull_request:
+    branches:
+      - '**'   # Runs the build for all pull requests
 
 permissions:
   contents: write
