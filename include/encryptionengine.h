@@ -36,17 +36,28 @@ public:
 private:
     QByteArray lastIv; // Store the last used IV
     bool m_aesNiSupported;
-
+    
+    // Constants
+    static const size_t MAX_KEYFILE_SIZE = 1024 * 1024 * 10; // 10MB maximum keyfile size
+    
+    // Core cryptographic operations
     bool cryptOperation(const QString& inputPath, const QString& outputPath, const QString& password, const QString& algorithm, bool encrypt, const QString& kdf, int iterations, bool useHMAC, const QString& customHeader, const QStringList& keyfilePaths);
     bool performStandardEncryption(EVP_CIPHER_CTX* ctx, const EVP_CIPHER* cipher, const QByteArray& key, const QByteArray& iv, QFile& inputFile, QFile& outputFile);
-    bool performStandardDecryption(EVP_CIPHER_CTX* ctx, const EVP_CIPHER* cipher, const QByteArray& key, const QByteArray& iv, QFile& inputFile, QFile& outputFile);
+    bool performStandardDecryption(EVP_CIPHER_CTX* ctx, const EVP_CIPHER* cipher, const QByteArray& key, const QByteArray& iv, QFile& inputFile, QFile& outputFile, bool useHMAC);
     bool performAuthenticatedEncryption(EVP_CIPHER_CTX* ctx, const EVP_CIPHER* cipher, const QByteArray& key, const QByteArray& iv, QFile& inputFile, QFile& outputFile);
     bool performAuthenticatedDecryption(EVP_CIPHER_CTX* ctx, const EVP_CIPHER* cipher, const QByteArray& key, const QByteArray& iv, QFile& inputFile, QFile& outputFile);
+    
+    // Key derivation helpers
     QByteArray performKeyDerivation(const QByteArray& passwordWithKeyfile, const QByteArray& salt, const QString& kdf, int iterations, int keySize);
-
     QByteArray readKeyfile(const QString& keyfilePath);
-
-
+    
+    // Security enhancement functions
+    bool validateKeyfileEntropy(const QByteArray& keyfileData);
+    size_t determineArgon2MemoryCost();
+    size_t determineScryptMemLimit();
+    bool validateIV(const QByteArray& iv);
+    
+    // Hardware support
     bool checkHardwareSupport();
 };
 

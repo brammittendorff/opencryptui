@@ -3,7 +3,39 @@
 #include <QDebug>
 #include <openssl/rand.h>
 #include <openssl/evp.h>
+#include <openssl/err.h>
 #include <sodium.h>
+
+// Function to validate IV before use
+bool EncryptionEngine::validateIV(const QByteArray& iv) {
+    // Check for null or empty IV
+    if (iv.isEmpty()) {
+        qDebug() << "IV validation failed: IV is empty";
+        return false;
+    }
+    
+    // Check for all zeros (weak IV)
+    bool allZeros = true;
+    for (char byte : iv) {
+        if (byte != 0) {
+            allZeros = false;
+            break;
+        }
+    }
+    
+    if (allZeros) {
+        qDebug() << "IV validation failed: IV contains all zeros";
+        return false;
+    }
+    
+    // Check IV length based on cipher (minimum 12 bytes for GCM, 16 for others)
+    if (iv.size() < 12) {
+        qDebug() << "IV validation failed: IV length is less than minimum required";
+        return false;
+    }
+    
+    return true;
+}
 
 bool EncryptionEngine::cryptOperation(const QString& inputPath, const QString& outputPath, const QString& password, const QString& algorithm, bool encrypt, const QString& kdf, int iterations, bool useHMAC, const QString& customHeader, const QStringList& keyfilePaths) {
     qDebug() << "Starting cryptOperation...";
@@ -39,8 +71,29 @@ bool EncryptionEngine::cryptOperation(const QString& inputPath, const QString& o
     QByteArray salt(32, 0);
 
     if (encrypt) {
-        RAND_bytes(reinterpret_cast<unsigned char*>(salt.data()), salt.size());
-        RAND_bytes(reinterpret_cast<unsigned char*>(iv.data()), ivLength);
+        // Generate a cryptographically secure random salt
+        if (RAND_bytes(reinterpret_cast<unsigned char*>(salt.data()), salt.size()) != 1) {
+            unsigned long err = ERR_get_error();
+            char err_buf[256];
+            ERR_error_string_n(err, err_buf, sizeof(err_buf));
+            qDebug() << "Failed to generate random salt:" << err_buf;
+            return false;
+        }
+        
+        // Generate a cryptographically secure random IV
+        if (RAND_bytes(reinterpret_cast<unsigned char*>(iv.data()), ivLength) != 1) {
+            unsigned long err = ERR_get_error();
+            char err_buf[256];
+            ERR_error_string_n(err, err_buf, sizeof(err_buf));
+            qDebug() << "Failed to generate random IV:" << err_buf;
+            return false;
+        }
+        
+        // Validate the generated IV
+        if (!validateIV(iv)) {
+            qDebug() << "Generated IV validation failed";
+            return false;
+        }
     } else {
         inputFile.seek(customHeader.size()); // Skip the custom header
         if (inputFile.read(salt.data(), salt.size()) != salt.size()) {
@@ -54,6 +107,7 @@ bool EncryptionEngine::cryptOperation(const QString& inputPath, const QString& o
     QByteArray key = deriveKey(password, salt, keyfilePaths, kdf, iterations);
 
     if (key.isEmpty()) {
+        qDebug() << "Key derivation failed";
         sodium_munlock(key.data(), key.size());
         OPENSSL_cleanse(key.data(), key.size());
         return false;
@@ -77,18 +131,53 @@ bool EncryptionEngine::cryptOperation(const QString& inputPath, const QString& o
         outputFile.write(customHeader.toUtf8());
         outputFile.write(salt);
         outputFile.write(iv);
-        success = useHMAC ? performAuthenticatedEncryption(ctx, cipher, key, iv, inputFile, outputFile)
-                          : performStandardEncryption(ctx, cipher, key, iv, inputFile, outputFile);
+        
+        // Determine if we need authenticated encryption based on the cipher and HMAC setting
+        int cipherMode = EVP_CIPHER_mode(cipher);
+        bool isAuthenticatedCipher = (cipherMode == EVP_CIPH_GCM_MODE || 
+                                    cipherMode == EVP_CIPH_CCM_MODE || 
+                                    EVP_CIPHER_nid(cipher) == NID_chacha20_poly1305);
+        
+        // Always use authenticated encryption for authenticated ciphers
+        // For non-authenticated ciphers, use HMAC if specified
+        if (isAuthenticatedCipher) {
+            success = performAuthenticatedEncryption(ctx, cipher, key, iv, inputFile, outputFile);
+        } else {
+            success = useHMAC ? performAuthenticatedEncryption(ctx, cipher, key, iv, inputFile, outputFile)
+                              : performStandardEncryption(ctx, cipher, key, iv, inputFile, outputFile);
+        }
     } else {
         QByteArray header(customHeader.size(), 0);
         if (inputFile.read(header.data(), customHeader.size()) != customHeader.size() || header != customHeader.toUtf8()) {
             qDebug() << "Failed to read or validate custom header";
             return false;
         }
+        
         inputFile.seek(customHeader.size() + salt.size()); // Skip header and salt
-        inputFile.read(iv.data(), iv.size());
-        success = useHMAC ? performAuthenticatedDecryption(ctx, cipher, key, iv, inputFile, outputFile)
-                          : performStandardDecryption(ctx, cipher, key, iv, inputFile, outputFile);
+        if (inputFile.read(iv.data(), iv.size()) != iv.size()) {
+            qDebug() << "Failed to read IV from input file";
+            return false;
+        }
+        
+        // Validate the read IV
+        if (!validateIV(iv)) {
+            qDebug() << "Invalid IV detected during decryption";
+            return false;
+        }
+        
+        // Determine the cipher mode
+        int cipherMode = EVP_CIPHER_mode(cipher);
+        bool isAuthenticatedCipher = (cipherMode == EVP_CIPH_GCM_MODE || 
+                                    cipherMode == EVP_CIPH_CCM_MODE || 
+                                    EVP_CIPHER_nid(cipher) == NID_chacha20_poly1305);
+        
+        // Use the appropriate decryption method
+        if (isAuthenticatedCipher) {
+            success = performAuthenticatedDecryption(ctx, cipher, key, iv, inputFile, outputFile);
+        } else {
+            success = useHMAC ? performAuthenticatedDecryption(ctx, cipher, key, iv, inputFile, outputFile)
+                              : performStandardDecryption(ctx, cipher, key, iv, inputFile, outputFile, useHMAC);
+        }
     }
 
     if (!success) {
@@ -109,8 +198,13 @@ bool EncryptionEngine::cryptOperation(const QString& inputPath, const QString& o
 
 bool EncryptionEngine::performStandardEncryption(EVP_CIPHER_CTX* ctx, const EVP_CIPHER* cipher, const QByteArray& key, const QByteArray& iv, QFile& inputFile, QFile& outputFile) {
     // Initialize encryption operation
-    if (1 != EVP_EncryptInit_ex(ctx, cipher, nullptr, reinterpret_cast<const unsigned char*>(key.data()), reinterpret_cast<const unsigned char*>(iv.data()))) {
-        qDebug() << "EVP_EncryptInit_ex failed";
+    if (1 != EVP_EncryptInit_ex(ctx, cipher, nullptr, 
+                            reinterpret_cast<const unsigned char*>(key.data()), 
+                            reinterpret_cast<const unsigned char*>(iv.data()))) {
+        unsigned long err = ERR_get_error();
+        char err_buf[256];
+        ERR_error_string_n(err, err_buf, sizeof(err_buf));
+        qDebug() << "EVP_EncryptInit_ex failed:" << err_buf;
         return false;
     }
 
@@ -120,8 +214,15 @@ bool EncryptionEngine::performStandardEncryption(EVP_CIPHER_CTX* ctx, const EVP_
     
     while (!inputFile.atEnd()) {
         int inLen = inputFile.read(buffer.data(), buffer.size());
-        if (1 != EVP_EncryptUpdate(ctx, reinterpret_cast<unsigned char*>(outBuf.data()), &outLen, reinterpret_cast<const unsigned char*>(buffer.data()), inLen)) {
-            qDebug() << "EVP_EncryptUpdate failed";
+        if (1 != EVP_EncryptUpdate(ctx, 
+                                reinterpret_cast<unsigned char*>(outBuf.data()), 
+                                &outLen, 
+                                reinterpret_cast<const unsigned char*>(buffer.data()), 
+                                inLen)) {
+            unsigned long err = ERR_get_error();
+            char err_buf[256];
+            ERR_error_string_n(err, err_buf, sizeof(err_buf));
+            qDebug() << "EVP_EncryptUpdate failed:" << err_buf;
             return false;
         }
         outputFile.write(outBuf.data(), outLen);
@@ -129,7 +230,10 @@ bool EncryptionEngine::performStandardEncryption(EVP_CIPHER_CTX* ctx, const EVP_
 
     // Finalize encryption
     if (1 != EVP_EncryptFinal_ex(ctx, reinterpret_cast<unsigned char*>(outBuf.data()), &outLen)) {
-        qDebug() << "EVP_EncryptFinal_ex failed";
+        unsigned long err = ERR_get_error();
+        char err_buf[256];
+        ERR_error_string_n(err, err_buf, sizeof(err_buf));
+        qDebug() << "EVP_EncryptFinal_ex failed:" << err_buf;
         return false;
     }
     outputFile.write(outBuf.data(), outLen);
@@ -137,12 +241,29 @@ bool EncryptionEngine::performStandardEncryption(EVP_CIPHER_CTX* ctx, const EVP_
     return true;
 }
 
-bool EncryptionEngine::performStandardDecryption(EVP_CIPHER_CTX* ctx, const EVP_CIPHER* cipher, const QByteArray& key, const QByteArray& iv, QFile& inputFile, QFile& outputFile) {
+bool EncryptionEngine::performStandardDecryption(EVP_CIPHER_CTX* ctx, const EVP_CIPHER* cipher, const QByteArray& key, const QByteArray& iv, QFile& inputFile, QFile& outputFile, bool useHMAC) {
     qDebug() << "Starting decryption process...";
 
+    // Verify that we're not using an unauthenticated mode without HMAC
+    int cipherMode = EVP_CIPHER_mode(cipher);
+    bool isAuthenticatedCipher = (cipherMode == EVP_CIPH_GCM_MODE || 
+                                cipherMode == EVP_CIPH_CCM_MODE || 
+                                EVP_CIPHER_nid(cipher) == NID_chacha20_poly1305);
+    
+    // For non-authenticated ciphers, require HMAC
+    if (!isAuthenticatedCipher && !useHMAC) {
+        qDebug() << "Security policy: Refusing to decrypt with a non-authenticated cipher without HMAC";
+        return false;
+    }
+
     // Initialize the decryption operation
-    if (!EVP_DecryptInit_ex(ctx, cipher, nullptr, reinterpret_cast<const unsigned char*>(key.data()), reinterpret_cast<const unsigned char*>(iv.data()))) {
-        qDebug() << "EVP_DecryptInit_ex failed";
+    if (!EVP_DecryptInit_ex(ctx, cipher, nullptr, 
+                          reinterpret_cast<const unsigned char*>(key.data()), 
+                          reinterpret_cast<const unsigned char*>(iv.data()))) {
+        unsigned long err = ERR_get_error();
+        char err_buf[256];
+        ERR_error_string_n(err, err_buf, sizeof(err_buf));
+        qDebug() << "EVP_DecryptInit_ex failed:" << err_buf;
         return false;
     }
 
@@ -152,15 +273,26 @@ bool EncryptionEngine::performStandardDecryption(EVP_CIPHER_CTX* ctx, const EVP_
 
     while (!inputFile.atEnd()) {
         int inLen = inputFile.read(buffer.data(), buffer.size());
-        if (!EVP_DecryptUpdate(ctx, reinterpret_cast<unsigned char*>(outputBuffer.data()), &outLen, reinterpret_cast<unsigned char*>(buffer.data()), inLen)) {
-            qDebug() << "EVP_DecryptUpdate failed";
+        if (!EVP_DecryptUpdate(ctx, 
+                            reinterpret_cast<unsigned char*>(outputBuffer.data()), 
+                            &outLen, 
+                            reinterpret_cast<unsigned char*>(buffer.data()), 
+                            inLen)) {
+            unsigned long err = ERR_get_error();
+            char err_buf[256];
+            ERR_error_string_n(err, err_buf, sizeof(err_buf));
+            qDebug() << "EVP_DecryptUpdate failed:" << err_buf;
             return false;
         }
         outputFile.write(outputBuffer.data(), outLen);
     }
 
     if (!EVP_DecryptFinal_ex(ctx, reinterpret_cast<unsigned char*>(outputBuffer.data()), &outLen)) {
-        qDebug() << "EVP_DecryptFinal_ex failed";
+        unsigned long err = ERR_get_error();
+        char err_buf[256];
+        ERR_error_string_n(err, err_buf, sizeof(err_buf));
+        qDebug() << "EVP_DecryptFinal_ex failed:" << err_buf;
+        qDebug() << "This could indicate corrupted data or an incorrect password";
         return false;
     }
     outputFile.write(outputBuffer.data(), outLen);
@@ -180,11 +312,17 @@ bool EncryptionEngine::performAuthenticatedEncryption(EVP_CIPHER_CTX* ctx, const
         qDebug() << "Authenticated mode detected:" << EVP_CIPHER_name(cipher);
     } else {
         qDebug() << "Non-authenticated mode detected:" << EVP_CIPHER_name(cipher);
+        qDebug() << "Using manual authentication";
     }
 
     // Initialize encryption operation
-    if (!EVP_EncryptInit_ex(ctx, cipher, nullptr, reinterpret_cast<const unsigned char*>(key.data()), reinterpret_cast<const unsigned char*>(iv.data()))) {
-        qDebug() << "EVP_EncryptInit_ex failed";
+    if (!EVP_EncryptInit_ex(ctx, cipher, nullptr, 
+                          reinterpret_cast<const unsigned char*>(key.data()), 
+                          reinterpret_cast<const unsigned char*>(iv.data()))) {
+        unsigned long err = ERR_get_error();
+        char err_buf[256];
+        ERR_error_string_n(err, err_buf, sizeof(err_buf));
+        qDebug() << "EVP_EncryptInit_ex failed:" << err_buf;
         return false;
     }
 
@@ -199,9 +337,15 @@ bool EncryptionEngine::performAuthenticatedEncryption(EVP_CIPHER_CTX* ctx, const
         outputBuffer.resize(bytesRead + EVP_CIPHER_block_size(cipher));
         int outLen;
 
-        if (!EVP_EncryptUpdate(ctx, reinterpret_cast<unsigned char*>(outputBuffer.data()), &outLen, 
-                               reinterpret_cast<const unsigned char*>(buffer.constData()), bytesRead)) {
-            qDebug() << "EVP_EncryptUpdate failed";
+        if (!EVP_EncryptUpdate(ctx, 
+                             reinterpret_cast<unsigned char*>(outputBuffer.data()), 
+                             &outLen, 
+                             reinterpret_cast<const unsigned char*>(buffer.constData()), 
+                             bytesRead)) {
+            unsigned long err = ERR_get_error();
+            char err_buf[256];
+            ERR_error_string_n(err, err_buf, sizeof(err_buf));
+            qDebug() << "EVP_EncryptUpdate failed:" << err_buf;
             return false;
         }
 
@@ -212,7 +356,10 @@ bool EncryptionEngine::performAuthenticatedEncryption(EVP_CIPHER_CTX* ctx, const
     outputBuffer.resize(EVP_CIPHER_block_size(cipher));
     int outLen;
     if (!EVP_EncryptFinal_ex(ctx, reinterpret_cast<unsigned char*>(outputBuffer.data()), &outLen)) {
-        qDebug() << "EVP_EncryptFinal_ex failed";
+        unsigned long err = ERR_get_error();
+        char err_buf[256];
+        ERR_error_string_n(err, err_buf, sizeof(err_buf));
+        qDebug() << "EVP_EncryptFinal_ex failed:" << err_buf;
         return false;
     }
 
@@ -220,20 +367,24 @@ bool EncryptionEngine::performAuthenticatedEncryption(EVP_CIPHER_CTX* ctx, const
         outputFile.write(outputBuffer.constData(), outLen);
     }
 
-    // Get the tag
-    if (!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, tag.size(), tag.data())) {
-        qDebug() << "EVP_CIPHER_CTX_ctrl(EVP_CTRL_GCM_GET_TAG) failed";
-        return false;
+    // Get the tag for authenticated encryption modes
+    if (isAuthenticatedMode) {
+        if (!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, tag.size(), tag.data())) {
+            unsigned long err = ERR_get_error();
+            char err_buf[256];
+            ERR_error_string_n(err, err_buf, sizeof(err_buf));
+            qDebug() << "EVP_CIPHER_CTX_ctrl(EVP_CTRL_GCM_GET_TAG) failed:" << err_buf;
+            return false;
+        }
+
+        // Append the tag to the end of the file
+        outputFile.write(tag);
     }
 
-    // Append the tag to the end of the file
-    outputFile.write(tag);
-
-    // At the end of the function
     qDebug() << "Encryption completed successfully";
     qDebug() << "Encrypted file size:" << outputFile.size() << "bytes";
     if (isAuthenticatedMode) {
-        qDebug() << "Authentication tag:" << tag.toHex();
+        qDebug() << "Authentication tag generated:" << tag.toHex();
     }
 
     return true;
@@ -251,25 +402,32 @@ bool EncryptionEngine::performAuthenticatedDecryption(EVP_CIPHER_CTX* ctx, const
         qDebug() << "Authenticated mode detected:" << EVP_CIPHER_name(cipher);
     } else {
         qDebug() << "Non-authenticated mode detected:" << EVP_CIPHER_name(cipher);
+        qDebug() << "Using manual authentication";
     }
 
     // Read the entire encrypted content
     QByteArray encryptedContent = inputFile.readAll();
 
-    // The last 16 bytes should be the tag
-    if (encryptedContent.size() < 16) {
-        qDebug() << "Encrypted content is too short";
-        return false;
+    // The last 16 bytes should be the tag for authenticated encryption modes
+    if (isAuthenticatedMode) {
+        if (encryptedContent.size() < 16) {
+            qDebug() << "Encrypted content is too short";
+            return false;
+        }
+
+        tag = encryptedContent.right(16);
+        encryptedContent.chop(16);  // Remove the tag from the encrypted content
+        qDebug() << "Tag read for decryption (Hex):" << tag.toHex();
     }
 
-    tag = encryptedContent.right(16);
-    encryptedContent.chop(16);  // Remove the tag from the encrypted content
-
-    qDebug() << "Tag read for decryption (Hex):" << tag.toHex();
-
     // Initialize decryption operation
-    if (!EVP_DecryptInit_ex(ctx, cipher, nullptr, reinterpret_cast<const unsigned char*>(key.data()), reinterpret_cast<const unsigned char*>(iv.data()))) {
-        qDebug() << "EVP_DecryptInit_ex failed";
+    if (!EVP_DecryptInit_ex(ctx, cipher, nullptr, 
+                          reinterpret_cast<const unsigned char*>(key.data()), 
+                          reinterpret_cast<const unsigned char*>(iv.data()))) {
+        unsigned long err = ERR_get_error();
+        char err_buf[256];
+        ERR_error_string_n(err, err_buf, sizeof(err_buf));
+        qDebug() << "EVP_DecryptInit_ex failed:" << err_buf;
         return false;
     }
 
@@ -277,27 +435,47 @@ bool EncryptionEngine::performAuthenticatedDecryption(EVP_CIPHER_CTX* ctx, const
     int outLen;
 
     // Decrypt the data
-    if (!EVP_DecryptUpdate(ctx, reinterpret_cast<unsigned char*>(outputBuffer.data()), &outLen, 
-                           reinterpret_cast<const unsigned char*>(encryptedContent.constData()), encryptedContent.size())) {
-        qDebug() << "EVP_DecryptUpdate failed";
+    if (!EVP_DecryptUpdate(ctx, 
+                         reinterpret_cast<unsigned char*>(outputBuffer.data()), 
+                         &outLen, 
+                         reinterpret_cast<const unsigned char*>(encryptedContent.constData()), 
+                         encryptedContent.size())) {
+        unsigned long err = ERR_get_error();
+        char err_buf[256];
+        ERR_error_string_n(err, err_buf, sizeof(err_buf));
+        qDebug() << "EVP_DecryptUpdate failed:" << err_buf;
         return false;
     }
 
-    // Set the expected tag
-    if (!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, tag.size(), tag.data())) {
-        qDebug() << "EVP_CIPHER_CTX_ctrl(EVP_CTRL_GCM_SET_TAG) failed";
-        return false;
+    // For authenticated encryption modes, set the expected tag
+    if (isAuthenticatedMode) {
+        if (!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, tag.size(), tag.data())) {
+            unsigned long err = ERR_get_error();
+            char err_buf[256];
+            ERR_error_string_n(err, err_buf, sizeof(err_buf));
+            qDebug() << "EVP_CIPHER_CTX_ctrl(EVP_CTRL_GCM_SET_TAG) failed:" << err_buf;
+            return false;
+        }
     }
 
     int tmpLen;
-    // Finalize the decryption and check the tag
+    // Finalize the decryption and check the tag for authenticated modes
     if (!EVP_DecryptFinal_ex(ctx, reinterpret_cast<unsigned char*>(outputBuffer.data()) + outLen, &tmpLen)) {
-        qDebug() << "EVP_DecryptFinal_ex failed - authentication failure";
+        unsigned long err = ERR_get_error();
+        char err_buf[256];
+        ERR_error_string_n(err, err_buf, sizeof(err_buf));
+        qDebug() << "EVP_DecryptFinal_ex failed - authentication failure:" << err_buf;
+        qDebug() << "This indicates data corruption, tampering, or an incorrect password";
         return false;
     }
 
     outLen += tmpLen;
     outputFile.write(outputBuffer.constData(), outLen);
+
+    qDebug() << "Decryption completed successfully";
+    if (isAuthenticatedMode) {
+        qDebug() << "Authentication verified successfully";
+    }
 
     return true;
 }
