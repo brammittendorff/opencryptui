@@ -10,6 +10,7 @@
 #include "mainwindow.h"
 #include <QTimer>
 #include <QWindow>
+#include <QCheckBox>
 
 class TestOpenCryptUI : public QObject
 {
@@ -22,6 +23,7 @@ private slots:
     void testAllCiphersAndKDFs();
     void cleanupTestCase();
     void closeMessageBoxes();
+    void testCustomChaCha20Implementation();
 
 private:
     QTimer *messageBoxTimer;
@@ -333,6 +335,93 @@ void TestOpenCryptUI::closeMessageBoxes()
             }
         }
     }
+}
+
+void TestOpenCryptUI::testCustomChaCha20Implementation()
+{
+    qDebug() << "Starting test for custom ChaCha20 implementation";
+
+    // Find UI elements
+    QLineEdit *filePathInput = mainWindow->findChild<QLineEdit*>("filePathLineEdit");
+    QLineEdit *passwordInput = mainWindow->findChild<QLineEdit*>("filePasswordLineEdit");
+    QPushButton *encryptButton = mainWindow->findChild<QPushButton*>("fileEncryptButton");
+    QPushButton *decryptButton = mainWindow->findChild<QPushButton*>("fileDecryptButton");
+    QComboBox *algorithmComboBox = mainWindow->findChild<QComboBox*>("fileAlgorithmComboBox");
+    QCheckBox *customImplCheckBox = mainWindow->findChild<QCheckBox*>("fileCustomImplCheckBox");
+    
+    QVERIFY(filePathInput);
+    QVERIFY(passwordInput);
+    QVERIFY(encryptButton);
+    QVERIFY(decryptButton);
+    QVERIFY(algorithmComboBox);
+    QVERIFY(customImplCheckBox);
+    
+    // Create test file
+    QString testContent = "Test content for custom ChaCha20 implementation";
+    QString testFilePath = createTestFile(testContent);
+    QVERIFY(!testFilePath.isEmpty());
+    
+    QString encryptedFilePath = testFilePath + ".cus"; // .cus extension for custom impl
+    
+    // Set up encryption parameters
+    filePathInput->setText(testFilePath);
+    passwordInput->setText("customPassword123");
+    algorithmComboBox->setCurrentText("ChaCha20-Poly1305");
+    customImplCheckBox->setChecked(true);  // Enable custom implementation
+    qDebug() << "Encryption parameters set up for custom ChaCha20";
+    
+    // Encrypt with custom implementation
+    qDebug() << "Clicking encrypt button with custom implementation enabled";
+    QTest::mouseClick(encryptButton, Qt::LeftButton);
+    
+    // Wait for encrypted file to be created
+    if (!QTest::qWaitFor([&]() { return QFileInfo::exists(encryptedFilePath); }, 30000)) {
+        QFAIL("Encryption with custom ChaCha20 failed or timed out");
+    }
+    qDebug() << "Encrypted file created with custom implementation:" << encryptedFilePath;
+    
+    // Verify encrypted file exists and is different from original
+    QFile encryptedFile(encryptedFilePath);
+    QVERIFY(encryptedFile.open(QIODevice::ReadOnly));
+    QByteArray encryptedContent = encryptedFile.readAll();
+    qDebug() << "Encrypted file content (hex):" << encryptedContent.toHex().left(100) << "...";
+    encryptedFile.close();
+    
+    // Make sure it's actually encrypted (not plaintext)
+    QVERIFY(!encryptedContent.contains(testContent.toUtf8()));
+    
+    // Now decrypt
+    filePathInput->setText(encryptedFilePath);
+    passwordInput->setText("customPassword123");
+    customImplCheckBox->setChecked(true);  // Keep custom implementation enabled
+    qDebug() << "Decryption parameters set up for custom ChaCha20";
+    
+    // Decrypt with custom implementation
+    qDebug() << "Clicking decrypt button with custom implementation enabled";
+    QTest::mouseClick(decryptButton, Qt::LeftButton);
+    
+    // Wait for decrypted file to be created
+    if (!QTest::qWaitFor([&]() { return QFileInfo::exists(testFilePath); }, 30000)) {
+        QFAIL("Decryption with custom ChaCha20 failed or timed out");
+    }
+    qDebug() << "Decrypted file created with custom implementation:" << testFilePath;
+    
+    // Verify decrypted content matches original
+    QFile decryptedFile(testFilePath);
+    QVERIFY(decryptedFile.open(QIODevice::ReadOnly | QIODevice::Text));
+    QTextStream in(&decryptedFile);
+    QString decryptedContent = in.readAll().trimmed();
+    decryptedFile.close();
+    
+    qDebug() << "Decrypted content: " << decryptedContent;
+    qDebug() << "Original content: " << testContent;
+    QCOMPARE(decryptedContent, testContent);
+    
+    qDebug() << "Test for custom ChaCha20 implementation PASSED";
+    
+    // Clean up
+    QFile::remove(testFilePath);
+    QFile::remove(encryptedFilePath);
 }
 
 QTEST_MAIN(TestOpenCryptUI)

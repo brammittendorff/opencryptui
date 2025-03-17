@@ -66,6 +66,9 @@ set(LIBRARY_SOURCES
     include/encryptionengine.h
     src/encryptionworker.cpp
     include/encryptionworker.h
+    src/chacha20.cpp
+    src/encryptionengine_chacha20.cpp
+    include/chacha20.h
     src/customlistwidget.cpp
     include/customlistwidget.h
     ui/mainwindow.ui

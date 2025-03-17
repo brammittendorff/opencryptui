@@ -95,6 +95,16 @@
                                     </widget>
                                 </item>
                                 <item>
+                                    <widget class="QCheckBox" name="fileCustomImplCheckBox">
+                                        <property name="text">
+                                            <string>Use Custom ChaCha20 Implementation</string>
+                                        </property>
+                                        <property name="toolTip">
+                                            <string>Uses a direct libsodium-based ChaCha20 implementation instead of OpenSSL</string>
+                                        </property>
+                                    </widget>
+                                </item>
+                                <item>
                                     <widget class="QPushButton" name="fileKeyfileBrowseButton">
                                         <property name="text">
                                             <string>Browse Keyfiles</string>
@@ -236,6 +246,16 @@
                                     <widget class="QCheckBox" name="folderHmacCheckBox">
                                         <property name="text">
                                             <string>Enable HMAC Integrity Check</string>
+                                        </property>
+                                    </widget>
+                                </item>
+                                <item>
+                                    <widget class="QCheckBox" name="folderCustomImplCheckBox">
+                                        <property name="text">
+                                            <string>Use Custom ChaCha20 Implementation</string>
+                                        </property>
+                                        <property name="toolTip">
+                                            <string>Uses a direct libsodium-based ChaCha20 implementation instead of OpenSSL</string>
                                         </property>
                                     </widget>
                                 </item>

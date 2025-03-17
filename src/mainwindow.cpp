@@ -21,6 +21,7 @@
 #include <QProcess>
 #include "version.h"
 #include "encryptionworker.h"
+#include <sodium.h>
 
 // Add the static member initialization here
 QTextStream* MainWindow::s_logStream = nullptr;
@@ -187,8 +188,9 @@ void MainWindow::startWorker(bool encrypt, bool isFile)
     QString kdf = isFile ? ui->kdfComboBox->currentText() : ui->folderKdfComboBox->currentText();
     int iterations = isFile ? ui->iterationsSpinBox->value() : ui->folderIterationsSpinBox->value();
     bool useHMAC = isFile ? ui->hmacCheckBox->isChecked() : ui->folderHmacCheckBox->isChecked();
-    QStringList keyfilePaths = isFile ? ui->fileKeyfileListWidget->getAllItems() : ui->folderKeyfileListWidget->getAllItems(); // Using the new method
-    QString customHeader = ""; // or any specific header if needed
+    bool useCustomImpl = isFile ? ui->fileCustomImplCheckBox->isChecked() : ui->folderCustomImplCheckBox->isChecked();
+    QStringList keyfilePaths = isFile ? ui->fileKeyfileListWidget->getAllItems() : ui->folderKeyfileListWidget->getAllItems();
+    QString customHeader = "";
 
     if (path.isEmpty() || password.isEmpty()) {
         QMessageBox::warning(this, "Error", "Please provide path and password.");
@@ -203,6 +205,45 @@ void MainWindow::startWorker(bool encrypt, bool isFile)
     estimatedTimeLabel->setVisible(true);
     estimatedTimeLabel->setText("Estimated time: calculating...");
 
+    // Check if custom implementation should be used
+    if (useCustomImpl && algorithm.contains("ChaCha20")) {
+        QByteArray salt(crypto_pwhash_SALTBYTES, 0);
+        bool success = false;
+        
+        // Create custom file extension
+        QString outputPath = path;
+        if (encrypt) {
+            outputPath += ".cus";
+            
+            // For encryption, create new salt
+            randombytes_buf(salt.data(), salt.size());
+            
+            success = encryptionEngine.encryptWithCustomChaCha20(
+                path, outputPath, password, salt, keyfilePaths);
+        } else {
+            // For decryption, remove ".cus" extension if present
+            if (outputPath.endsWith(".cus")) {
+                outputPath = outputPath.left(outputPath.length() - 4);
+            } else {
+                QMessageBox::warning(this, "Error", 
+                    "File doesn't have the .cus extension expected for custom implementation.");
+                return;
+            }
+            
+            success = encryptionEngine.decryptWithCustomChaCha20(
+                path, outputPath, password, keyfilePaths);
+        }
+        
+        if (success) {
+            progressBar->setValue(100);
+            handleFinished(true, "");
+        } else {
+            handleFinished(false, "Custom ChaCha20 operation failed");
+        }
+        return;
+    }
+
+    // If not using custom implementation, continue with standard process
     worker->setParameters(path, password, algorithm, kdf, iterations, useHMAC, encrypt, isFile, customHeader, keyfilePaths);
     QMetaObject::invokeMethod(worker, "process", Qt::QueuedConnection);
 }

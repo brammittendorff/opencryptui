@@ -23,6 +23,14 @@ public:
 
     QByteArray getLastIv() const;
 
+    // Custom ChaCha20 implementation
+    bool encryptWithCustomChaCha20(const QString& inputPath, const QString& outputPath, 
+        const QString& password, const QByteArray& salt,
+        const QStringList& keyfilePaths);
+
+    bool decryptWithCustomChaCha20(const QString& inputPath, const QString& outputPath,
+            const QString& password, const QStringList& keyfilePaths);
+
     bool isHardwareAccelerationSupported() const;
 
     QByteArray deriveKey(const QString& password, const QByteArray& salt, const QStringList& keyfilePaths, const QString& kdf, int iterations);
