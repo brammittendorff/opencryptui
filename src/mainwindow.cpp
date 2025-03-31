@@ -124,7 +124,7 @@ void MainWindow::setupComboBoxes()
     ui->fileAlgorithmComboBox->addItems(algorithms);
     ui->folderAlgorithmComboBox->addItems(algorithms);
 
-    QStringList kdfs = {"Argon2", "Scrypt", "PBKDF2"};
+    QStringList kdfs = {"Scrypt", "PBKDF2"};
 
     ui->kdfComboBox->addItems(kdfs);
     ui->folderKdfComboBox->addItems(kdfs);
