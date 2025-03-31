@@ -55,6 +55,7 @@ set(CMAKE_AUTOUIC_SEARCH_PATHS ${CMAKE_CURRENT_SOURCE_DIR}/ui)
 
 # Add the resources file
 qt5_add_resources(RESOURCES resources/resources.qrc)
+
 # Library sources
 set(LIBRARY_SOURCES
     src/mainwindow.cpp
@@ -68,6 +69,11 @@ set(LIBRARY_SOURCES
     include/encryptionworker.h
     src/customlistwidget.cpp
     include/customlistwidget.h
+    # Add the new crypto provider files
+    include/cryptoprovider.h
+    src/opensslprovider.cpp
+    src/libsodiumprovider.cpp
+    src/argon2provider.cpp
     ui/mainwindow.ui
     ${RESOURCES}
     ${CMAKE_CURRENT_BINARY_DIR}/version.h

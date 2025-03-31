@@ -21,15 +21,13 @@
 #include <QProcess>
 #include "version.h"
 #include "encryptionworker.h"
+#include <QStatusBar>
 
 // Add the static member initialization here
-QTextStream* MainWindow::s_logStream = nullptr;
+QTextStream *MainWindow::s_logStream = nullptr;
 
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent)
-    , ui(new Ui::MainWindow)
-    , worker(new EncryptionWorker)
-    , m_signalsConnected(false)  // Initialize the flag
+    : QMainWindow(parent), ui(new Ui::MainWindow), worker(new EncryptionWorker), m_signalsConnected(false) // Initialize the flag
 {
     qDebug() << "MainWindow Constructor";
     ui->setupUi(this);
@@ -44,7 +42,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     // Ensure connectSignalsAndSlots is called only once
     static bool connectionsSet = false;
-    if (!connectionsSet) {
+    if (!connectionsSet)
+    {
         connectSignalsAndSlots();
         connectionsSet = true;
     }
@@ -70,17 +69,6 @@ MainWindow::MainWindow(QWidget *parent)
     ui->benchmarkTable->setSortingEnabled(true);
 }
 
-MainWindow::~MainWindow()
-{
-        // Save preferences before closing
-    savePreferences();
-
-    workerThread.quit();
-    workerThread.wait();
-    qDebug() << "MainWindow Destructor";
-    delete ui;
-}
-
 void MainWindow::setupUI()
 {
     setupComboBoxes();
@@ -88,6 +76,24 @@ void MainWindow::setupUI()
     ui->fileEstimatedTimeLabel->setVisible(false);
     ui->folderProgressBar->setVisible(false);
     ui->folderEstimatedTimeLabel->setVisible(false);
+
+    // Add crypto provider items
+    QStringList providers = encryptionEngine.availableProviders();
+    ui->m_cryptoProviderComboBox->addItems(providers);
+    if (!providers.isEmpty())
+    {
+        ui->m_cryptoProviderComboBox->setCurrentText(encryptionEngine.currentProvider());
+    }
+
+    // Update the connection for crypto provider selection
+    connect(ui->m_cryptoProviderComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            [this](int index)
+            {
+                QString providerName = ui->m_cryptoProviderComboBox->itemText(index);
+                on_cryptoProviderComboBox_currentIndexChanged(providerName);
+            });
+
+    connect(ui->m_providerInfoButton, &QPushButton::clicked, this, &MainWindow::showProviderCapabilities);
 
     // Install event filter on all relevant widgets
     ui->filePasswordLineEdit->installEventFilter(this);
@@ -98,12 +104,23 @@ void MainWindow::setupUI()
     ui->folderDecryptButton->installEventFilter(this);
 }
 
-void MainWindow::setupComboBoxes() {
-    QStringList algorithms = {
-        "AES-256-GCM", "ChaCha20-Poly1305", "AES-256-CTR", "AES-256-CBC",
-        "AES-128-GCM", "AES-128-CTR", "AES-192-GCM", "AES-192-CTR",
-        "AES-128-CBC", "AES-192-CBC", "Camellia-256-CBC", "Camellia-128-CBC"
-    };
+MainWindow::~MainWindow()
+{
+    // Save preferences before closing
+    savePreferences();
+
+    workerThread.quit();
+    workerThread.wait();
+    qDebug() << "MainWindow Destructor";
+    delete ui;
+}
+
+void MainWindow::setupComboBoxes()
+{
+    QStringList algorithms = {// Add this slot implementation:
+                              "AES-256-GCM", "ChaCha20-Poly1305", "AES-256-CTR", "AES-256-CBC",
+                              "AES-128-GCM", "AES-128-CTR", "AES-192-GCM", "AES-192-CTR",
+                              "AES-128-CBC", "AES-192-CBC", "Camellia-256-CBC", "Camellia-128-CBC"};
     ui->fileAlgorithmComboBox->addItems(algorithms);
     ui->folderAlgorithmComboBox->addItems(algorithms);
 
@@ -121,7 +138,8 @@ void MainWindow::setupComboBoxes() {
 
 void MainWindow::connectSignalsAndSlots()
 {
-    if (m_signalsConnected) {
+    if (m_signalsConnected)
+    {
         qDebug() << "Signals already connected, skipping...";
         return;
     }
@@ -187,16 +205,43 @@ void MainWindow::startWorker(bool encrypt, bool isFile)
     QString kdf = isFile ? ui->kdfComboBox->currentText() : ui->folderKdfComboBox->currentText();
     int iterations = isFile ? ui->iterationsSpinBox->value() : ui->folderIterationsSpinBox->value();
     bool useHMAC = isFile ? ui->hmacCheckBox->isChecked() : ui->folderHmacCheckBox->isChecked();
-    QStringList keyfilePaths = isFile ? ui->fileKeyfileListWidget->getAllItems() : ui->folderKeyfileListWidget->getAllItems(); // Using the new method
+    QStringList keyfilePaths = isFile ? ui->fileKeyfileListWidget->getAllItems() : ui->folderKeyfileListWidget->getAllItems();
     QString customHeader = ""; // or any specific header if needed
 
-    if (path.isEmpty() || password.isEmpty()) {
+    if (path.isEmpty() || password.isEmpty())
+    {
         QMessageBox::warning(this, "Error", "Please provide path and password.");
         return;
     }
 
-    QProgressBar* progressBar = isFile ? ui->fileProgressBar : ui->folderProgressBar;
-    QLabel* estimatedTimeLabel = isFile ? ui->fileEstimatedTimeLabel : ui->folderEstimatedTimeLabel;
+    // Validate that the selected algorithm and KDF are supported by the current provider
+    QStringList supportedCiphers = encryptionEngine.supportedCiphers();
+    QStringList supportedKDFs = encryptionEngine.supportedKDFs();
+
+    if (!supportedCiphers.contains(algorithm))
+    {
+        QMessageBox::warning(this, "Error",
+                             QString("The selected cipher '%1' is not supported by the %2 provider.\n\n"
+                                     "Please select from: %3")
+                                 .arg(algorithm)
+                                 .arg(encryptionEngine.currentProvider())
+                                 .arg(supportedCiphers.join(", ")));
+        return;
+    }
+
+    if (!supportedKDFs.contains(kdf))
+    {
+        QMessageBox::warning(this, "Error",
+                             QString("The selected KDF '%1' is not supported by the %2 provider.\n\n"
+                                     "Please select from: %3")
+                                 .arg(kdf)
+                                 .arg(encryptionEngine.currentProvider())
+                                 .arg(supportedKDFs.join(", ")));
+        return;
+    }
+
+    QProgressBar *progressBar = isFile ? ui->fileProgressBar : ui->folderProgressBar;
+    QLabel *estimatedTimeLabel = isFile ? ui->fileEstimatedTimeLabel : ui->folderEstimatedTimeLabel;
 
     progressBar->setVisible(true);
     progressBar->setValue(0);
@@ -221,9 +266,12 @@ void MainWindow::handleFinished(bool success, const QString &errorMessage)
     ui->folderProgressBar->setVisible(false);
     ui->fileEstimatedTimeLabel->setVisible(false);
     ui->folderEstimatedTimeLabel->setVisible(false);
-    if (success) {
+    if (success)
+    {
         QMessageBox::information(this, "Success", "Operation completed successfully.");
-    } else {
+    }
+    else
+    {
         QMessageBox::critical(this, "Error", errorMessage);
     }
 }
@@ -241,7 +289,8 @@ void MainWindow::on_fileBrowseButton_clicked()
     static int callCount = 0;
     qDebug() << "File Browse Button Clicked (Call #" << ++callCount << ")";
     QString filePath = QFileDialog::getOpenFileName(this, "Select File");
-    if (!filePath.isEmpty()) {
+    if (!filePath.isEmpty())
+    {
         ui->filePathLineEdit->setText(filePath);
     }
 }
@@ -250,7 +299,8 @@ void MainWindow::on_folderBrowseButton_clicked()
 {
     qDebug() << "Folder Browse Button Clicked";
     QString folderPath = QFileDialog::getExistingDirectory(this, "Select Folder");
-    if (!folderPath.isEmpty()) {
+    if (!folderPath.isEmpty())
+    {
         ui->folderPathLineEdit->setText(folderPath);
     }
 }
@@ -259,8 +309,10 @@ void MainWindow::on_fileKeyfileBrowseButton_clicked()
 {
     qDebug() << "File Keyfile Browse Button Clicked";
     QStringList keyfilePaths = QFileDialog::getOpenFileNames(this, "Select Keyfiles");
-    if (!keyfilePaths.isEmpty()) {
-        for (const QString &path : keyfilePaths) {
+    if (!keyfilePaths.isEmpty())
+    {
+        for (const QString &path : keyfilePaths)
+        {
             ui->fileKeyfileListWidget->addItem(path);
         }
     }
@@ -270,14 +322,17 @@ void MainWindow::on_folderKeyfileBrowseButton_clicked()
 {
     qDebug() << "Folder Keyfile Browse Button Clicked";
     QStringList keyfilePaths = QFileDialog::getOpenFileNames(this, "Select Keyfiles");
-    if (!keyfilePaths.isEmpty()) {
-        for (const QString &path : keyfilePaths) {
+    if (!keyfilePaths.isEmpty())
+    {
+        for (const QString &path : keyfilePaths)
+        {
             ui->folderKeyfileListWidget->addItem(path);
         }
     }
 }
 
-void MainWindow::checkHardwareAcceleration() {
+void MainWindow::checkHardwareAcceleration()
+{
     bool supported = encryptionEngine.isHardwareAccelerationSupported();
     QString status = supported ? "Supported" : "Not supported";
     qDebug() << "Hardware Acceleration: " + status;
@@ -291,8 +346,7 @@ void MainWindow::on_benchmarkButton_clicked()
     QStringList algorithms = {
         "AES-256-GCM", "ChaCha20-Poly1305", "AES-256-CTR", "AES-256-CBC",
         "AES-128-GCM", "AES-128-CTR", "AES-192-GCM", "AES-192-CTR",
-        "AES-128-CBC", "AES-192-CBC", "Camellia-256-CBC", "Camellia-128-CBC"
-    };
+        "AES-128-CBC", "AES-192-CBC", "Camellia-256-CBC", "Camellia-128-CBC"};
 
     QStringList kdfs = {"Argon2", "Scrypt", "PBKDF2"};
 
@@ -309,7 +363,8 @@ void MainWindow::messageHandler(QtMsgType type, const QMessageLogContext &contex
     }
 }
 
-void MainWindow::updateBenchmarkTable(int iterations, double mbps, double ms, const QString &cipher, const QString &kdf) {
+void MainWindow::updateBenchmarkTable(int iterations, double mbps, double ms, const QString &cipher, const QString &kdf)
+{
     qDebug() << "Update Benchmark Table: iterations=" << iterations << ", mbps=" << mbps << ", ms=" << ms << ", cipher=" << cipher << ", kdf=" << kdf;
     int row = ui->benchmarkTable->rowCount();
     ui->benchmarkTable->insertRow(row);
@@ -321,30 +376,39 @@ void MainWindow::updateBenchmarkTable(int iterations, double mbps, double ms, co
     ui->benchmarkTable->setItem(row, 4, new QTableWidgetItem(kdf));
 }
 
-void MainWindow::safeConnect(const QObject* sender, const char* signal, const QObject* receiver, const char* method)
+void MainWindow::safeConnect(const QObject *sender, const char *signal, const QObject *receiver, const char *method)
 {
-    disconnect(sender, signal, receiver, method);  // First disconnect any existing connection
-    connect(sender, signal, receiver, method, Qt::UniqueConnection);  // Then connect with UniqueConnection
+    disconnect(sender, signal, receiver, method);                    // First disconnect any existing connection
+    connect(sender, signal, receiver, method, Qt::UniqueConnection); // Then connect with UniqueConnection
 }
 
 bool MainWindow::eventFilter(QObject *obj, QEvent *event)
 {
-    if (event->type() == QEvent::KeyPress) {
+    if (event->type() == QEvent::KeyPress)
+    {
         QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
-        if (keyEvent->key() == Qt::Key_Return || keyEvent->key() == Qt::Key_Enter) {
-            if (obj == ui->filePasswordLineEdit || obj == ui->fileEncryptButton) {
+        if (keyEvent->key() == Qt::Key_Return || keyEvent->key() == Qt::Key_Enter)
+        {
+            if (obj == ui->filePasswordLineEdit || obj == ui->fileEncryptButton)
+            {
                 qDebug() << "Enter pressed for file encryption";
                 ui->fileEncryptButton->click();
                 return true;
-            } else if (obj == ui->fileDecryptButton) {
+            }
+            else if (obj == ui->fileDecryptButton)
+            {
                 qDebug() << "Enter pressed for file decryption";
                 ui->fileDecryptButton->click();
                 return true;
-            } else if (obj == ui->folderPasswordLineEdit || obj == ui->folderEncryptButton) {
+            }
+            else if (obj == ui->folderPasswordLineEdit || obj == ui->folderEncryptButton)
+            {
                 qDebug() << "Enter pressed for folder encryption";
                 ui->folderEncryptButton->click();
                 return true;
-            } else if (obj == ui->folderDecryptButton) {
+            }
+            else if (obj == ui->folderDecryptButton)
+            {
                 qDebug() << "Enter pressed for folder decryption";
                 ui->folderDecryptButton->click();
                 return true;
@@ -364,7 +428,8 @@ void MainWindow::on_actionPreferences_triggered()
     QStringList themes = {"Light", "Dark"};
     bool ok;
     QString theme = QInputDialog::getItem(this, "Select Theme", "Theme:", themes, 0, false, &ok);
-    if (ok && !theme.isEmpty()) {
+    if (ok && !theme.isEmpty())
+    {
         applyTheme(theme);
     }
 }
@@ -372,22 +437,26 @@ void MainWindow::on_actionPreferences_triggered()
 void MainWindow::on_actionAbout_triggered()
 {
     QString aboutText = QString(
-        "Open Encryption UI\n"
-        "Version: %1\n"
-        "Latest Commit: %2\n"
-        "Hardware Acceleration: %3"
-    ).arg(GIT_TAG)
-     .arg(GIT_COMMIT_HASH)
-     .arg(encryptionEngine.isHardwareAccelerationSupported() ? "Supported" : "Not supported");
+                            "Open Encryption UI\n"
+                            "Version: %1\n"
+                            "Latest Commit: %2\n"
+                            "Hardware Acceleration: %3")
+                            .arg(GIT_TAG)
+                            .arg(GIT_COMMIT_HASH)
+                            .arg(encryptionEngine.isHardwareAccelerationSupported() ? "Supported" : "Not supported");
 
     QMessageBox::about(this, "About", aboutText);
 }
 
-void MainWindow::applyTheme(const QString &theme) {
+void MainWindow::applyTheme(const QString &theme)
+{
     QString themeFilePath;
-    if (theme == "Dark") {
+    if (theme == "Dark")
+    {
         themeFilePath = ":/resources/darktheme.qss";
-    } else {
+    }
+    else
+    {
         themeFilePath = ":/resources/lighttheme.qss";
     }
 
@@ -395,18 +464,22 @@ void MainWindow::applyTheme(const QString &theme) {
 
     QFile file(themeFilePath);
 
-    if (!file.exists()) {
+    if (!file.exists())
+    {
         qDebug() << "QSS file does not exist at path:" << themeFilePath;
         return;
     }
 
-    if (file.open(QFile::ReadOnly)) {
+    if (file.open(QFile::ReadOnly))
+    {
         QString styleSheet = QLatin1String(file.readAll());
         qApp->setStyleSheet(styleSheet);
         file.close();
-        currentTheme = theme;  // Update current theme
+        currentTheme = theme; // Update current theme
         qDebug() << "Successfully applied theme from:" << themeFilePath;
-    } else {
+    }
+    else
+    {
         qDebug() << "Failed to open theme file:" << file.errorString();
     }
 }
@@ -417,8 +490,10 @@ void MainWindow::loadPreferences()
     QString settingsFilePath = settingsDirPath + "/config.json";
 
     QDir settingsDir(settingsDirPath);
-    if (!settingsDir.exists()) {
-        if (!settingsDir.mkpath(settingsDirPath)) {
+    if (!settingsDir.exists())
+    {
+        if (!settingsDir.mkpath(settingsDirPath))
+        {
             qDebug() << "Failed to create settings directory:" << settingsDirPath;
             applyTheme("Light");
             return;
@@ -427,13 +502,15 @@ void MainWindow::loadPreferences()
 
     QFile settingsFile(settingsFilePath);
 
-    if (!settingsFile.exists()) {
+    if (!settingsFile.exists())
+    {
         qDebug() << "Settings file not found, applying default theme.";
         applyTheme("Light");
         return;
     }
 
-    if (!settingsFile.open(QIODevice::ReadOnly)) {
+    if (!settingsFile.open(QIODevice::ReadOnly))
+    {
         qDebug() << "Failed to open settings file for reading:" << settingsFile.errorString();
         applyTheme("Light");
         return;
@@ -455,8 +532,10 @@ void MainWindow::savePreferences()
     QString settingsFilePath = settingsDirPath + "/config.json";
 
     QDir settingsDir(settingsDirPath);
-    if (!settingsDir.exists()) {
-        if (!settingsDir.mkpath(settingsDirPath)) {
+    if (!settingsDir.exists())
+    {
+        if (!settingsDir.mkpath(settingsDirPath))
+        {
             qDebug() << "Failed to create settings directory:" << settingsDirPath;
             return;
         }
@@ -464,7 +543,8 @@ void MainWindow::savePreferences()
 
     QFile settingsFile(settingsFilePath);
 
-    if (!settingsFile.open(QIODevice::WriteOnly)) {
+    if (!settingsFile.open(QIODevice::WriteOnly))
+    {
         qDebug() << "Failed to open settings file for writing:" << settingsFile.errorString();
         return;
     }
@@ -478,20 +558,21 @@ void MainWindow::savePreferences()
     settingsFile.close();
 }
 
-void MainWindow::on_actionAboutCiphers_triggered() {
+void MainWindow::on_actionAboutCiphers_triggered()
+{
     QString aboutCiphersText = QString(
         "Top Ciphers for File Encryption:\n\n"
         "AES-256-GCM: Provides strong encryption with built-in data integrity and authentication. Highly recommended for file encryption due to its security and performance.\n\n"
         "ChaCha20-Poly1305: A secure cipher that is resistant to timing attacks. It is highly efficient on both software and hardware, and is suitable for environments where performance is critical.\n\n"
         "AES-256-CTR: A strong encryption mode suitable for stream encryption. It does not provide data integrity or authentication by itself, so it should be used with additional integrity checks.\n\n"
         "AES-256-CBC: A widely used encryption mode that provides strong encryption but does not include data integrity or authentication. It is suitable for file encryption but should be combined with a message authentication code (MAC) to ensure data integrity.\n\n"
-        "Recommendation: For maximum security in file encryption, use AES-256-GCM or ChaCha20-Poly1305, as they provide both strong encryption and built-in data integrity and authentication."
-    );
+        "Recommendation: For maximum security in file encryption, use AES-256-GCM or ChaCha20-Poly1305, as they provide both strong encryption and built-in data integrity and authentication.");
 
     QMessageBox::information(this, "About Ciphers", aboutCiphersText);
 }
 
-void MainWindow::on_actionAboutKDFs_triggered() {
+void MainWindow::on_actionAboutKDFs_triggered()
+{
     QString aboutKDFsText = QString(
         "Key Derivation Function (KDF) Information:\n\n"
         "Argon2:\n"
@@ -508,8 +589,7 @@ void MainWindow::on_actionAboutKDFs_triggered() {
         "Recommendation:\n"
         "For maximum security, Argon2 is the best choice due to its resistance to various types of attacks. "
         "If memory usage is a concern, Scrypt offers a good balance of security and performance. PBKDF2 should "
-        "be used primarily for compatibility with existing systems."
-    );
+        "be used primarily for compatibility with existing systems.");
 
     QMessageBox::information(this, "About KDFs", aboutKDFsText);
 }
@@ -525,8 +605,82 @@ void MainWindow::on_actionAboutIterations_triggered()
         "- Argon2: 10 or more iterations. Argon2 is memory-hard, and higher iterations further increase security.\n"
         "- Scrypt: N = 2^20 (1,048,576) or higher. Scrypt is also memory-hard, and high iteration counts make it more resistant to attacks.\n"
         "- PBKDF2: 10,000,000 or more iterations. PBKDF2 relies on high iteration counts to increase security.\n\n"
-        "For maximum security, consider using higher iteration counts, especially if performance is not a critical concern."
-    );
+        "For maximum security, consider using higher iteration counts, especially if performance is not a critical concern.");
 
     QMessageBox::information(this, "About Iterations", aboutIterationsText);
+}
+
+void MainWindow::on_cryptoProviderComboBox_currentIndexChanged(const QString &providerName)
+{
+    if (!providerName.isEmpty())
+    {
+        encryptionEngine.setProvider(providerName);
+
+        // Store current selections if possible
+        QString currentFileAlgo = ui->fileAlgorithmComboBox->currentText();
+        QString currentFolderAlgo = ui->folderAlgorithmComboBox->currentText();
+        QString currentFileKDF = ui->kdfComboBox->currentText();
+        QString currentFolderKDF = ui->folderKdfComboBox->currentText();
+
+        // Update available algorithms and KDFs based on the selected provider
+        QStringList algorithms = encryptionEngine.supportedCiphers();
+        ui->fileAlgorithmComboBox->clear();
+        ui->folderAlgorithmComboBox->clear();
+        ui->fileAlgorithmComboBox->addItems(algorithms);
+        ui->folderAlgorithmComboBox->addItems(algorithms);
+
+        QStringList kdfs = encryptionEngine.supportedKDFs();
+        ui->kdfComboBox->clear();
+        ui->folderKdfComboBox->clear();
+        ui->kdfComboBox->addItems(kdfs);
+        ui->folderKdfComboBox->addItems(kdfs);
+
+        // Try to restore previous selections if they're available in the new provider
+        if (algorithms.contains(currentFileAlgo))
+            ui->fileAlgorithmComboBox->setCurrentText(currentFileAlgo);
+
+        if (algorithms.contains(currentFolderAlgo))
+            ui->folderAlgorithmComboBox->setCurrentText(currentFolderAlgo);
+
+        if (kdfs.contains(currentFileKDF))
+            ui->kdfComboBox->setCurrentText(currentFileKDF);
+
+        if (kdfs.contains(currentFolderKDF))
+            ui->folderKdfComboBox->setCurrentText(currentFolderKDF);
+
+        // Update hardware acceleration status
+        checkHardwareAcceleration();
+
+        // Show provider capabilities in the status bar
+        QString capabilitiesMessage = QString("Provider: %1 | Ciphers: %2 | KDFs: %3")
+                                          .arg(providerName)
+                                          .arg(algorithms.join(", "))
+                                          .arg(kdfs.join(", "));
+
+        statusBar()->showMessage(capabilitiesMessage, 5000);
+    }
+}
+
+void MainWindow::showProviderCapabilities()
+{
+    QString providerName = encryptionEngine.currentProvider();
+    if (providerName.isEmpty())
+    {
+        return;
+    }
+
+    QStringList algorithms = encryptionEngine.supportedCiphers();
+    QStringList kdfs = encryptionEngine.supportedKDFs();
+
+    QString message = QString(
+                          "Current Crypto Provider: %1\n\n"
+                          "Supported Ciphers:\n%2\n\n"
+                          "Supported KDFs:\n%3\n\n"
+                          "Hardware Acceleration: %4")
+                          .arg(providerName)
+                          .arg(algorithms.join(", "))
+                          .arg(kdfs.join(", "))
+                          .arg(encryptionEngine.isHardwareAccelerationSupported() ? "Supported" : "Not supported");
+
+    QMessageBox::information(this, "Provider Capabilities", message);
 }

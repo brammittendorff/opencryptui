@@ -7,12 +7,15 @@ OpenCryptUI is a Qt-based graphical user interface application for file and fold
 ## Features
 
 - Encrypt and decrypt files and folders.
-- Support for multiple encryption algorithms: AES-256-CBC, AES-256-GCM, AES-256-CTR, ChaCha20-Poly1305, Twofish, Serpent, Blowfish, Camellia, and AES-128-CBC.
+- Support for multiple encryption algorithms: AES-256-CBC, AES-256-GCM, AES-256-CTR, ChaCha20-Poly1305, Camellia (128/256), AES-128-CBC, and others.
 - Support for multiple key derivation functions: PBKDF2, Argon2, and Scrypt.
-- Option to enable HMAC integrity check.
-- Memory encryption: Encrypts the in-memory keys used during encryption operations to protect against memory dump attacks.
-- Keyfile support: Keyfiles can be used to provide an additional layer of security, ensuring that access requires both the correct password and one or multiple keyfiles.
-- Hardware acceleration support: Detects support for hardware features like Intel AES-NI, which can potentially speed up AES encryption and decryption processes. OpenSSL may utilize these features automatically when available.
+- Option to enable HMAC / AEAD authentication for integrity checks.
+- Memory protection: Sensitive keys are securely erased from memory after use (`OPENSSL_cleanse`, `sodium_memzero`, `mlock`).
+- Keyfile support: Combine one or more external keyfiles with the password for layered security.
+- Hardware acceleration support: Automatically detects AES-NI and other hardware features.
+- Built-in benchmark: Compare performance of different cipher/KDF combos in MB/s and ms.
+- GUI-based folder compression and encryption using `.tar.gz` wrapping.
+- Multi-provider backend: OpenSSL, libsodium, and Argon2 are all supported and switchable at runtime.
 
 ## Dependencies
 
@@ -96,12 +99,13 @@ This project is licensed under the MIT License. See the `LICENSE` file for detai
 
 ## Todo
 
-OpenCryptUI aims to implement several additional features found in popular encryption tools like VeraCrypt. Here are some planned features:
+OpenCryptUI aims to implement several additional features found in expert-level encryption tools and hardened security workflows:
 
-- **Hidden volumes:** Create hidden encrypted volumes within an existing encrypted volume for plausible deniability.
-- **PIM (Personal Iterations Multiplier) support:** Allow users to specify a PIM value to increase the number of iterations in the key derivation process for added security.
-- **Explicit hardware acceleration utilization:** Implement and verify explicit use of hardware acceleration for all supported operations, with performance comparisons.
-- **Cross-platform support:** Enhance compatibility and testing for various operating systems, including Windows, macOS, and Linux.
-- **Secure wipe:** Implement secure deletion of original files after encryption to prevent data recovery.
-
-Feel free to contribute to these features or suggest new ones!
+- **Hidden volumes:** Create hidden encrypted volumes within existing volumes for plausible deniability.
+- **Secure wipe:** Fully implement secure deletion (multiple passes, inode scrub) of plaintext files after encryption.
+- **Shamir Secret Sharing:** Optionally split the encryption key into multiple shares (e.g. 3-of-5) to improve redundancy and reduce risk.
+- **Hardware token integration:** Support for YubiKey (HMAC challenge/response or PGP smartcard mode) during key derivation.
+- **Double-layer encryption:** Encrypt file using symmetric key, then encrypt that key with user’s PGP or RSA hardware key.
+- **Tamper-evident wrappers:** Bundle hashes and digital signatures (Ed25519 or OpenTimestamps) with encrypted payloads.
+- **Plausible deniability modes:** Dual-password support to unlock either dummy or real data depending on the password entered.
+- **Ephemeral unlock mode:** Temporary decryption with automatic cleanup after timeout or UI close.

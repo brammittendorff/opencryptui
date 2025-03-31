@@ -5,6 +5,8 @@
 #include <QBuffer>
 #include <QTextStream>
 #include <QStandardItemModel>
+#include <QComboBox>
+#include <QPushButton>
 #include "encryptionengine.h"
 #include "encryptionworker.h"
 #include <QThread>
@@ -23,6 +25,7 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public:
+    EncryptionEngine encryptionEngine;
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
@@ -51,10 +54,11 @@ private slots:
     void on_actionAboutKDFs_triggered();
     void on_actionAboutIterations_triggered();  // Add this line
     void applyTheme(const QString &theme);
+    void on_cryptoProviderComboBox_currentIndexChanged(const QString &providerName);
+    void showProviderCapabilities();
 
 private:
     Ui::MainWindow *ui;
-    EncryptionEngine encryptionEngine;
     QStandardItemModel *drivesModel;
     QThread workerThread;
     EncryptionWorker *worker;
@@ -66,6 +70,10 @@ private:
     void setupComboBoxes();
     void connectSignalsAndSlots();
     void startWorker(bool encrypt, bool isFile);
+
+    // Add these member variables
+    QComboBox* m_cryptoProviderComboBox;
+    QPushButton* m_providerInfoButton;
 
     void checkHardwareAcceleration();
 

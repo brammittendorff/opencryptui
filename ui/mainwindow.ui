@@ -16,6 +16,27 @@
         <widget class="QWidget" name="centralwidget">
             <layout class="QVBoxLayout" name="verticalLayout">
                 <item>
+                    <layout class="QHBoxLayout" name="providerLayout">
+                        <item>
+                            <widget class="QLabel" name="providerLabel">
+                                <property name="text">
+                                    <string>Crypto Provider:</string>
+                                </property>
+                            </widget>
+                        </item>
+                        <item>
+                            <widget class="QComboBox" name="m_cryptoProviderComboBox"/>
+                        </item>
+                        <item>
+                            <widget class="QPushButton" name="m_providerInfoButton">
+                                <property name="text">
+                                    <string>Provider Info</string>
+                                </property>
+                            </widget>
+                        </item>
+                    </layout>
+                </item>
+                <item>
                     <widget class="QTabWidget" name="tabWidget">
                         <property name="currentIndex">
                             <number>0</number>
