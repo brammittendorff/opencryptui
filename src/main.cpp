@@ -3,6 +3,7 @@
 #include <QDebug>
 #include <openssl/crypto.h>
 #include "version.h"
+#include "logging/secure_logger.h"
 
 int main(int argc, char *argv[])
 {
@@ -10,6 +11,26 @@ int main(int argc, char *argv[])
     if (!OPENSSL_init_crypto(OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_ADD_ALL_DIGESTS | OPENSSL_INIT_LOAD_CRYPTO_STRINGS, NULL)) {
         qCritical() << "Failed to initialize OpenSSL";
         return EXIT_FAILURE;
+    }
+    
+    // Configure logging
+    SecureLogger& logger = SecureLogger::getInstance();
+    
+    // Check if running in CI environment
+    if (isRunningInCI()) {
+        // Disable all logging in CI/CD environment
+        logger.setLogLevel(SecureLogger::LogLevel::ERROR);
+        logger.setLogToFile(false);
+    } else {
+        #ifdef QT_DEBUG
+            // More verbose logging in debug mode
+            logger.setLogLevel(SecureLogger::LogLevel::DEBUG);
+            logger.setLogToFile(true);
+        #else
+            // Limited logging in release mode
+            logger.setLogLevel(SecureLogger::LogLevel::WARNING);
+            logger.setLogToFile(false);
+        #endif
     }
 
     QApplication app(argc, argv);
@@ -28,8 +49,11 @@ int main(int argc, char *argv[])
         }
     }
 
-    // Print the number of MainWindow instances
-    qDebug() << "Number of MainWindow instances:" << mainWindowCount;
+    // Use SECURE_LOG instead of qDebug for logging MainWindow instances
+    #ifdef QT_DEBUG
+    SECURE_LOG(DEBUG, "MainApplication", 
+        QString("Number of MainWindow instances: %1").arg(mainWindowCount));
+    #endif
 
     // Show the MainWindow
     mainWindow.show();

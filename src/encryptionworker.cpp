@@ -1,5 +1,5 @@
 #include "encryptionworker.h"
-#include <QDebug>
+#include "logging/secure_logger.h"
 #include <QElapsedTimer>
 #include <QFileInfo>
 #include <openssl/rand.h>
@@ -96,14 +96,14 @@ void EncryptionWorker::process()
         double fileSizeMB = getFileSizeInBytes(path) / (1024.0 * 1024.0);
         double mbps = fileSizeMB / seconds;
         emit benchmarkResultReady(iterations, mbps, seconds * 1000, algorithm, kdf);
-
     } else {
         emit finished(false, "Encryption/Decryption failed");
     }
 }
 
 void EncryptionWorker::runBenchmark() {
-    qDebug() << "Starting benchmark...";
+    SECURE_LOG(INFO, "EncryptionWorker", "Starting benchmark...");
+
     for (const auto &algo : benchmarkAlgorithms) {
         for (const auto &kdf : benchmarkKdfs) {
             benchmarkCipher(algo, kdf, true);
@@ -117,12 +117,14 @@ void EncryptionWorker::runBenchmark() {
             }
         }
     }
-    qDebug() << "Benchmark complete.";
+
+    SECURE_LOG(INFO, "EncryptionWorker", "Benchmark complete.");
 }
 
 void EncryptionWorker::benchmarkCipher(const QString &algorithm, const QString &kdf, bool useHardwareAcceleration) {
     if (kdf != "PBKDF2" && kdf != "Argon2" && kdf != "Scrypt") {
-        qDebug() << "Skipping unknown KDF:" << kdf;
+        SECURE_LOG(WARNING, "EncryptionWorker", 
+            QString("Skipping unknown KDF: %1").arg(kdf));
         return;
     }
 
@@ -139,28 +141,30 @@ void EncryptionWorker::benchmarkCipher(const QString &algorithm, const QString &
     const EVP_CIPHER *cipher = engine.getCipher(algorithm);
 
     if (!cipher) {
-        qDebug() << "Skipping" << algorithm << "- not supported";
+        SECURE_LOG(WARNING, "EncryptionWorker", 
+            QString("Skipping %1 - not supported").arg(algorithm));
         return;
     }
 
     QStringList keyfilePaths; // If no keyfiles, use an empty QStringList
     key = engine.deriveKey("password", salt, keyfilePaths, kdf, iterations);
     if (key.isEmpty()) {
-        qDebug() << "Key derivation failed for KDF:" << kdf;
+        SECURE_LOG(ERROR, "EncryptionWorker", 
+            QString("Key derivation failed for KDF: %1").arg(kdf));
         return;
     }
 
     // Perform encryption
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
     if (!ctx) {
-        qDebug() << "Failed to create EVP_CIPHER_CTX";
+        SECURE_LOG(ERROR, "EncryptionWorker", "Failed to create EVP_CIPHER_CTX");
         return;
     }
 
     if (!EVP_EncryptInit_ex(ctx, cipher, nullptr,
                             reinterpret_cast<const unsigned char *>(key.data()),
                             reinterpret_cast<const unsigned char *>(iv.data()))) {
-        qDebug() << "EVP_EncryptInit_ex failed";
+        SECURE_LOG(ERROR, "EncryptionWorker", "EVP_EncryptInit_ex failed");
         EVP_CIPHER_CTX_free(ctx);
         return;
     }
@@ -170,13 +174,13 @@ void EncryptionWorker::benchmarkCipher(const QString &algorithm, const QString &
     int ciphertextLen = 0;
     if (!EVP_EncryptUpdate(ctx, reinterpret_cast<unsigned char *>(ciphertext.data()), &len,
                            reinterpret_cast<const unsigned char *>(testData.data()), testData.size())) {
-        qDebug() << "EVP_EncryptUpdate failed";
+        SECURE_LOG(ERROR, "EncryptionWorker", "EVP_EncryptUpdate failed");
         EVP_CIPHER_CTX_free(ctx);
         return;
     }
     ciphertextLen += len;
     if (!EVP_EncryptFinal_ex(ctx, reinterpret_cast<unsigned char *>(ciphertext.data()) + len, &len)) {
-        qDebug() << "EVP_EncryptFinal_ex failed";
+        SECURE_LOG(ERROR, "EncryptionWorker", "EVP_EncryptFinal_ex failed");
         EVP_CIPHER_CTX_free(ctx);
         return;
     }
@@ -187,5 +191,5 @@ void EncryptionWorker::benchmarkCipher(const QString &algorithm, const QString &
     qint64 elapsed = timer.elapsed();
     double throughput = (dataSize / (1024.0 * 1024.0)) / (elapsed / 1000.0);
 
-    emit benchmarkResultReady(iterations, throughput, elapsed, algorithm, kdf); // Emit the result
+    emit benchmarkResultReady(iterations, throughput, elapsed, algorithm, kdf);
 }

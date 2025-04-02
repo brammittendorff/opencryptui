@@ -23,6 +23,11 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
 
     steps:
+      - name: Setup minimal logging
+        run: |
+          mkdir -p ~/.config
+          echo -e "[Logging]\ndefault.debug=false\ndefault.warning=false" > ~/.config/QtProject/qtlogging.ini
+
       - name: Checkout code
         uses: actions/checkout@v3
 
@@ -127,7 +132,6 @@ jobs:
           echo "Qt5_DIR: ${{ env.Qt5_DIR }}"
           echo "PATH: ${{ env.PATH }}"
 
-
       - name: Configure CMake for Windows
         if: matrix.os == 'windows-latest'
         shell: msys2 {0}
@@ -156,6 +160,35 @@ jobs:
         if: matrix.os != 'windows-latest'
         shell: bash
         run: cmake --build build --config Release
+
+      - name: Create CI Test Script (Linux/macOS)
+        if: matrix.os != 'windows-latest'
+        run: |
+          cat << 'EOFSCRIPT' > build/ci_test.sh
+          #!/bin/bash
+          # CI Test Runner - Runs tests with minimal log output
+          export CI=true
+          export QT_LOGGING_RULES="*.debug=false;*.info=false;*.warning=false"
+          export QT_MESSAGE_PATTERN=""
+          ./OpenCryptUITest -silent -v1
+          exit $?
+          EOFSCRIPT
+          chmod +x build/ci_test.sh
+
+      - name: Create CI Test Script (Windows) 
+        if: matrix.os == 'windows-latest'
+        shell: msys2 {0}
+        run: |
+          cat << 'EOFSCRIPT' > build/ci_test.sh
+          #!/bin/bash
+          # CI Test Runner - Runs tests with minimal log output
+          export CI=true
+          export QT_LOGGING_RULES="*.debug=false;*.info=false;*.warning=false"
+          export QT_MESSAGE_PATTERN=""
+          ./OpenCryptUITest.exe -silent -v1
+          exit $?
+          EOFSCRIPT
+          chmod +x build/ci_test.sh
 
       - name: Copy DLLs for Windows
         if: matrix.os == 'windows-latest'
@@ -224,14 +257,16 @@ jobs:
           sudo apt-get install -y xvfb
           xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" cmake --build build --target all
           cd build
-          xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" ctest --verbose
+          echo "Running tests with minimal output..."
+          xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" ./ci_test.sh
 
       - name: Run tests (macOS)
         if: matrix.os == 'macos-latest'
         run: |
           cmake --build build --target all
           cd build
-          ctest --verbose
+          echo "Running tests with minimal output..."
+          ./ci_test.sh
 
       - name: Run tests (Windows)
         if: matrix.os == 'windows-latest'
@@ -239,7 +274,8 @@ jobs:
         run: |
           cmake --build build --target all
           cd build
-          ctest --verbose
+          echo "Running tests with minimal output..."
+          ./ci_test.sh
 
       - name: Upload test results
         if: always()

@@ -1,5 +1,5 @@
 #include "cryptoprovider.h"
-#include <QDebug>
+#include "logging/secure_logger.h"
 #include <sodium.h>
 
 LibsodiumProvider::LibsodiumProvider()
@@ -7,10 +7,10 @@ LibsodiumProvider::LibsodiumProvider()
     // Initialize libsodium
     if (sodium_init() < 0)
     {
-        qDebug() << "Failed to initialize libsodium";
+        SECURE_LOG(ERROR, "LibsodiumProvider", "Failed to initialize libsodium");
         throw std::runtime_error("Failed to initialize libsodium");
     }
-    qDebug() << "Libsodium provider initialized successfully";
+    SECURE_LOG(INFO, "LibsodiumProvider", "Libsodium provider initialized successfully");
 }
 
 LibsodiumProvider::~LibsodiumProvider()
@@ -36,7 +36,7 @@ QByteArray LibsodiumProvider::deriveKey(const QByteArray &password, const QByteA
 
         if (result != 0)
         {
-            qDebug() << "Libsodium Provider: Argon2 key derivation failed";
+            SECURE_LOG(ERROR, "LibsodiumProvider", "Argon2 key derivation failed");
             sodium_memzero(key.data(), key.size());
             return QByteArray();
         }
@@ -56,14 +56,15 @@ QByteArray LibsodiumProvider::deriveKey(const QByteArray &password, const QByteA
 
         if (result != 0)
         {
-            qDebug() << "Libsodium Provider: Scrypt key derivation failed";
+            SECURE_LOG(ERROR, "LibsodiumProvider", "Scrypt key derivation failed");
             sodium_memzero(key.data(), key.size());
             return QByteArray();
         }
     }
     else
     {
-        qDebug() << "Libsodium Provider: Unsupported KDF specified:" << kdf;
+        SECURE_LOG(WARNING, "LibsodiumProvider", 
+            QString("Unsupported KDF specified: %1").arg(kdf));
         sodium_memzero(key.data(), key.size());
         return QByteArray();
     }
@@ -74,8 +75,8 @@ QByteArray LibsodiumProvider::deriveKey(const QByteArray &password, const QByteA
 bool LibsodiumProvider::encrypt(QFile &inputFile, QFile &outputFile, const QByteArray &key,
                                 const QByteArray &iv, const QString &algorithm, bool useAuthentication)
 {
-    // Almost all libsodium encryptions use authenticated encryption, regardless of the algorithm
-    qDebug() << "Libsodium Provider: Encryption started with algorithm " << algorithm;
+    SECURE_LOG(DEBUG, "LibsodiumProvider", 
+        QString("Encryption started with algorithm: %1").arg(algorithm));
 
     // Map OpenSSL algorithm names to libsodium operations
     if (algorithm.contains("ChaCha20-Poly1305") || useAuthentication)
@@ -90,7 +91,8 @@ bool LibsodiumProvider::encrypt(QFile &inputFile, QFile &outputFile, const QByte
     }
     else
     {
-        qDebug() << "Libsodium Provider: Unsupported algorithm:" << algorithm;
+        SECURE_LOG(WARNING, "LibsodiumProvider", 
+            QString("Unsupported algorithm: %1").arg(algorithm));
         return false;
     }
 }
@@ -98,7 +100,8 @@ bool LibsodiumProvider::encrypt(QFile &inputFile, QFile &outputFile, const QByte
 bool LibsodiumProvider::decrypt(QFile &inputFile, QFile &outputFile, const QByteArray &key,
                                 const QByteArray &iv, const QString &algorithm, bool useAuthentication)
 {
-    qDebug() << "Libsodium Provider: Decryption started with algorithm " << algorithm;
+    SECURE_LOG(DEBUG, "LibsodiumProvider", 
+        QString("Decryption started with algorithm: %1").arg(algorithm));
 
     // Map OpenSSL algorithm names to libsodium operations
     if (algorithm.contains("ChaCha20-Poly1305") || useAuthentication)
@@ -113,7 +116,8 @@ bool LibsodiumProvider::decrypt(QFile &inputFile, QFile &outputFile, const QByte
     }
     else
     {
-        qDebug() << "Libsodium Provider: Unsupported algorithm:" << algorithm;
+        SECURE_LOG(WARNING, "LibsodiumProvider", 
+            QString("Unsupported algorithm: %1").arg(algorithm));
         return false;
     }
 }
@@ -175,15 +179,16 @@ bool LibsodiumProvider::encryptWithXChaCha20Poly1305(QFile &inputFile, QFile &ou
                 reinterpret_cast<const unsigned char *>(nonce.constData()),
                 reinterpret_cast<const unsigned char *>(key.constData())) != 0)
         {
-
-            qDebug() << "Libsodium Provider: XChaCha20-Poly1305 encryption failed";
+            SECURE_LOG(ERROR, "LibsodiumProvider", 
+                "XChaCha20-Poly1305 encryption failed");
             return false;
         }
 
         outputFile.write(encryptedChunk.constData(), encryptedLen);
     }
 
-    qDebug() << "Libsodium Provider: XChaCha20-Poly1305 encryption completed successfully";
+    SECURE_LOG(INFO, "LibsodiumProvider", 
+        "XChaCha20-Poly1305 encryption completed successfully");
     return true;
 }
 
@@ -211,15 +216,16 @@ bool LibsodiumProvider::decryptWithXChaCha20Poly1305(QFile &inputFile, QFile &ou
                 reinterpret_cast<const unsigned char *>(nonce.constData()),
                 reinterpret_cast<const unsigned char *>(key.constData())) != 0)
         {
-
-            qDebug() << "Libsodium Provider: XChaCha20-Poly1305 decryption failed (authentication error)";
+            SECURE_LOG(ERROR, "LibsodiumProvider", 
+                "XChaCha20-Poly1305 decryption failed (authentication error)");
             return false;
         }
 
         outputFile.write(decryptedChunk.constData(), decryptedLen);
     }
 
-    qDebug() << "Libsodium Provider: XChaCha20-Poly1305 decryption completed successfully";
+    SECURE_LOG(INFO, "LibsodiumProvider", 
+        "XChaCha20-Poly1305 decryption completed successfully");
     return true;
 }
 
@@ -233,8 +239,8 @@ bool LibsodiumProvider::encryptWithSecretStream(QFile &inputFile, QFile &outputF
             reinterpret_cast<unsigned char *>(const_cast<char *>(nonce.constData())),
             reinterpret_cast<const unsigned char *>(key.constData())) != 0)
     {
-
-        qDebug() << "Libsodium Provider: Failed to initialize secretstream encryption";
+        SECURE_LOG(ERROR, "LibsodiumProvider", 
+            "Failed to initialize secretstream encryption");
         return false;
     }
 
@@ -251,7 +257,9 @@ bool LibsodiumProvider::encryptWithSecretStream(QFile &inputFile, QFile &outputF
         if (bytesRead <= 0)
             break;
 
-        unsigned char tag = inputFile.atEnd() ? crypto_secretstream_xchacha20poly1305_TAG_FINAL : crypto_secretstream_xchacha20poly1305_TAG_MESSAGE;
+        unsigned char tag = inputFile.atEnd() ? 
+            crypto_secretstream_xchacha20poly1305_TAG_FINAL : 
+            crypto_secretstream_xchacha20poly1305_TAG_MESSAGE;
 
         if (crypto_secretstream_xchacha20poly1305_push(
                 &state,
@@ -260,15 +268,16 @@ bool LibsodiumProvider::encryptWithSecretStream(QFile &inputFile, QFile &outputF
                 nullptr, 0, // no additional data
                 tag) != 0)
         {
-
-            qDebug() << "Libsodium Provider: Secretstream encryption failed";
+            SECURE_LOG(ERROR, "LibsodiumProvider", 
+                "Secretstream encryption failed");
             return false;
         }
 
         outputFile.write(encryptedChunk.constData(), encryptedLen);
     }
 
-    qDebug() << "Libsodium Provider: Secretstream encryption completed successfully";
+    SECURE_LOG(INFO, "LibsodiumProvider", 
+        "Secretstream encryption completed successfully");
     return true;
 }
 
@@ -282,8 +291,8 @@ bool LibsodiumProvider::decryptWithSecretStream(QFile &inputFile, QFile &outputF
             reinterpret_cast<const unsigned char *>(nonce.constData()),
             reinterpret_cast<const unsigned char *>(key.constData())) != 0)
     {
-
-        qDebug() << "Libsodium Provider: Failed to initialize secretstream decryption";
+        SECURE_LOG(ERROR, "LibsodiumProvider", 
+            "Failed to initialize secretstream decryption");
         return false;
     }
 
@@ -306,9 +315,9 @@ bool LibsodiumProvider::decryptWithSecretStream(QFile &inputFile, QFile &outputF
                 reinterpret_cast<unsigned char *>(decryptedChunk.data()), &decryptedLen, &tag,
                 reinterpret_cast<const unsigned char *>(encryptedChunk.constData()), bytesRead,
                 nullptr, 0) != 0)
-        { // no additional data
-
-            qDebug() << "Libsodium Provider: Secretstream decryption failed (authentication error)";
+        {
+            SECURE_LOG(ERROR, "LibsodiumProvider", 
+                "Secretstream decryption failed (authentication error)");
             return false;
         }
 
@@ -320,6 +329,7 @@ bool LibsodiumProvider::decryptWithSecretStream(QFile &inputFile, QFile &outputF
         }
     }
 
-    qDebug() << "Libsodium Provider: Secretstream decryption completed successfully";
+    SECURE_LOG(INFO, "LibsodiumProvider", 
+        "Secretstream decryption completed successfully");
     return true;
 }

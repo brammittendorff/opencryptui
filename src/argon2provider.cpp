@@ -1,11 +1,12 @@
 #include "cryptoprovider.h"
+#include "logging/secure_logger.h"
 #include <QDebug>
 #include <argon2.h>
 #include <openssl/rand.h>
 
 Argon2Provider::Argon2Provider()
 {
-    qDebug() << "Argon2 provider initialized";
+    SECURE_LOG(INFO, "Argon2Provider", "Argon2 provider initialized");
 }
 
 Argon2Provider::~Argon2Provider()
@@ -46,7 +47,7 @@ QByteArray Argon2Provider::deriveKey(const QByteArray &password, const QByteArra
         if (!success)
         {
             // Fall back to Argon2i if Argon2id fails
-            qDebug() << "Argon2 Provider: Argon2id failed, trying Argon2i...";
+            SECURE_LOG(WARNING, "Argon2Provider", "Argon2id failed, trying Argon2i...");
             // For fallback to Argon2i
             int success = argon2i_hash_raw(
                              time_cost,
@@ -62,14 +63,15 @@ QByteArray Argon2Provider::deriveKey(const QByteArray &password, const QByteArra
     }
     else
     {
-        qDebug() << "Argon2 Provider: Only Argon2 KDF is supported";
+        SECURE_LOG(WARNING, "Argon2Provider", "Only Argon2 KDF is supported");
         key.fill(0); // Clear sensitive data
         return QByteArray();
     }
 
     if (!success)
     {
-        qDebug() << "Argon2 Provider: Key derivation failed for KDF:" << kdf;
+        SECURE_LOG(ERROR, "Argon2Provider", 
+            QString("Key derivation failed for KDF: %1").arg(kdf));
         key.fill(0); // Clear sensitive data
         return QByteArray();
     }
@@ -81,7 +83,7 @@ bool Argon2Provider::encrypt(QFile &inputFile, QFile &outputFile, const QByteArr
                              const QByteArray &iv, const QString &algorithm, bool useAuthentication)
 {
     // Delegate encryption to OpenSSL since Argon2 is only a KDF
-    qDebug() << "Argon2 Provider: Delegating encryption operation to OpenSSL provider";
+    SECURE_LOG(DEBUG, "Argon2Provider", "Delegating encryption operation to OpenSSL provider");
     return m_opensslProvider.encrypt(inputFile, outputFile, key, iv, algorithm, useAuthentication);
 }
 
@@ -89,7 +91,7 @@ bool Argon2Provider::decrypt(QFile &inputFile, QFile &outputFile, const QByteArr
                              const QByteArray &iv, const QString &algorithm, bool useAuthentication)
 {
     // Delegate decryption to OpenSSL since Argon2 is only a KDF
-    qDebug() << "Argon2 Provider: Delegating decryption operation to OpenSSL provider";
+    SECURE_LOG(DEBUG, "Argon2Provider", "Delegating decryption operation to OpenSSL provider");
     return m_opensslProvider.decrypt(inputFile, outputFile, key, iv, algorithm, useAuthentication);
 }
 

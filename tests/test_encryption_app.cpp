@@ -12,6 +12,25 @@
 #include <QWindow>
 #include <QSpinBox>
 #include <QCheckBox>
+#include "logging/secure_logger.h"
+
+// Override qDebug/qInfo/qWarning in CI environments to reduce test output
+#if defined(QT_CI_BUILD) || defined(CI) || defined(GITLAB_CI) || defined(GITHUB_ACTIONS) || defined(TRAVIS)
+#include <QLoggingCategory>
+
+// Disable all Qt logging for CI builds
+void ciMessageHandler(QtMsgType, const QMessageLogContext &, const QString &) {
+    // Do nothing - suppress output
+}
+
+// Install the handler at the start of the program
+struct InstallMessageHandler {
+    InstallMessageHandler() {
+        qInstallMessageHandler(ciMessageHandler);
+        QLoggingCategory::setFilterRules("*.debug=false\n*.info=false\n*.warning=false");
+    }
+} installHandler;
+#endif
 
 class TestOpenCryptUI : public QObject
 {

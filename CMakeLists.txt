@@ -5,6 +5,15 @@ project(OpenCryptUI LANGUAGES CXX)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
 
+# Check for CI environment
+if(DEFINED ENV{CI} OR DEFINED ENV{GITHUB_ACTIONS} OR DEFINED ENV{GITLAB_CI} OR DEFINED ENV{TRAVIS})
+    message(STATUS "Building in CI environment - disabling logs")
+    add_definitions(-DQT_CI_BUILD)
+    # Disable Qt debug/warning messages in CI
+    add_definitions(-DQT_NO_DEBUG_OUTPUT)
+    add_definitions(-DQT_NO_WARNING_OUTPUT)
+endif()
+
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
@@ -69,7 +78,8 @@ set(LIBRARY_SOURCES
     include/encryptionworker.h
     src/customlistwidget.cpp
     include/customlistwidget.h
-    # Add the new crypto provider files
+    src/logging/secure_logger.cpp
+    include/logging/secure_logger.h
     include/cryptoprovider.h
     src/opensslprovider.cpp
     src/libsodiumprovider.cpp
@@ -86,6 +96,7 @@ set_target_properties(EncryptionLib PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_compile_options(EncryptionLib PRIVATE -fPIC)
 
 target_include_directories(EncryptionLib PRIVATE 
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/logging
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/ui

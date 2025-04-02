@@ -1,6 +1,6 @@
 #include "encryptionengine.h"
+#include "logging/secure_logger.h"
 #include <QFile>
-#include <QDebug>
 #include <argon2.h>
 #include <sodium.h>
 #include <openssl/evp.h>
@@ -15,7 +15,8 @@ QByteArray EncryptionEngine::readKeyfile(const QString& keyfilePath) {
     // Open the keyfile
     QFile keyfile(keyfilePath);
     if (!keyfile.open(QIODevice::ReadOnly)) {
-        qDebug() << "Failed to open keyfile at path:" << keyfilePath;
+        SECURE_LOG(ERROR, "EncryptionEngine", 
+            QString("Failed to open keyfile at path: %1").arg(keyfilePath));
         return QByteArray();
     }
 
@@ -24,7 +25,8 @@ QByteArray EncryptionEngine::readKeyfile(const QString& keyfilePath) {
     keyfile.close();
 
     if (keyfileData.isEmpty()) {
-        qDebug() << "Keyfile is empty or could not be read:" << keyfilePath;
+        SECURE_LOG(WARNING, "EncryptionEngine", 
+            QString("Keyfile is empty or could not be read: %1").arg(keyfilePath));
     }
 
     return keyfileData;
@@ -50,7 +52,6 @@ QByteArray EncryptionEngine::deriveKey(const QString& password, const QByteArray
     return derivedKey;
 }
 
-// Function to derive a cryptographic key using just the password (without keyfiles)
 QByteArray EncryptionEngine::deriveKeyWithoutKeyfile(const QString &password, const QString &salt, const QString &kdf, int iterations, int keySize) {
     // Convert the password to UTF-8 and store it in a QByteArray
     QByteArray passwordWithKeyfile = password.toUtf8();
@@ -59,12 +60,11 @@ QByteArray EncryptionEngine::deriveKeyWithoutKeyfile(const QString &password, co
     return performKeyDerivation(passwordWithKeyfile, salt.toUtf8(), kdf, iterations, keySize);
 }
 
-// Enhanced Key Derivation with Security Improvements
 QByteArray EncryptionEngine::performKeyDerivation(const QByteArray& passwordWithKeyfile, const QByteArray& salt, const QString& kdf, int iterations, int keySize)
 {
     // Validate input parameters
     if (passwordWithKeyfile.isEmpty() || salt.isEmpty() || keySize <= 0) {
-        qDebug() << "Invalid key derivation parameters";
+        SECURE_LOG(ERROR, "EncryptionEngine", "Invalid key derivation parameters");
         return QByteArray();
     }
 
@@ -129,13 +129,15 @@ QByteArray EncryptionEngine::performKeyDerivation(const QByteArray& passwordWith
             derivationSuccessful = (scryptResult == 0);
         }
         else {
-            qDebug() << "Unsupported KDF:" << kdf;
+            SECURE_LOG(ERROR, "EncryptionEngine", 
+                QString("Unsupported KDF: %1").arg(kdf));
             return QByteArray();
         }
 
         // Verification step
         if (!derivationSuccessful) {
-            qDebug() << "Key derivation failed for" << kdf;
+            SECURE_LOG(ERROR, "EncryptionEngine", 
+                QString("Key derivation failed for %1").arg(kdf));
             
             // Secure cleanup
             sodium_memzero(key.data(), keySize);
@@ -154,7 +156,8 @@ QByteArray EncryptionEngine::performKeyDerivation(const QByteArray& passwordWith
         return secureKey;
     }
     catch (const std::exception& e) {
-        qDebug() << "Exception during key derivation:" << e.what();
+        SECURE_LOG(ERROR, "EncryptionEngine", 
+            QString("Exception during key derivation: %1").arg(e.what()));
         
         // Secure cleanup in case of exception
         sodium_memzero(key.data(), keySize);
@@ -164,7 +167,6 @@ QByteArray EncryptionEngine::performKeyDerivation(const QByteArray& passwordWith
     }
 }
 
-// Dynamically calculate secure iteration counts
 int EncryptionEngine::calculateSecureIterations(const QString& kdf, int requestedIterations)
 {
     // Minimum secure iteration recommendations
@@ -193,28 +195,26 @@ int EncryptionEngine::calculateSecureIterations(const QString& kdf, int requeste
     return requestedIterations;
 }
 
-// Secure random salt generation
 QByteArray EncryptionEngine::generateSecureSalt(int size)
 {
     QByteArray salt(size, 0);
     
     // Generate random bytes using OpenSSL's RAND_bytes instead of libsodium
     if (RAND_bytes(reinterpret_cast<unsigned char*>(salt.data()), size) != 1) {
-        qDebug() << "Secure random salt generation failed";
+        SECURE_LOG(ERROR, "EncryptionEngine", "Secure random salt generation failed");
         return QByteArray();
     }
 
     return salt;
 }
 
-// Enhanced IV generation with additional entropy
 QByteArray EncryptionEngine::generateSecureIV(int size)
 {
     QByteArray iv(size, 0);
     
     // Generate random bytes using OpenSSL's RAND_bytes instead of libsodium
     if (RAND_bytes(reinterpret_cast<unsigned char*>(iv.data()), size) != 1) {
-        qDebug() << "Secure IV generation failed";
+        SECURE_LOG(ERROR, "EncryptionEngine", "Secure IV generation failed");
         return QByteArray();
     }
 
