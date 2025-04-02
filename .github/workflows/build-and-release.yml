@@ -23,10 +23,19 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
 
     steps:
-      - name: Setup minimal logging
+      - name: Setup minimal logging (Linux/macOS)
+        if: matrix.os != 'windows-latest'
         run: |
-          mkdir -p ~/.config
+          mkdir -p ~/.config/QtProject
           echo -e "[Logging]\ndefault.debug=false\ndefault.warning=false" > ~/.config/QtProject/qtlogging.ini
+
+      - name: Setup minimal logging (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        run: |
+          # Windows uses AppData/Roaming path for Qt settings
+          mkdir -p "$APPDATA/QtProject"
+          echo -e "[Logging]\r\ndefault.debug=false\r\ndefault.warning=false" > "$APPDATA/QtProject/qtlogging.ini"
 
       - name: Checkout code
         uses: actions/checkout@v3
@@ -143,13 +152,15 @@ jobs:
             -DOPENSSL_SSL_LIBRARY="${{ env.OPENSSL_SSL_LIBRARY }}" \
             -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}" \
             -DCMAKE_MODULE_PATH="${{ env.CMAKE_MODULE_PATH }}" \
-            -DQt5_DIR="${{ env.Qt5_DIR }}"
+            -DQt5_DIR="${{ env.Qt5_DIR }}" \
+            -DCMAKE_CXX_FLAGS="-DQT_CI_BUILD -DQT_NO_DEBUG_OUTPUT -DQT_NO_WARNING_OUTPUT"
 
       - name: Configure CMake for macOS/Linux
         if: matrix.os != 'windows-latest'
         shell: bash
         run: |
-          cmake -S . -B build -G Ninja
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_CXX_FLAGS="-DQT_CI_BUILD -DQT_NO_DEBUG_OUTPUT -DQT_NO_WARNING_OUTPUT"
 
       - name: Build for Windows
         if: matrix.os == 'windows-latest'
