@@ -32,9 +32,7 @@ SecureLogger::~SecureLogger() {
 }
 
 void SecureLogger::log(LogLevel level, const QString& component, const QString& message) {
-    // Skip logging if running in CI/CD environment
-    if (isRunningInCI()) return;
-    
+    // All log control is now done in the SECURE_LOG macro
     QMutexLocker locker(&m_mutex);
 
     // Check if logging is allowed based on current log level

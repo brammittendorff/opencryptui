@@ -51,27 +51,43 @@ private:
 #ifndef SECURE_LOGGER_H_CI_ENV
 #define SECURE_LOGGER_H_CI_ENV
 #include <QProcessEnvironment>
-inline bool isRunningInCI() {
+#include <QCoreApplication>
+
+// Check if we're in release mode (compiled with NDEBUG and not in CI/test)
+inline bool isReleaseMode() {
     static bool checked = false;
-    static bool inCI = false;
+    static bool inRelease = false;
     if (!checked) {
+        // Release mode if:
+        // 1. NO_LOGGING environment var exists OR
+        // 2. App was compiled with NDEBUG and we're NOT in CI environment
         QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-        inCI = env.contains("CI") || env.contains("GITHUB_ACTIONS") || 
-               env.contains("GITLAB_CI") || env.contains("TRAVIS");
+        bool isCI = env.contains("CI") || env.contains("GITHUB_ACTIONS") || 
+                   env.contains("GITLAB_CI") || env.contains("TRAVIS");
+        
+        // Explicitly disabled or release build outside CI
+        inRelease = env.contains("NO_LOGGING") || 
+                   (
+                    #ifdef NDEBUG
+                    true &&
+                    #else
+                    false &&
+                    #endif
+                    !isCI
+                   );
         checked = true;
     }
-    return inCI;
+    return inRelease;
 }
 #endif
 
+// For ERROR level compatibility (since we renamed it to ERROR_LEVEL)
+#define ERROR ERROR_LEVEL
+
 // Macro for logging with compile-time optimization
-#if defined(QT_NO_DEBUG) || defined(QT_CI_BUILD)
-    #define SECURE_LOG(level, component, message) do {} while (0)
-#else
-    #define SECURE_LOG(level, component, message) \
-        if (!isRunningInCI()) { \
-            SecureLogger::getInstance().log(SecureLogger::LogLevel::level, component, message); \
-        }
-#endif
+#define SECURE_LOG(level, component, message) \
+    if (!isReleaseMode()) { \
+        SecureLogger::getInstance().log(SecureLogger::LogLevel::level, component, message); \
+    }
 
 #endif // SECURE_LOGGER_H

@@ -179,105 +179,158 @@ jobs:
         shell: msys2 {0}
         run: |
           echo "Creating necessary directories for Qt plugins..."
-          mkdir -p build/platforms || { echo "Failed to create build/platforms"; exit 1; }
-          mkdir -p build/styles || { echo "Failed to create build/styles"; exit 1; }
-          mkdir -p build/imageformats || { echo "Failed to create build/imageformats"; exit 1; }
-          mkdir -p build/iconengines || { echo "Failed to create build/iconengines"; exit 1; }
+          mkdir -p build/platforms build/styles build/imageformats build/iconengines build/printsupport
       
           echo "Finding ntldd.exe..."
-          NTLDD_PATH=$(find /mingw64/bin -name "ntldd.exe" | head -n 1)
+          NTLDD_PATH=$(find /mingw64/bin -name "ntldd.exe" || find /mingw64 -name "ntldd.exe" 2>/dev/null || echo "")
           if [ -z "$NTLDD_PATH" ]; then
-              echo "ntldd.exe not found!"
-              exit 1
+              echo "ntldd.exe not found via find, trying which..."
+              NTLDD_PATH=$(which ntldd.exe 2>/dev/null || echo "")
+              if [ -z "$NTLDD_PATH" ]; then
+                  echo "WARNING: ntldd.exe not found, will rely on manual DLL list"
+              else
+                  echo "ntldd.exe found at $NTLDD_PATH"
+              fi
+          else
+              echo "ntldd.exe found at $NTLDD_PATH"
           fi
-          echo "ntldd.exe found at $NTLDD_PATH"
       
           echo "Checking if build/OpenCryptUI.exe exists..."
           if [ ! -f "build/OpenCryptUI.exe" ]; then
-              echo "build/OpenCryptUI.exe not found!"
+              echo "build/OpenCryptUI.exe not found! Checking directory contents:"
+              ls -la build/
               exit 1
           fi
+
+          # List directories to help troubleshoot paths
+          echo "Mingw64 directory contents (lib):"
+          ls -la /mingw64/lib/ | grep -E 'sodium|argon2|ssl|crypto' || echo "No matches found"
+          
+          echo "Mingw64 bin directory contents:"
+          ls -la /mingw64/bin/ | grep -E 'dll|\.so' | head -20
+          
+          echo "Looking for Qt plugins directory:"
+          find /mingw64 -name "plugins" -type d | grep -i qt
+          QT_PLUGIN_PATH=$(find /mingw64 -name "plugins" -type d | grep -i qt | head -1)
+          echo "Using Qt plugin path: $QT_PLUGIN_PATH"
       
-          echo "Running ntldd and capturing DLLs..."
-          # Run a recursive dependency check to catch all required DLLs
-          DLL_PATHS=$(mktemp)
-          "$NTLDD_PATH" -R build/OpenCryptUI.exe | grep -i "mingw" | grep -v "not found" | awk '{print $3}' | sort -u > "$DLL_PATHS"
+          if [ -n "$NTLDD_PATH" ] && [ -x "$NTLDD_PATH" ]; then
+              echo "Running ntldd and capturing DLLs..."
+              # Run a recursive dependency check to catch all required DLLs
+              DLL_PATHS=$(mktemp)
+              "$NTLDD_PATH" -R build/OpenCryptUI.exe | grep -i "mingw" | grep -v "not found" | awk '{print $3}' | sort -u > "$DLL_PATHS"
+              
+              echo "Copying DLLs to build directory..."
+              while IFS= read -r dll_path; do
+                if [[ -f "$dll_path" ]]; then
+                  echo "Copying $dll_path to build directory"
+                  cp "$dll_path" build/ || { echo "Failed to copy $dll_path"; }
+                fi
+              done < "$DLL_PATHS"
+              rm "$DLL_PATHS"
+          else
+              echo "Skipping ntldd dependency check as ntldd was not found or not executable"
+          fi
       
-          echo "Copying DLLs to build directory..."
-          while IFS= read -r dll_path; do
-            if [[ -f "$dll_path" ]]; then
-              echo "Copying $dll_path to build directory"
-              cp "$dll_path" build/ || { echo "Failed to copy $dll_path"; }
-            fi
-          done < "$DLL_PATHS"
-          rm "$DLL_PATHS"
-      
-          echo "Copying additional required DLLs..."
-          # Essential system libraries
+          echo "Copying essential system libraries..."
+          # Try different naming patterns for system libraries
           cp -f /mingw64/bin/libstdc++-6.dll build/ || echo "Warning: libstdc++-6.dll not found"
           cp -f /mingw64/bin/libgcc_s_seh-1.dll build/ || echo "Warning: libgcc_s_seh-1.dll not found"
           cp -f /mingw64/bin/libwinpthread-1.dll build/ || echo "Warning: libwinpthread-1.dll not found"
+          cp -f /mingw64/bin/libssp-0.dll build/ || echo "Warning: libssp-0.dll not found"
           
-          # Qt dependencies
-          cp -f /mingw64/bin/libglib-2.0-0.dll build/ || echo "Warning: libglib-2.0-0.dll not found"
-          cp -f /mingw64/bin/libgraphite2.dll build/ || echo "Warning: libgraphite2.dll not found"
-          cp -f /mingw64/bin/libintl-8.dll build/ || echo "Warning: libintl-8.dll not found"
-          cp -f /mingw64/bin/libbz2-1.dll build/ || echo "Warning: libbz2-1.dll not found"
-          cp -f /mingw64/bin/libpcre-1.dll build/ || echo "Warning: libpcre-1.dll not found"
-          cp -f /mingw64/bin/libpcre2-16-0.dll build/ || echo "Warning: libpcre2-16-0.dll not found"
-          cp -f /mingw64/bin/libharfbuzz-0.dll build/ || echo "Warning: libharfbuzz-0.dll not found"
-          cp -f /mingw64/bin/libpng16-16.dll build/ || echo "Warning: libpng16-16.dll not found"
-          cp -f /mingw64/bin/zlib1.dll build/ || echo "Warning: zlib1.dll not found"
-          cp -f /mingw64/bin/libiconv-2.dll build/ || echo "Warning: libiconv-2.dll not found"
-          cp -f /mingw64/bin/libfreetype-6.dll build/ || echo "Warning: libfreetype-6.dll not found"
+          echo "Copying Qt dependencies..."
+          # Try to find Qt dependencies with an exhaustive approach
+          for dll in libglib-2.0-0 libgraphite2 libintl-8 libbz2-1 libpcre libpcre-1 libpcre2-16-0 \
+                    libharfbuzz-0 libpng16-16 zlib1 libiconv-2 libfreetype-6 libpcre16-0 \
+                    libdouble-conversion libbrotlidec libbrotlicommon; do
+            echo "Looking for $dll.dll..."
+            cp -f /mingw64/bin/${dll}.dll build/ 2>/dev/null || \
+            find /mingw64 -name "${dll}.dll" -exec cp -f {} build/ \; 2>/dev/null || \
+            echo "Warning: ${dll}.dll not found"
+          done
           
-          # Crypto dependencies
-          cp -f /mingw64/bin/libsodium-23.dll build/ || echo "Warning: libsodium-23.dll not found"
-          cp -f /mingw64/bin/libargon2.dll build/ || echo "Warning: libargon2.dll not found"
-          cp -f /mingw64/bin/libssl-1_1-x64.dll build/ || echo "Warning: libssl-1_1-x64.dll not found"
-          cp -f /mingw64/bin/libcrypto-1_1-x64.dll build/ || echo "Warning: libcrypto-1_1-x64.dll not found"
+          echo "Copying crypto libraries..."
+          # Try to find crypto libraries with more flexible patterns
+          # Look for different versions of libsodium
+          for sodium in libsodium-23 libsodium-26 libsodium; do
+            find /mingw64 -name "${sodium}.dll" -exec cp -f {} build/ \; 2>/dev/null && break || echo "Warning: ${sodium}.dll not found"
+          done
+          
+          # Look for different versions of libargon2
+          cp -f /mingw64/bin/libargon2.dll build/ 2>/dev/null || \
+          find /mingw64 -name "libargon2*.dll" -exec cp -f {} build/ \; || \
+          echo "Warning: libargon2.dll not found"
+          
+          # Look for different versions of OpenSSL
+          for ssl in libssl-1_1-x64 libssl-1.1 libssl-3 libssl-3-x64 libssl; do
+            find /mingw64 -name "${ssl}.dll" -exec cp -f {} build/ \; 2>/dev/null && break || echo "Warning: ${ssl}.dll not found"
+          done
+          
+          for crypto in libcrypto-1_1-x64 libcrypto-1.1 libcrypto-3 libcrypto-3-x64 libcrypto; do
+            find /mingw64 -name "${crypto}.dll" -exec cp -f {} build/ \; 2>/dev/null && break || echo "Warning: ${crypto}.dll not found"
+          done
       
           echo "Copying Qt core DLLs..."
-          cp -f /mingw64/bin/Qt5Core.dll build/ || echo "Warning: Qt5Core.dll not found"
-          cp -f /mingw64/bin/Qt5Gui.dll build/ || echo "Warning: Qt5Gui.dll not found"
-          cp -f /mingw64/bin/Qt5Widgets.dll build/ || echo "Warning: Qt5Widgets.dll not found"
-          cp -f /mingw64/bin/Qt5Network.dll build/ || echo "Warning: Qt5Network.dll not found"
-          cp -f /mingw64/bin/Qt5Svg.dll build/ || echo "Warning: Qt5Svg.dll not found"
-          cp -f /mingw64/bin/Qt5DBus.dll build/ || echo "Warning: Qt5DBus.dll not found"
-          cp -f /mingw64/bin/Qt5XmlPatterns.dll build/ || echo "Warning: Qt5XmlPatterns.dll not found"
-          cp -f /mingw64/bin/Qt5Xml.dll build/ || echo "Warning: Qt5Xml.dll not found"
-          cp -f /mingw64/bin/Qt5PrintSupport.dll build/ || echo "Warning: Qt5PrintSupport.dll not found"
+          for qtdll in Qt5Core Qt5Gui Qt5Widgets Qt5Network Qt5DBus Qt5Xml Qt5PrintSupport; do
+            cp -f /mingw64/bin/${qtdll}.dll build/ || echo "Warning: ${qtdll}.dll not found"
+          done
+          
+          # Try optional Qt modules with flexible search
+          for optqt in Qt5Svg Qt5XmlPatterns; do
+            cp -f /mingw64/bin/${optqt}.dll build/ 2>/dev/null || \
+            find /mingw64 -name "${optqt}.dll" -exec cp -f {} build/ \; 2>/dev/null || \
+            echo "Warning: ${optqt}.dll not found (optional)"
+          done
       
           echo "Copying Qt plugins..."
-          # Platform plugins
-          cp -f /mingw64/share/qt5/plugins/platforms/qwindows.dll build/platforms/ || echo "Warning: qwindows.dll not found"
-          cp -f /mingw64/share/qt5/plugins/platforms/qminimal.dll build/platforms/ || echo "Warning: qminimal.dll not found"
-          
-          # Style plugins
-          cp -f /mingw64/share/qt5/plugins/styles/qwindowsvistastyle.dll build/styles/ || echo "Warning: qwindowsvistastyle.dll not found"
-          
-          # Image format plugins
-          cp -f /mingw64/share/qt5/plugins/imageformats/qjpeg.dll build/imageformats/ || echo "Warning: qjpeg.dll not found"
-          cp -f /mingw64/share/qt5/plugins/imageformats/qgif.dll build/imageformats/ || echo "Warning: qgif.dll not found"
-          cp -f /mingw64/share/qt5/plugins/imageformats/qico.dll build/imageformats/ || echo "Warning: qico.dll not found"
-          cp -f /mingw64/share/qt5/plugins/imageformats/qsvg.dll build/imageformats/ || echo "Warning: qsvg.dll not found"
-          cp -f /mingw64/share/qt5/plugins/imageformats/qpng.dll build/imageformats/ || echo "Warning: qpng.dll not found"
-          cp -f /mingw64/share/qt5/plugins/imageformats/qicns.dll build/imageformats/ || echo "Warning: qicns.dll not found"
-          cp -f /mingw64/share/qt5/plugins/imageformats/qtga.dll build/imageformats/ || echo "Warning: qtga.dll not found"
-          cp -f /mingw64/share/qt5/plugins/imageformats/qtiff.dll build/imageformats/ || echo "Warning: qtiff.dll not found"
-          cp -f /mingw64/share/qt5/plugins/imageformats/qwbmp.dll build/imageformats/ || echo "Warning: qwbmp.dll not found"
-          cp -f /mingw64/share/qt5/plugins/imageformats/qwebp.dll build/imageformats/ || echo "Warning: qwebp.dll not found"
-          
-          # Icon engines
-          cp -f /mingw64/share/qt5/plugins/iconengines/qsvgicon.dll build/iconengines/ || echo "Warning: qsvgicon.dll not found"
-          
-          # Additional required plugins directories
-          mkdir -p build/printsupport || { echo "Failed to create build/printsupport"; }
-          cp -f /mingw64/share/qt5/plugins/printsupport/windowsprintersupport.dll build/printsupport/ || echo "Warning: windowsprintersupport.dll not found"
+          # Try to use the plugin directory we found earlier
+          if [ -n "$QT_PLUGIN_PATH" ]; then
+            # Platform plugins (required)
+            if [ -d "${QT_PLUGIN_PATH}/platforms" ]; then
+              find "${QT_PLUGIN_PATH}/platforms" -name "qwindows.dll" -exec cp -f {} build/platforms/ \; || echo "Warning: qwindows.dll not found"
+              find "${QT_PLUGIN_PATH}/platforms" -name "qminimal.dll" -exec cp -f {} build/platforms/ \; || echo "Warning: qminimal.dll not found"
+            fi
+            
+            # Style plugins (required)
+            if [ -d "${QT_PLUGIN_PATH}/styles" ]; then
+              find "${QT_PLUGIN_PATH}/styles" -name "qwindowsvistastyle.dll" -exec cp -f {} build/styles/ \; || echo "Warning: qwindowsvistastyle.dll not found"
+            fi
+            
+            # Image format plugins (core ones required, others optional)
+            if [ -d "${QT_PLUGIN_PATH}/imageformats" ]; then
+              # Core formats (required)
+              for fmt in qjpeg qgif qico; do
+                find "${QT_PLUGIN_PATH}/imageformats" -name "${fmt}.dll" -exec cp -f {} build/imageformats/ \; || echo "Warning: ${fmt}.dll not found"
+              done
+              
+              # Optional formats
+              for optfmt in qsvg qpng qicns qtga qtiff qwbmp qwebp; do
+                find "${QT_PLUGIN_PATH}/imageformats" -name "${optfmt}.dll" -exec cp -f {} build/imageformats/ \; 2>/dev/null || echo "Warning: ${optfmt}.dll not found (optional)"
+              done
+            fi
+            
+            # Icon engines (optional)
+            if [ -d "${QT_PLUGIN_PATH}/iconengines" ]; then
+              find "${QT_PLUGIN_PATH}/iconengines" -name "qsvgicon.dll" -exec cp -f {} build/iconengines/ \; 2>/dev/null || echo "Warning: qsvgicon.dll not found (optional)"
+            fi
+            
+            # Print support (optional but useful)
+            if [ -d "${QT_PLUGIN_PATH}/printsupport" ]; then
+              find "${QT_PLUGIN_PATH}/printsupport" -name "windowsprintersupport.dll" -exec cp -f {} build/printsupport/ \; 2>/dev/null || echo "Warning: windowsprintersupport.dll not found (optional)"
+            fi
+          else
+            echo "WARNING: Qt plugin directory not found - skipping plugin copying"
+          fi
           
           # Copy resource files
           echo "Copying resources..."
-          cp -rf resources build/ || echo "Warning: Failed to copy resources directory"
+          if [ -d "resources" ]; then
+            cp -rf resources build/ || echo "Warning: Failed to copy resources directory"
+          else
+            echo "WARNING: Resources directory not found in project root"
+            find . -name "resources" -type d | head -5
+          fi
           
           echo "Creating Qt configuration file..."
           cat > build/qt.conf << EOF
@@ -288,7 +341,12 @@ jobs:
           Qml2Imports = ./qml
           EOF
           
-          echo "All DLLs and plugins copied successfully."
+          echo "Listing the files copied to build directory:"
+          ls -la build/
+          echo "Listing platform plugins:"
+          ls -la build/platforms/ || echo "No platform plugins found!"
+          
+          echo "DLL and plugin copying completed."
 
       - name: Archive build artifacts
         uses: actions/upload-artifact@v4
@@ -302,16 +360,16 @@ jobs:
           sudo apt-get install -y xvfb
           xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" cmake --build build --target all
           cd build
-          echo "Running tests with minimal output..."
-          xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" env CI=true QT_LOGGING_RULES="*.debug=false;*.info=false;*.warning=false" QT_MESSAGE_PATTERN="" ./OpenCryptUITest -silent -v1
+          echo "Running tests with diagnostic output enabled..."
+          xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" ./OpenCryptUITest -v2
 
       - name: Run tests (macOS)
         if: matrix.os == 'macos-latest'
         run: |
           cmake --build build --target all
           cd build
-          echo "Running tests with minimal output..."
-          env CI=true QT_LOGGING_RULES="*.debug=false;*.info=false;*.warning=false" QT_MESSAGE_PATTERN="" ./OpenCryptUITest -silent -v1
+          echo "Running tests with diagnostic output enabled..."
+          ./OpenCryptUITest -v2
 
       - name: Run tests (Windows)
         if: matrix.os == 'windows-latest'
@@ -319,38 +377,69 @@ jobs:
         run: |
           cmake --build build --target all
           cd build
-          echo "Running tests with minimal output..."
-          export CI=true
-          export QT_LOGGING_RULES="*.debug=false;*.info=false;*.warning=false"
-          export QT_MESSAGE_PATTERN=""
+          echo "Running tests with diagnostic output enabled..."
+          export QT_QPA_PLATFORM=minimal
           
-          # Check if the test executable exists and is executable
+          # For tests, we want to see diagnostics
+          # CI=true only for the main app to suppress logs, not for tests
+          unset CI
+          unset QT_LOGGING_RULES
+          unset QT_MESSAGE_PATTERN
+          
+          # Check if the test executable exists
           if [ -f "./OpenCryptUITest.exe" ]; then
             echo "Found test executable: $(ls -la ./OpenCryptUITest.exe)"
             
             # Make sure it has executable permissions
             chmod +x ./OpenCryptUITest.exe
             
-            # Run test with error checking
-            ./OpenCryptUITest.exe -silent -v1 || {
-              echo "Test execution failed with code $?";
-              echo "Directory contents:";
-              ls -la;
-              echo "DLL dependencies:";
-              ldd ./OpenCryptUITest.exe || echo "ldd not available, trying ntldd";
-              if command -v ntldd >/dev/null; then
-                ntldd ./OpenCryptUITest.exe;
-              else
-                echo "ntldd not in path, searching for it";
-                NTLDD_PATH=$(find /mingw64/bin -name "ntldd.exe" 2>/dev/null);
+            # Make sure OpenCryptUI.exe and OpenCryptUITest.exe can be run
+            echo "Testing executable runs with QT_QPA_PLATFORM=minimal:"
+            ./OpenCryptUITest.exe -v1 -help || echo "Help command failed, but continuing..."
+            
+            # Run test with verbose output for diagnostics
+            echo "Running tests with verbose output for diagnostics..."
+            ./OpenCryptUITest.exe -v2
+            TEST_EXIT_CODE=$?
+            
+            if [ $TEST_EXIT_CODE -ne 0 ]; then
+              echo "Test execution failed with code $TEST_EXIT_CODE"
+              echo "Directory contents:"
+              ls -la
+              echo "DLL dependencies:"
+              if command -v ldd >/dev/null; then
+                ldd ./OpenCryptUITest.exe
+              else 
+                echo "ldd not available, trying ntldd"
+                NTLDD_PATH=$(find /mingw64 -name "ntldd.exe" 2>/dev/null | head -1)
                 if [ -n "$NTLDD_PATH" ]; then
-                  "$NTLDD_PATH" ./OpenCryptUITest.exe;
+                  "$NTLDD_PATH" ./OpenCryptUITest.exe
                 else
-                  echo "ntldd not found";
+                  echo "ntldd not found, trying different path..."
+                  NTLDD_PATH=$(which ntldd 2>/dev/null || echo "")
+                  if [ -n "$NTLDD_PATH" ]; then
+                    "$NTLDD_PATH" ./OpenCryptUITest.exe
+                  else
+                    echo "ntldd not found, cannot check dependencies"
+                  fi
                 fi
               fi
-              exit 1;
-            }
+              
+              # More detailed logs about platform plugins
+              echo "Qt plugins debug:"
+              echo "Contents of platforms directory:"
+              ls -la platforms/ || echo "No platforms directory found"
+              echo "All Qt plugin directories:"
+              find /mingw64 -name "platforms" -type d
+              
+              # Try with single test for faster diagnostics
+              echo "Trying single test with more logging..."
+              ./OpenCryptUITest.exe -v4 -silent -test-name=TestOpenCryptUI::initTestCase
+              
+              exit $TEST_EXIT_CODE
+            else
+              echo "Tests completed successfully"
+            fi
           else
             echo "ERROR: OpenCryptUITest.exe not found! Directory contents:"
             ls -la

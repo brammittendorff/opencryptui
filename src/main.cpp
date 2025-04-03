@@ -16,9 +16,9 @@ int main(int argc, char *argv[])
     // Configure logging
     SecureLogger& logger = SecureLogger::getInstance();
     
-    // Check if running in CI environment
-    if (isRunningInCI()) {
-        // Disable all logging in CI/CD environment
+    // Configure logging based on build mode
+    if (isReleaseMode()) {
+        // Disable detailed logging in release mode
         logger.setLogLevel(SecureLogger::LogLevel::ERROR_LEVEL);
         logger.setLogToFile(false);
     } else {
@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
             logger.setLogToFile(true);
         #else
             // Limited logging in release mode
-            logger.setLogLevel(SecureLogger::LogLevel::WARNING);
+            logger.setLogLevel(SecureLogger::LogLevel::INFO);
             logger.setLogToFile(false);
         #endif
     }
