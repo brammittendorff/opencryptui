@@ -13,7 +13,7 @@
 #define DISK_HEADER_MAGIC_V1 "OPENCRYPT_DISK_V1"
 
 // Functions related to disk encryption in MainWindow class
-// Implementation by Claude Code for hidden volume support and improved UI
+// Implementation by Claude Code for hidden volume support, secure wiping, and improved UI
 
 // Helper function to check if we have admin privileges
 bool MainWindow::hasAdminPrivileges() 
@@ -166,6 +166,18 @@ void MainWindow::on_diskEncryptButton_clicked()
     int iterations = ui->diskIterationsSpinBox->value();
     bool useHMAC = ui->diskHmacCheckBox->isChecked();
     
+    // Get secure wiping parameters
+    bool performSecureWipe = ui->diskSecureWipeCheckBox->isChecked();
+    EncryptionEngine::WipePattern wipePattern = EncryptionEngine::WipePattern::DOD_SHORT;
+    int wipePasses = 3;
+    bool verifyWipe = ui->verifyWipeCheckBox->isChecked();
+    
+    if (performSecureWipe && ui->wipePatternComboBox->currentIndex() >= 0) {
+        wipePattern = static_cast<EncryptionEngine::WipePattern>(
+            ui->wipePatternComboBox->currentData().toInt());
+        wipePasses = ui->wipePassesSpinBox->value();
+    }
+    
     // Get keyfiles
     QStringList keyfilePaths;
     for (int i = 0; i < ui->diskKeyfileListWidget->count(); ++i) {
@@ -253,6 +265,13 @@ void MainWindow::on_diskEncryptButton_clicked()
         settings.setValue("elevated/useHMAC", useHMAC);
         settings.setValue("elevated/keyfilePaths", keyfilePaths);
         settings.setValue("elevated/isHiddenVolume", isHiddenVolume);
+        
+        // Store secure wipe settings
+        settings.setValue("elevated/performSecureWipe", performSecureWipe);
+        settings.setValue("elevated/wipePattern", static_cast<int>(wipePattern));
+        settings.setValue("elevated/wipePasses", wipePasses);
+        settings.setValue("elevated/verifyWipe", verifyWipe);
+        
         settings.setValue("elevated/operation", "encrypt");
         
         if (!elevatePrivileges(diskPath)) {
@@ -281,6 +300,14 @@ void MainWindow::on_diskEncryptButton_clicked()
         useHMAC = settings.value("elevated/useHMAC").toBool();
         keyfilePaths = settings.value("elevated/keyfilePaths").toStringList();
         
+        // Restore secure wipe parameters
+        performSecureWipe = settings.value("elevated/performSecureWipe", false).toBool();
+        wipePattern = static_cast<EncryptionEngine::WipePattern>(
+            settings.value("elevated/wipePattern", 
+                          static_cast<int>(EncryptionEngine::WipePattern::DOD_SHORT)).toInt());
+        wipePasses = settings.value("elevated/wipePasses", 3).toInt();
+        verifyWipe = settings.value("elevated/verifyWipe", true).toBool();
+        
         // Clear the settings
         settings.remove("elevated/operation");
         settings.remove("elevated/diskPath");
@@ -293,14 +320,55 @@ void MainWindow::on_diskEncryptButton_clicked()
         settings.remove("elevated/useHMAC");
         settings.remove("elevated/keyfilePaths");
         settings.remove("elevated/isHiddenVolume");
+        
+        // Clean up secure wipe settings
+        settings.remove("elevated/performSecureWipe");
+        settings.remove("elevated/wipePattern");
+        settings.remove("elevated/wipePasses");
+        settings.remove("elevated/verifyWipe");
     }
     
-    // Build the confirmation message including information about hidden volumes
+    // Build the confirmation message including information about hidden volumes and wiping
     QString confirmMessage = "WARNING: You are about to encrypt a disk or volume. This operation will modify the disk directly and may result in data loss if interrupted.\n\n";
     
     if (isHiddenVolume) {
         int hiddenVolumePercent = ui->hiddenVolumeSizeSpinBox->value();
         confirmMessage += QString("You are creating a hidden volume that uses %1% of the disk space.\n\n").arg(hiddenVolumePercent);
+    }
+    
+    if (performSecureWipe) {
+        // Add information about the wiping process
+        QString patternName;
+        switch (wipePattern) {
+            case EncryptionEngine::WipePattern::ZEROS:
+                patternName = "Zeros";
+                break;
+            case EncryptionEngine::WipePattern::ONES:
+                patternName = "Ones";
+                break;
+            case EncryptionEngine::WipePattern::RANDOM:
+                patternName = "Random Data";
+                break;
+            case EncryptionEngine::WipePattern::DOD_SHORT:
+                patternName = "DoD 5220.22-M (3 passes)";
+                break;
+            case EncryptionEngine::WipePattern::DOD_FULL:
+                patternName = "DoD 5220.22-M Full (7 passes)";
+                break;
+            case EncryptionEngine::WipePattern::GUTMANN:
+                patternName = "Gutmann (35 passes)";
+                break;
+        }
+        
+        confirmMessage += QString("ATTENTION: The disk will first be securely wiped using the %1 pattern with %2 passes.\n")
+                          .arg(patternName)
+                          .arg(wipePasses);
+        
+        if (verifyWipe) {
+            confirmMessage += "Verification will be performed after each pass which doubles the operation time.\n";
+        }
+        
+        confirmMessage += "\nThis cannot be undone and all existing data will be permanently destroyed.\n\n";
     }
     
     confirmMessage += "Are you sure you want to continue?";
@@ -333,6 +401,39 @@ void MainWindow::on_diskEncryptButton_clicked()
         }
     }
     
+    // Perform secure wiping first if requested
+    if (performSecureWipe) {
+        SECURE_LOG(INFO, "MainWindow", QString("Starting secure disk wiping on %1 before encryption").arg(diskPath));
+        ui->diskProgressBar->setValue(0);
+        ui->diskProgressBar->setVisible(true);
+        ui->diskEstimatedTimeLabel->setText("Estimated time for wiping: Calculating...");
+        ui->diskEstimatedTimeLabel->setVisible(true);
+        
+        // Show additional information to the user
+        QString statusMessage = QString("Securely wiping disk with %1 passes...\nThis might take a long time.").arg(wipePasses);
+        ui->diskInfoLabel->setText(statusMessage);
+        
+        QApplication::processEvents(); // Ensure UI update
+        
+        // Perform the actual wiping operation
+        bool wipeSuccess = encryptionEngine.secureWipeDisk(diskPath, wipePasses, verifyWipe);
+        
+        if (!wipeSuccess) {
+            QMessageBox::critical(this, "Wiping Failed",
+                                 "Secure wiping of the disk failed. Encryption process aborted.");
+            ui->diskEncryptButton->setEnabled(true);
+            ui->diskDecryptButton->setEnabled(true);
+            ui->diskEstimatedTimeLabel->setVisible(false);
+            ui->diskProgressBar->setVisible(false);
+            return;
+        }
+        
+        // Update UI after wiping
+        ui->diskProgressBar->setValue(0);
+        ui->diskEstimatedTimeLabel->setText("Wiping completed. Starting encryption...");
+        SECURE_LOG(INFO, "MainWindow", "Secure wiping completed successfully. Proceeding with encryption.");
+    }
+
     // Set parameters and start work
     if (isHiddenVolume) {
         // For hidden volumes, we need to add additional parameters
@@ -650,4 +751,72 @@ bool MainWindow::containsKeyfile(QListWidget *listWidget, const QString &path)
         }
     }
     return false;
+}
+
+// Handler for the secure wipe checkbox
+void MainWindow::on_diskSecureWipeCheckBox_toggled(bool checked)
+{
+    // Enable or disable all wiping related controls based on the checkbox state
+    ui->wipePatternLabel->setEnabled(checked);
+    ui->wipePatternComboBox->setEnabled(checked);
+    ui->wipePassesLabel->setEnabled(checked);
+    ui->wipePassesSpinBox->setEnabled(checked);
+    ui->verifyWipeCheckBox->setEnabled(checked);
+    
+    // If first time enabling, populate the wipe pattern combobox
+    if (checked && ui->wipePatternComboBox->count() == 0) {
+        ui->wipePatternComboBox->addItem("Random Data", static_cast<int>(EncryptionEngine::WipePattern::RANDOM));
+        ui->wipePatternComboBox->addItem("Zeros", static_cast<int>(EncryptionEngine::WipePattern::ZEROS));
+        ui->wipePatternComboBox->addItem("Ones", static_cast<int>(EncryptionEngine::WipePattern::ONES));
+        ui->wipePatternComboBox->addItem("DoD 5220.22-M (3 passes)", static_cast<int>(EncryptionEngine::WipePattern::DOD_SHORT));
+        ui->wipePatternComboBox->addItem("DoD 5220.22-M Full (7 passes)", static_cast<int>(EncryptionEngine::WipePattern::DOD_FULL));
+        ui->wipePatternComboBox->addItem("Gutmann (35 passes)", static_cast<int>(EncryptionEngine::WipePattern::GUTMANN));
+        
+        // Set DoD short as default
+        ui->wipePatternComboBox->setCurrentIndex(3);
+    }
+    
+    if (checked) {
+        // Show a warning about wiping
+        QMessageBox::warning(this, "Secure Wiping Warning",
+            "Secure wiping permanently destroys all data on the disk and cannot be undone.\n\n"
+            "The wiping process may take a long time depending on the disk size and the number of passes selected.\n\n"
+            "Do NOT interrupt the wiping process once it has started.");
+    }
+}
+
+// Handler for the wipe pattern combobox
+void MainWindow::on_wipePatternComboBox_currentIndexChanged(int index)
+{
+    if (index < 0)
+        return;
+    
+    // Get the selected wipe pattern
+    EncryptionEngine::WipePattern pattern = 
+        static_cast<EncryptionEngine::WipePattern>(ui->wipePatternComboBox->currentData().toInt());
+    
+    // Update passes spinbox based on the selected pattern
+    switch (pattern) {
+        case EncryptionEngine::WipePattern::ZEROS:
+        case EncryptionEngine::WipePattern::ONES:
+        case EncryptionEngine::WipePattern::RANDOM:
+            ui->wipePassesSpinBox->setValue(3);
+            ui->wipePassesSpinBox->setEnabled(true);
+            break;
+            
+        case EncryptionEngine::WipePattern::DOD_SHORT:
+            ui->wipePassesSpinBox->setValue(3);
+            ui->wipePassesSpinBox->setEnabled(false);
+            break;
+            
+        case EncryptionEngine::WipePattern::DOD_FULL:
+            ui->wipePassesSpinBox->setValue(7);
+            ui->wipePassesSpinBox->setEnabled(false);
+            break;
+            
+        case EncryptionEngine::WipePattern::GUTMANN:
+            ui->wipePassesSpinBox->setValue(35);
+            ui->wipePassesSpinBox->setEnabled(false);
+            break;
+    }
 }

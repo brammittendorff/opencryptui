@@ -61,6 +61,8 @@ private slots:
     void on_diskBrowseButton_clicked();
     void on_diskKeyfileBrowseButton_clicked();
     void on_refreshDisksButton_clicked();
+    void on_diskSecureWipeCheckBox_toggled(bool checked);
+    void on_wipePatternComboBox_currentIndexChanged(int index);
     void updateProgress(int value);
     void handleFinished(bool success, const QString &errorMessage);
     void showEstimatedTime(double seconds);

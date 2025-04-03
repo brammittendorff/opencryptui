@@ -60,6 +60,18 @@ public:
     bool encryptDisk(const QString& diskPath, const QString& password, const QString& algorithm, const QString& kdf, int iterations, bool useHMAC, const QStringList& keyfilePaths = QStringList());
     bool decryptDisk(const QString& diskPath, const QString& password, const QString& algorithm, const QString& kdf, int iterations, bool useHMAC, const QStringList& keyfilePaths = QStringList());
     
+    // Disk wiping methods
+    bool secureWipeDisk(const QString& diskPath, int passes = 3, bool verifyWipe = true);
+    bool secureWipePartition(const QString& partitionPath, int passes = 3);
+    enum class WipePattern {
+        ZEROS,
+        ONES,
+        RANDOM,
+        DOD_SHORT, // DoD 5220.22-M short (3 passes)
+        DOD_FULL,  // DoD 5220.22-M full (7 passes)
+        GUTMANN    // Peter Gutmann's 35-pass method
+    };
+    
     // Hidden volume support - encrypt/decrypt specific section of disk
     bool encryptDiskSection(const QString& diskPath, const QString& password, const QString& algorithm, const QString& kdf, int iterations, bool useHMAC, const QStringList& keyfilePaths, qint64 startOffset, qint64 sectionSize);
     bool decryptDiskSection(const QString& diskPath, const QString& password, const QString& algorithm, const QString& kdf, int iterations, bool useHMAC, const QStringList& keyfilePaths, qint64 startOffset, qint64 sectionSize);
@@ -149,6 +161,10 @@ private:
     // Entropy health monitoring
     void updateEntropyHealthMetrics(const EntropyTestResult& result);
     void hashWhitenData(const QByteArray& input, QByteArray& output);
+    
+    // Disk wiping helpers
+    bool writeWipePattern(QFile& diskFile, WipePattern pattern, qint64 size, int passNumber, int totalPasses);
+    bool verifyWipePattern(QFile& diskFile, WipePattern pattern, qint64 size);
     
     // Entropy health status metrics
     mutable QMutex m_entropyMetricsMutex;

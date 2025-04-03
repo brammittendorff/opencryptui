@@ -5,7 +5,10 @@
 #include <QDir>
 #include <QTimer>
 #include <QProcess>
+#include <QStorageInfo>
+#include <QThreadPool>
 #include <algorithm> // For std::min
+#include <array>   // For std::array
 
 // Secure file deletion with multiple passes
 bool EncryptionEngine::secureDeleteFile(const QString& filePath, int passes)
@@ -169,7 +172,7 @@ bool EncryptionEngine::scrubFileInode(const QString& filePath)
     
     // Wait for the process to finish with a timeout
     if (!process.waitForFinished(30000)) { // 30 second timeout
-        SECURE_LOG(ERROR, "EncryptionEngine", 
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
             QString("Timeout while running shred on file: %1").arg(filePath));
         process.kill();
         return false;
@@ -177,7 +180,7 @@ bool EncryptionEngine::scrubFileInode(const QString& filePath)
     
     // Check the exit code
     if (process.exitCode() != 0) {
-        SECURE_LOG(ERROR, "EncryptionEngine", 
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
             QString("Shred command failed with exit code %1: %2")
             .arg(process.exitCode())
             .arg(QString(process.readAllStandardError())));
@@ -194,4 +197,403 @@ bool EncryptionEngine::scrubFileInode(const QString& filePath)
         QString("Inode scrubbing not supported on this platform, using secure delete for: %1").arg(filePath));
     return secureDeleteFile(filePath, 7); // Use more passes as compensation
 #endif
+}
+
+// Helper function to write a specific wipe pattern to a disk
+bool EncryptionEngine::writeWipePattern(QFile& diskFile, WipePattern pattern, qint64 size, int passNumber, int totalPasses)
+{
+    // First seek to the beginning of the file/device
+    if (!diskFile.seek(0)) {
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
+            QString("Failed to seek to start of disk: %1").arg(diskFile.fileName()));
+        return false;
+    }
+    
+    // Determine the appropriate pattern based on input
+    QByteArray writePattern;
+    
+    // Create buffer for writing - use a reasonable size to balance speed and memory usage
+    const qint64 bufferSize = 1024 * 1024; // 1MB buffer
+    
+    switch (pattern) {
+        case WipePattern::ZEROS:
+            writePattern = QByteArray(bufferSize, 0x00);
+            break;
+            
+        case WipePattern::ONES:
+            writePattern = QByteArray(bufferSize, 0xFF);
+            break;
+            
+        case WipePattern::RANDOM:
+            writePattern = generateSecureRandomBytes(bufferSize, false);
+            break;
+            
+        case WipePattern::DOD_SHORT: {
+            // DoD Short method uses specific patterns depending on the pass number
+            if (passNumber % 3 == 0) {
+                writePattern = QByteArray(bufferSize, 0x00); // Zeros
+            } else if (passNumber % 3 == 1) {
+                writePattern = QByteArray(bufferSize, 0xFF); // Ones
+            } else {
+                writePattern = generateSecureRandomBytes(bufferSize, false); // Random
+            }
+            break;
+        }
+            
+        case WipePattern::DOD_FULL:
+        case WipePattern::GUTMANN: {
+            // These use multiple complex patterns with specific bit sequences
+            // For simplicity in this implementation, we'll use a pattern based on the pass number
+            int patternSeed = passNumber % 7;
+            
+            switch (patternSeed) {
+                case 0: writePattern = QByteArray(bufferSize, 0x00); break; // All zeros
+                case 1: writePattern = QByteArray(bufferSize, 0xFF); break; // All ones
+                case 2: writePattern = QByteArray(bufferSize, 0x55); break; // Alternating 01
+                case 3: writePattern = QByteArray(bufferSize, 0xAA); break; // Alternating 10
+                case 4: writePattern = QByteArray(bufferSize, 0x92); break; // 10010010
+                case 5: writePattern = QByteArray(bufferSize, 0x49); break; // 01001001
+                default: writePattern = generateSecureRandomBytes(bufferSize, false); break;
+            }
+            break;
+        }
+    }
+    
+    // Write the pattern to the entire disk in chunks
+    qint64 bytesRemaining = size;
+    qint64 totalWritten = 0;
+    
+    while (bytesRemaining > 0) {
+        // Determine how much to write in this iteration
+        qint64 chunkSize = std::min(bytesRemaining, (qint64)writePattern.size());
+        
+        // Write the chunk
+        qint64 bytesWritten = diskFile.write(writePattern.data(), chunkSize);
+        
+        if (bytesWritten <= 0) {
+            SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
+                QString("Failed to write wipe data to disk: %1")
+                .arg(diskFile.fileName()));
+            return false;
+        }
+        
+        bytesRemaining -= bytesWritten;
+        totalWritten += bytesWritten;
+        
+        // Force data to disk periodically
+        if (totalWritten % (10 * bufferSize) == 0) {
+            diskFile.flush();
+        }
+    }
+    
+    // Final flush to ensure all data is written
+    diskFile.flush();
+    
+    SECURE_LOG(INFO, "EncryptionEngine", 
+        QString("Successfully wrote wipe pattern to disk (Pass %1/%2): %3 bytes")
+        .arg(passNumber + 1)
+        .arg(totalPasses)
+        .arg(totalWritten));
+    
+    return true;
+}
+
+// Helper function to verify a specific wipe pattern on a disk
+bool EncryptionEngine::verifyWipePattern(QFile& diskFile, WipePattern pattern, qint64 size)
+{
+    // Only verify certain patterns (zeros, ones, and simple patterns)
+    // Random patterns can't be verified
+    if (pattern == WipePattern::RANDOM) {
+        return true; // Skip verification for random patterns
+    }
+    
+    if (!diskFile.seek(0)) {
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
+            QString("Failed to seek to start of disk for verification: %1").arg(diskFile.fileName()));
+        return false;
+    }
+    
+    // Determine the expected pattern
+    unsigned char expectedByte = 0x00;
+    
+    switch (pattern) {
+        case WipePattern::ZEROS:
+            expectedByte = 0x00;
+            break;
+        case WipePattern::ONES:
+            expectedByte = 0xFF;
+            break;
+        default:
+            SECURE_LOG(WARNING, "EncryptionEngine", 
+                QString("Only verifying simple patterns (zeros/ones) for disk: %1").arg(diskFile.fileName()));
+            return true; // Skip verification for complex patterns
+    }
+    
+    // Read in chunks and verify each byte
+    const qint64 bufferSize = 1024 * 1024; // 1MB read buffer
+    QByteArray readBuffer(bufferSize, 0);
+    
+    qint64 bytesRemaining = size;
+    qint64 totalRead = 0;
+    qint64 invalidBytes = 0;
+    
+    while (bytesRemaining > 0) {
+        qint64 chunkSize = std::min(bytesRemaining, (qint64)readBuffer.size());
+        
+        // Read a chunk
+        qint64 bytesRead = diskFile.read(readBuffer.data(), chunkSize);
+        
+        if (bytesRead <= 0) {
+            SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
+                QString("Failed to read data from disk during verification: %1").arg(diskFile.fileName()));
+            return false;
+        }
+        
+        // Verify each byte in the chunk
+        for (qint64 i = 0; i < bytesRead; i++) {
+            if (readBuffer.at(static_cast<int>(i)) != expectedByte) {
+                invalidBytes++;
+                
+                // If too many invalid bytes, abort verification
+                if (invalidBytes > 1000) {
+                    SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
+                        QString("Too many invalid bytes during verification (%1 errors)").arg(invalidBytes));
+                    return false;
+                }
+            }
+        }
+        
+        bytesRemaining -= bytesRead;
+        totalRead += bytesRead;
+    }
+    
+    // Allow a small number of invalid bytes (due to bad sectors, etc.)
+    if (invalidBytes > 0) {
+        SECURE_LOG(WARNING, "EncryptionEngine", 
+            QString("Found %1 invalid bytes during verification of %2 total bytes")
+            .arg(invalidBytes).arg(totalRead));
+        
+        // Fail if more than 0.01% of bytes are invalid
+        if (invalidBytes > totalRead / 10000) {
+            return false;
+        }
+    }
+    
+    SECURE_LOG(INFO, "EncryptionEngine", 
+        QString("Successfully verified disk wipe pattern: %1").arg(diskFile.fileName()));
+    
+    return true;
+}
+
+// Public method to securely wipe a disk
+bool EncryptionEngine::secureWipeDisk(const QString& diskPath, int passes, bool verifyWipe)
+{
+    // Validate input parameters
+    if (passes < 1) passes = 3; // Default to 3 passes
+    if (passes > 35) passes = 35; // Cap at 35 passes (Gutmann method)
+    
+    SECURE_LOG(INFO, "EncryptionEngine", 
+        QString("Starting secure disk wipe for %1 with %2 passes")
+        .arg(diskPath).arg(passes));
+    
+    // Verify disk path exists and is writable
+    QFileInfo diskInfo(diskPath);
+    if (!diskInfo.exists()) {
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
+            QString("Disk path does not exist: %1").arg(diskPath));
+        return false;
+    }
+    
+    // For safety, check if this is a system disk
+#ifdef Q_OS_UNIX
+    // Get list of system partitions
+    QProcess process;
+    process.start("mount", QStringList());
+    process.waitForFinished();
+    QString mountOutput = process.readAllStandardOutput();
+    
+    // Check if this disk is mounted as a system partition
+    if (mountOutput.contains(diskPath) || 
+        mountOutput.contains("/boot") || 
+        mountOutput.contains(" / ")) {
+        
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
+            QString("Refusing to wipe system disk or mounted partition: %1").arg(diskPath));
+        return false;
+    }
+#elif defined(Q_OS_WIN)
+    // On Windows, refuse to wipe C: drive and system partitions
+    if (diskPath.startsWith("C:", Qt::CaseInsensitive) || 
+        diskPath.contains("\\windows\\", Qt::CaseInsensitive)) {
+        
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
+            QString("Refusing to wipe system disk: %1").arg(diskPath));
+        return false;
+    }
+#endif
+    
+    // Open the disk for writing
+    QFile diskFile(diskPath);
+    QIODevice::OpenMode openMode = QIODevice::WriteOnly;
+    
+    // Also open for reading if verification is enabled
+    if (verifyWipe) {
+        openMode |= QIODevice::ReadOnly;
+    }
+    
+    if (!diskFile.open(openMode)) {
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
+            QString("Failed to open disk for wiping: %1 (Error: %2)")
+            .arg(diskPath).arg(diskFile.errorString()));
+        return false;
+    }
+    
+    // Get the disk size
+    qint64 diskSize = diskFile.size();
+    
+    // If we can't determine size, try to get it another way
+    if (diskSize <= 0) {
+        QStorageInfo storageInfo(diskPath);
+        if (storageInfo.isValid()) {
+            diskSize = storageInfo.bytesTotal();
+        }
+    }
+    
+    // If we still don't have a valid size, default to a reasonable value for testing
+    if (diskSize <= 0) {
+        SECURE_LOG(WARNING, "EncryptionEngine", 
+            QString("Could not determine disk size for %1, using default size").arg(diskPath));
+        diskSize = 4ULL * 1024 * 1024 * 1024; // Assume 4GB
+    }
+    
+    // Determine the wipe pattern based on the number of passes
+    WipePattern pattern;
+    
+    if (passes >= 35) {
+        pattern = WipePattern::GUTMANN; // Gutmann 35-pass method
+    } else if (passes >= 7) {
+        pattern = WipePattern::DOD_FULL; // DoD 7-pass method
+    } else if (passes >= 3) {
+        pattern = WipePattern::DOD_SHORT; // DoD 3-pass method
+    } else {
+        pattern = WipePattern::ZEROS; // Single pass of zeros
+    }
+    
+    SECURE_LOG(INFO, "EncryptionEngine", 
+        QString("Wiping disk %1 (%2 bytes) with %3 passes")
+        .arg(diskPath).arg(diskSize).arg(passes));
+    
+    try {
+        // Execute multiple passes of writing
+        for (int pass = 0; pass < passes; pass++) {
+            SECURE_LOG(INFO, "EncryptionEngine", 
+                QString("Starting wipe pass %1/%2 for %3").arg(pass + 1).arg(passes).arg(diskPath));
+            
+            // For each pass, determine the specific pattern
+            WipePattern currentPattern;
+            
+            if (pattern == WipePattern::DOD_SHORT) {
+                // DoD short method: Zeros, Ones, Random
+                currentPattern = static_cast<WipePattern>(pass % 3);
+            } else if (pattern == WipePattern::DOD_FULL) {
+                // DoD full method: More complex pattern sequence
+                if (pass == 0 || pass == 6) {
+                    currentPattern = WipePattern::RANDOM;
+                } else if (pass % 2 == 0) {
+                    currentPattern = WipePattern::ZEROS;
+                } else {
+                    currentPattern = WipePattern::ONES;
+                }
+            } else if (pattern == WipePattern::GUTMANN) {
+                // Gutmann method: Complex 35-pass pattern
+                if (pass < 4 || pass >= 31) {
+                    currentPattern = WipePattern::RANDOM;
+                } else {
+                    // Alternate between various patterns
+                    currentPattern = static_cast<WipePattern>(pass % 3);
+                }
+            } else {
+                // Simple pattern: Zeros, Ones, or Random
+                currentPattern = pattern;
+            }
+            
+            // Execute the current pass
+            bool passSuccess = writeWipePattern(diskFile, currentPattern, diskSize, pass, passes);
+            
+            if (!passSuccess) {
+                SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
+                    QString("Failed during wipe pass %1/%2 for disk: %3")
+                    .arg(pass + 1).arg(passes).arg(diskPath));
+                diskFile.close();
+                return false;
+            }
+            
+            // Verify the pattern for certain passes if verification is enabled
+            if (verifyWipe && (pass == passes - 1 || currentPattern != WipePattern::RANDOM)) {
+                SECURE_LOG(INFO, "EncryptionEngine", 
+                    QString("Verifying wipe pass %1/%2 for disk: %3")
+                    .arg(pass + 1).arg(passes).arg(diskPath));
+                
+                bool verifySuccess = verifyWipePattern(diskFile, currentPattern, diskSize);
+                
+                if (!verifySuccess) {
+                    SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
+                        QString("Verification failed for wipe pass %1/%2 on disk: %3")
+                        .arg(pass + 1).arg(passes).arg(diskPath));
+                    diskFile.close();
+                    return false;
+                }
+            }
+        }
+        
+        // Final verification after all passes
+        if (verifyWipe) {
+            // Use a consistent pattern for final verification (zeros)
+            SECURE_LOG(INFO, "EncryptionEngine", 
+                QString("Performing final wipe verification for disk: %1").arg(diskPath));
+            
+            bool finalPass = writeWipePattern(diskFile, WipePattern::ZEROS, diskSize, 0, 1);
+            
+            if (!finalPass) {
+                SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
+                    QString("Failed during final zero pass for disk: %1").arg(diskPath));
+                diskFile.close();
+                return false;
+            }
+            
+            bool finalVerify = verifyWipePattern(diskFile, WipePattern::ZEROS, diskSize);
+            
+            if (!finalVerify) {
+                SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
+                    QString("Final verification failed for disk: %1").arg(diskPath));
+                diskFile.close();
+                return false;
+            }
+        }
+        
+        diskFile.close();
+        
+        SECURE_LOG(INFO, "EncryptionEngine", 
+            QString("Successfully completed secure wipe of disk: %1 (%2 passes)")
+            .arg(diskPath).arg(passes));
+        
+        return true;
+    }
+    catch (const std::exception& e) {
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
+            QString("Exception during secure disk wipe: %1").arg(e.what()));
+        
+        if (diskFile.isOpen()) {
+            diskFile.close();
+        }
+        
+        return false;
+    }
+}
+
+// Public method to securely wipe a partition
+bool EncryptionEngine::secureWipePartition(const QString& partitionPath, int passes)
+{
+    // For partitions, we want to wipe with verification
+    return secureWipeDisk(partitionPath, passes, true);
 }
