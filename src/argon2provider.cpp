@@ -4,8 +4,16 @@
 #include <argon2.h>
 #include <openssl/rand.h>
 #include <sodium.h>
+#ifdef Q_OS_LINUX
 #include <sys/sysinfo.h>
+#elif defined(Q_OS_MAC) || defined(Q_OS_DARWIN)
+#include <sys/types.h>
+#include <sys/sysctl.h>
+#elif defined(Q_OS_WIN)
+#include <windows.h>
+#endif
 #include <algorithm>
+#include <QSysInfo>
 
 Argon2Provider::Argon2Provider()
 {
@@ -30,13 +38,41 @@ QByteArray Argon2Provider::deriveKey(const QByteArray &password, const QByteArra
         // For high-security government applications, use much higher memory cost
         uint32_t memoryKb = 1 << 20; // 1 GB for government-grade security
         
-        // Dynamic scaling based on available RAM
+        // Dynamic scaling based on available RAM - platform specific implementation
+        uint64_t totalMemoryBytes = 0;
+        
+#ifdef Q_OS_LINUX
+        // Linux implementation using sysinfo
         struct sysinfo info;
         if(sysinfo(&info) == 0) {
-            // If we have more than 8GB RAM, use 2GB for Argon2
-            if(info.totalram > (8ULL * 1024 * 1024 * 1024)) {
-                memoryKb = 1 << 21; // 2 GB
-            }
+            totalMemoryBytes = info.totalram;
+        }
+#elif defined(Q_OS_MAC) || defined(Q_OS_DARWIN)
+        // macOS implementation using sysctl
+        int mib[2] = { CTL_HW, HW_MEMSIZE };
+        size_t length = sizeof(totalMemoryBytes);
+        if (sysctl(mib, 2, &totalMemoryBytes, &length, NULL, 0) != 0) {
+            // Fallback: use a reasonable default for modern systems
+            totalMemoryBytes = 8ULL * 1024 * 1024 * 1024; // Assume 8GB
+        }
+#elif defined(Q_OS_WIN)
+        // Windows implementation using Windows API
+        MEMORYSTATUSEX memInfo;
+        memInfo.dwLength = sizeof(memInfo);
+        if (GlobalMemoryStatusEx(&memInfo)) {
+            totalMemoryBytes = memInfo.ullTotalPhys;
+        } else {
+            // Fallback: use a reasonable default for modern systems
+            totalMemoryBytes = 8ULL * 1024 * 1024 * 1024; // Assume 8GB
+        }
+#else
+        // Fallback for other platforms: use a reasonable default
+        totalMemoryBytes = 8ULL * 1024 * 1024 * 1024; // Assume 8GB
+#endif
+
+        // If we have more than 8GB RAM, use 2GB for Argon2
+        if(totalMemoryBytes > (8ULL * 1024 * 1024 * 1024)) {
+            memoryKb = 1 << 21; // 2 GB
         }
 
         // Adjust iterations if too small - higher for government security
