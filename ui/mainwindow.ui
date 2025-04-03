@@ -6,15 +6,48 @@
             <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>800</width>
-                <height>600</height>
+                <width>900</width>
+                <height>700</height>
             </rect>
+        </property>
+        <property name="minimumSize">
+            <size>
+                <width>600</width>
+                <height>600</height>
+            </size>
+        </property>
+        <property name="sizePolicy">
+            <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                <horstretch>1</horstretch>
+                <verstretch>1</verstretch>
+            </sizepolicy>
         </property>
         <property name="windowTitle">
             <string>Open Encryption UI</string>
         </property>
         <widget class="QWidget" name="centralwidget">
+            <property name="sizePolicy">
+                <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                    <horstretch>1</horstretch>
+                    <verstretch>1</verstretch>
+                </sizepolicy>
+            </property>
             <layout class="QVBoxLayout" name="verticalLayout">
+                <property name="leftMargin">
+                    <number>10</number>
+                </property>
+                <property name="rightMargin">
+                    <number>10</number>
+                </property>
+                <property name="topMargin">
+                    <number>10</number>
+                </property>
+                <property name="bottomMargin">
+                    <number>10</number>
+                </property>
+                <property name="spacing">
+                    <number>10</number>
+                </property>
                 <item>
                     <layout class="QHBoxLayout" name="providerLayout">
                         <item>
@@ -38,6 +71,12 @@
                 </item>
                 <item>
                     <widget class="QTabWidget" name="tabWidget">
+                        <property name="sizePolicy">
+                            <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                                <horstretch>1</horstretch>
+                                <verstretch>1</verstretch>
+                            </sizepolicy>
+                        </property>
                         <property name="currentIndex">
                             <number>0</number>
                         </property>
@@ -45,73 +84,152 @@
                             <attribute name="title">
                                 <string>Disk Encryption</string>
                             </attribute>
+                            <property name="sizePolicy">
+                                <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                                    <horstretch>1</horstretch>
+                                    <verstretch>1</verstretch>
+                                </sizepolicy>
+                            </property>
                             <layout class="QVBoxLayout" name="verticalLayout_6">
+                                <property name="spacing">
+                                    <number>8</number>
+                                </property>
+                                <property name="leftMargin">
+                                    <number>8</number>
+                                </property>
+                                <property name="rightMargin">
+                                    <number>8</number>
+                                </property>
+                                <property name="topMargin">
+                                    <number>8</number>
+                                </property>
+                                <property name="bottomMargin">
+                                    <number>8</number>
+                                </property>
                                 <item>
-                                    <widget class="QGroupBox" name="diskSelectionGroup">
-                                        <property name="title">
-                                            <string>Disk Selection</string>
+                                    <layout class="QHBoxLayout" name="diskSelectionHorizontalLayout">
+                                        <property name="spacing">
+                                            <number>10</number>
                                         </property>
-                                        <layout class="QVBoxLayout" name="diskSelectionLayout">
-                                            <item>
-                                                <layout class="QHBoxLayout" name="horizontalLayout_10">
+                                        <item>
+                                            <widget class="QGroupBox" name="diskSelectionGroup">
+                                                <property name="title">
+                                                    <string>Disk Selection</string>
+                                                </property>
+                                                <property name="sizePolicy">
+                                                    <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                                                        <horstretch>2</horstretch>
+                                                        <verstretch>0</verstretch>
+                                                    </sizepolicy>
+                                                </property>
+                                                <layout class="QVBoxLayout" name="diskSelectionLayout">
+                                                    <property name="spacing">
+                                                        <number>5</number>
+                                                    </property>
+                                                    <property name="leftMargin">
+                                                        <number>8</number>
+                                                    </property>
+                                                    <property name="topMargin">
+                                                        <number>8</number>
+                                                    </property>
+                                                    <property name="rightMargin">
+                                                        <number>8</number>
+                                                    </property>
+                                                    <property name="bottomMargin">
+                                                        <number>8</number>
+                                                    </property>
                                                     <item>
-                                                        <widget class="QComboBox" name="diskComboBox">
-                                                            <property name="sizePolicy">
-                                                                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                                                                    <horstretch>0</horstretch>
-                                                                    <verstretch>0</verstretch>
-                                                                </sizepolicy>
-                                                            </property>
-                                                            <property name="placeholderText">
-                                                                <string>Select Disk or Volume</string>
-                                                            </property>
-                                                        </widget>
+                                                        <layout class="QHBoxLayout" name="horizontalLayout_10">
+                                                            <item>
+                                                                <widget class="QComboBox" name="diskComboBox">
+                                                                    <property name="sizePolicy">
+                                                                        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                                                                            <horstretch>0</horstretch>
+                                                                            <verstretch>0</verstretch>
+                                                                        </sizepolicy>
+                                                                    </property>
+                                                                    <property name="placeholderText">
+                                                                        <string>Select Disk or Volume</string>
+                                                                    </property>
+                                                                </widget>
+                                                            </item>
+                                                            <item>
+                                                                <widget class="QPushButton" name="refreshDisksButton">
+                                                                    <property name="text">
+                                                                        <string>Refresh</string>
+                                                                    </property>
+                                                                    <property name="icon">
+                                                                        <iconset theme="view-refresh"/>
+                                                                    </property>
+                                                                </widget>
+                                                            </item>
+                                                        </layout>
                                                     </item>
                                                     <item>
-                                                        <widget class="QPushButton" name="refreshDisksButton">
+                                                        <layout class="QHBoxLayout" name="horizontalLayout_11">
+                                                            <item>
+                                                                <widget class="QLineEdit" name="diskPathLineEdit">
+                                                                    <property name="placeholderText">
+                                                                        <string>Disk Path</string>
+                                                                    </property>
+                                                                </widget>
+                                                            </item>
+                                                            <item>
+                                                                <widget class="QPushButton" name="diskBrowseButton">
+                                                                    <property name="text">
+                                                                        <string>Browse</string>
+                                                                    </property>
+                                                                    <property name="icon">
+                                                                        <iconset theme="document-open"/>
+                                                                    </property>
+                                                                </widget>
+                                                            </item>
+                                                        </layout>
+                                                    </item>
+                                                </layout>
+                                            </widget>
+                                        </item>
+                                        <item>
+                                            <widget class="QGroupBox" name="diskInfoGroup">
+                                                <property name="title">
+                                                    <string>Disk Info</string>
+                                                </property>
+                                                <property name="sizePolicy">
+                                                    <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                                                        <horstretch>1</horstretch>
+                                                        <verstretch>0</verstretch>
+                                                    </sizepolicy>
+                                                </property>
+                                                <layout class="QVBoxLayout" name="diskInfoLayout">
+                                                    <property name="spacing">
+                                                        <number>5</number>
+                                                    </property>
+                                                    <property name="leftMargin">
+                                                        <number>8</number>
+                                                    </property>
+                                                    <property name="topMargin">
+                                                        <number>8</number>
+                                                    </property>
+                                                    <property name="rightMargin">
+                                                        <number>8</number>
+                                                    </property>
+                                                    <property name="bottomMargin">
+                                                        <number>8</number>
+                                                    </property>
+                                                    <item>
+                                                        <widget class="QLabel" name="diskInfoLabel">
                                                             <property name="text">
-                                                                <string>Refresh</string>
+                                                                <string>Select a disk to view details</string>
                                                             </property>
-                                                            <property name="icon">
-                                                                <iconset theme="view-refresh"/>
+                                                            <property name="wordWrap">
+                                                                <bool>true</bool>
                                                             </property>
                                                         </widget>
                                                     </item>
                                                 </layout>
-                                            </item>
-                                            <item>
-                                                <layout class="QHBoxLayout" name="horizontalLayout_11">
-                                                    <item>
-                                                        <widget class="QLineEdit" name="diskPathLineEdit">
-                                                            <property name="placeholderText">
-                                                                <string>Disk Path</string>
-                                                            </property>
-                                                        </widget>
-                                                    </item>
-                                                    <item>
-                                                        <widget class="QPushButton" name="diskBrowseButton">
-                                                            <property name="text">
-                                                                <string>Browse</string>
-                                                            </property>
-                                                            <property name="icon">
-                                                                <iconset theme="document-open"/>
-                                                            </property>
-                                                        </widget>
-                                                    </item>
-                                                </layout>
-                                            </item>
-                                            <item>
-                                                <widget class="QLabel" name="diskInfoLabel">
-                                                    <property name="text">
-                                                        <string>Select a disk to view details</string>
-                                                    </property>
-                                                    <property name="wordWrap">
-                                                        <bool>true</bool>
-                                                    </property>
-                                                </widget>
-                                            </item>
-                                        </layout>
-                                    </widget>
+                                            </widget>
+                                        </item>
+                                    </layout>
                                 </item>
                                 <item>
                                     <widget class="QGroupBox" name="diskEncryptionGroup">
@@ -234,46 +352,95 @@
                                                     <property name="title">
                                                         <string>Algorithm Settings</string>
                                                     </property>
-                                                    <layout class="QVBoxLayout" name="algorithmLayout">
-                                                        <item>
+                                                    <property name="sizePolicy">
+                                                        <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                                                            <horstretch>0</horstretch>
+                                                            <verstretch>1</verstretch>
+                                                        </sizepolicy>
+                                                    </property>
+                                                    <layout class="QGridLayout" name="algorithmLayout">
+                                                        <property name="leftMargin">
+                                                            <number>10</number>
+                                                        </property>
+                                                        <property name="topMargin">
+                                                            <number>10</number>
+                                                        </property>
+                                                        <property name="rightMargin">
+                                                            <number>10</number>
+                                                        </property>
+                                                        <property name="bottomMargin">
+                                                            <number>10</number>
+                                                        </property>
+                                                        <property name="spacing">
+                                                            <number>8</number>
+                                                        </property>
+                                                        <item row="0" column="0">
+                                                            <widget class="QLabel" name="diskAlgorithmLabel">
+                                                                <property name="text">
+                                                                    <string>Encryption Algorithm:</string>
+                                                                </property>
+                                                            </widget>
+                                                        </item>
+                                                        <item row="0" column="1">
                                                             <widget class="QComboBox" name="diskAlgorithmComboBox">
+                                                                <property name="sizePolicy">
+                                                                    <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                                                                        <horstretch>1</horstretch>
+                                                                        <verstretch>0</verstretch>
+                                                                    </sizepolicy>
+                                                                </property>
                                                                 <property name="toolTip">
                                                                     <string>Select Encryption Algorithm</string>
                                                                 </property>
                                                             </widget>
                                                         </item>
-                                                        <item>
+                                                        <item row="1" column="0">
+                                                            <widget class="QLabel" name="diskKdfLabel">
+                                                                <property name="text">
+                                                                    <string>Key Derivation Function:</string>
+                                                                </property>
+                                                            </widget>
+                                                        </item>
+                                                        <item row="1" column="1">
                                                             <widget class="QComboBox" name="diskKdfComboBox">
+                                                                <property name="sizePolicy">
+                                                                    <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                                                                        <horstretch>1</horstretch>
+                                                                        <verstretch>0</verstretch>
+                                                                    </sizepolicy>
+                                                                </property>
                                                                 <property name="toolTip">
                                                                     <string>Select Key Derivation Function</string>
                                                                 </property>
                                                             </widget>
                                                         </item>
-                                                        <item>
-                                                            <layout class="QHBoxLayout" name="diskHorizontalLayout_9">
-                                                                <item>
-                                                                    <widget class="QLabel" name="diskIterationsLabel">
-                                                                        <property name="text">
-                                                                            <string>Iterations:</string>
-                                                                        </property>
-                                                                    </widget>
-                                                                </item>
-                                                                <item>
-                                                                    <widget class="QSpinBox" name="diskIterationsSpinBox">
-                                                                        <property name="minimum">
-                                                                            <number>10</number>
-                                                                        </property>
-                                                                        <property name="maximum">
-                                                                            <number>1000000</number>
-                                                                        </property>
-                                                                        <property name="value">
-                                                                            <number>10</number>
-                                                                        </property>
-                                                                    </widget>
-                                                                </item>
-                                                            </layout>
+                                                        <item row="2" column="0">
+                                                            <widget class="QLabel" name="diskIterationsLabel">
+                                                                <property name="text">
+                                                                    <string>Iterations:</string>
+                                                                </property>
+                                                            </widget>
                                                         </item>
-                                                        <item>
+                                                        <item row="2" column="1">
+                                                            <widget class="QSpinBox" name="diskIterationsSpinBox">
+                                                                <property name="sizePolicy">
+                                                                    <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                                                                        <horstretch>1</horstretch>
+                                                                        <verstretch>0</verstretch>
+                                                                    </sizepolicy>
+                                                                </property>
+                                                                <property name="minimum">
+                                                                    <number>10</number>
+                                                                </property>
+                                                                <property name="maximum">
+                                                                    <number>1000000</number>
+                                                                </property>
+                                                                <property name="value">
+                                                                    <number>10</number>
+                                                                </property>
+                                                            </widget>
+                                                        </item>
+                                                        <item row="3" column="0" colspan="2">
                                                             <widget class="QCheckBox" name="diskHmacCheckBox">
                                                                 <property name="text">
                                                                     <string>Enable HMAC Integrity Check</string>
@@ -313,8 +480,29 @@
                                                     <property name="title">
                                                         <string>Secure Wiping (Optional)</string>
                                                     </property>
-                                                    <layout class="QVBoxLayout" name="diskWipeLayout">
-                                                        <item>
+                                                    <property name="sizePolicy">
+                                                        <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                                                            <horstretch>0</horstretch>
+                                                            <verstretch>0</verstretch>
+                                                        </sizepolicy>
+                                                    </property>
+                                                    <layout class="QGridLayout" name="diskWipeLayout">
+                                                        <property name="leftMargin">
+                                                            <number>10</number>
+                                                        </property>
+                                                        <property name="topMargin">
+                                                            <number>10</number>
+                                                        </property>
+                                                        <property name="rightMargin">
+                                                            <number>10</number>
+                                                        </property>
+                                                        <property name="bottomMargin">
+                                                            <number>10</number>
+                                                        </property>
+                                                        <property name="spacing">
+                                                            <number>8</number>
+                                                        </property>
+                                                        <item row="0" column="0" colspan="2">
                                                             <widget class="QCheckBox" name="diskSecureWipeCheckBox">
                                                                 <property name="text">
                                                                     <string>Securely wipe disk before encryption</string>
@@ -327,46 +515,54 @@
                                                                 </property>
                                                             </widget>
                                                         </item>
-                                                        <item>
-                                                            <layout class="QHBoxLayout" name="wipePatternLayout">
-                                                                <item>
-                                                                    <widget class="QLabel" name="wipePatternLabel">
-                                                                        <property name="text">
-                                                                            <string>Wipe Pattern:</string>
-                                                                        </property>
-                                                                        <property name="enabled">
-                                                                            <bool>false</bool>
-                                                                        </property>
-                                                                    </widget>
-                                                                </item>
-                                                                <item>
-                                                                    <widget class="QComboBox" name="wipePatternComboBox">
-                                                                        <property name="enabled">
-                                                                            <bool>false</bool>
-                                                                        </property>
-                                                                        <property name="toolTip">
-                                                                            <string>Select wiping pattern standard</string>
-                                                                        </property>
-                                                                    </widget>
-                                                                </item>
-                                                            </layout>
+                                                        <item row="1" column="0">
+                                                            <widget class="QLabel" name="wipePatternLabel">
+                                                                <property name="text">
+                                                                    <string>Pattern:</string>
+                                                                </property>
+                                                                <property name="enabled">
+                                                                    <bool>false</bool>
+                                                                </property>
+                                                            </widget>
                                                         </item>
-                                                        <item>
-                                                            <layout class="QHBoxLayout" name="wipePassesLayout">
-                                                                <item>
-                                                                    <widget class="QLabel" name="wipePassesLabel">
-                                                                        <property name="text">
-                                                                            <string>Passes:</string>
-                                                                        </property>
-                                                                        <property name="enabled">
-                                                                            <bool>false</bool>
-                                                                        </property>
-                                                                    </widget>
-                                                                </item>
+                                                        <item row="1" column="1">
+                                                            <widget class="QComboBox" name="wipePatternComboBox">
+                                                                <property name="enabled">
+                                                                    <bool>false</bool>
+                                                                </property>
+                                                                <property name="sizePolicy">
+                                                                    <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                                                                        <horstretch>1</horstretch>
+                                                                        <verstretch>0</verstretch>
+                                                                    </sizepolicy>
+                                                                </property>
+                                                                <property name="toolTip">
+                                                                    <string>Select wiping pattern standard</string>
+                                                                </property>
+                                                            </widget>
+                                                        </item>
+                                                        <item row="2" column="0">
+                                                            <widget class="QLabel" name="wipePassesLabel">
+                                                                <property name="text">
+                                                                    <string>Passes:</string>
+                                                                </property>
+                                                                <property name="enabled">
+                                                                    <bool>false</bool>
+                                                                </property>
+                                                            </widget>
+                                                        </item>
+                                                        <item row="2" column="1">
+                                                            <layout class="QHBoxLayout" name="passesLayout">
                                                                 <item>
                                                                     <widget class="QSpinBox" name="wipePassesSpinBox">
                                                                         <property name="enabled">
                                                                             <bool>false</bool>
+                                                                        </property>
+                                                                        <property name="sizePolicy">
+                                                                            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                                                                                <horstretch>1</horstretch>
+                                                                                <verstretch>0</verstretch>
+                                                                            </sizepolicy>
                                                                         </property>
                                                                         <property name="minimum">
                                                                             <number>1</number>
@@ -382,23 +578,23 @@
                                                                         </property>
                                                                     </widget>
                                                                 </item>
+                                                                <item>
+                                                                    <widget class="QCheckBox" name="verifyWipeCheckBox">
+                                                                        <property name="text">
+                                                                            <string>Verify</string>
+                                                                        </property>
+                                                                        <property name="checked">
+                                                                            <bool>true</bool>
+                                                                        </property>
+                                                                        <property name="enabled">
+                                                                            <bool>false</bool>
+                                                                        </property>
+                                                                        <property name="toolTip">
+                                                                            <string>Verifies each wipe pass to ensure proper wiping</string>
+                                                                        </property>
+                                                                    </widget>
+                                                                </item>
                                                             </layout>
-                                                        </item>
-                                                        <item>
-                                                            <widget class="QCheckBox" name="verifyWipeCheckBox">
-                                                                <property name="text">
-                                                                    <string>Verify wiping (slower but more secure)</string>
-                                                                </property>
-                                                                <property name="checked">
-                                                                    <bool>true</bool>
-                                                                </property>
-                                                                <property name="enabled">
-                                                                    <bool>false</bool>
-                                                                </property>
-                                                                <property name="toolTip">
-                                                                    <string>Verifies each wipe pass to ensure proper wiping</string>
-                                                                </property>
-                                                            </widget>
                                                         </item>
                                                     </layout>
                                                 </widget>
@@ -425,6 +621,12 @@
                                 </item>
                                 <item>
                                     <layout class="QHBoxLayout" name="horizontalLayout_12">
+                                        <property name="spacing">
+                                            <number>10</number>
+                                        </property>
+                                        <property name="sizeConstraint">
+                                            <enum>QLayout::SetDefaultConstraint</enum>
+                                        </property>
                                         <item>
                                             <widget class="QPushButton" name="diskEncryptButton">
                                                 <property name="text">
@@ -432,14 +634,14 @@
                                                 </property>
                                                 <property name="sizePolicy">
                                                     <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-                                                        <horstretch>0</horstretch>
+                                                        <horstretch>1</horstretch>
                                                         <verstretch>0</verstretch>
                                                     </sizepolicy>
                                                 </property>
                                                 <property name="minimumSize">
                                                     <size>
-                                                        <width>0</width>
-                                                        <height>50</height>
+                                                        <width>120</width>
+                                                        <height>40</height>
                                                     </size>
                                                 </property>
                                                 <property name="icon">
@@ -454,14 +656,14 @@
                                                 </property>
                                                 <property name="sizePolicy">
                                                     <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-                                                        <horstretch>0</horstretch>
+                                                        <horstretch>1</horstretch>
                                                         <verstretch>0</verstretch>
                                                     </sizepolicy>
                                                 </property>
                                                 <property name="minimumSize">
                                                     <size>
-                                                        <width>0</width>
-                                                        <height>50</height>
+                                                        <width>120</width>
+                                                        <height>40</height>
                                                     </size>
                                                 </property>
                                                 <property name="icon">
@@ -477,7 +679,28 @@
                             <attribute name="title">
                                 <string>File Encryption</string>
                             </attribute>
+                            <property name="sizePolicy">
+                                <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                                    <horstretch>1</horstretch>
+                                    <verstretch>1</verstretch>
+                                </sizepolicy>
+                            </property>
                             <layout class="QVBoxLayout" name="verticalLayout_3">
+                                <property name="spacing">
+                                    <number>8</number>
+                                </property>
+                                <property name="leftMargin">
+                                    <number>8</number>
+                                </property>
+                                <property name="rightMargin">
+                                    <number>8</number>
+                                </property>
+                                <property name="topMargin">
+                                    <number>8</number>
+                                </property>
+                                <property name="bottomMargin">
+                                    <number>8</number>
+                                </property>
                                 <item>
                                     <widget class="QGroupBox" name="fileSelectionGroup">
                                         <property name="title">
@@ -665,6 +888,12 @@
                                 </item>
                                 <item>
                                     <layout class="QHBoxLayout" name="horizontalLayout_6">
+                                        <property name="spacing">
+                                            <number>10</number>
+                                        </property>
+                                        <property name="sizeConstraint">
+                                            <enum>QLayout::SetDefaultConstraint</enum>
+                                        </property>
                                         <item>
                                             <widget class="QPushButton" name="fileEncryptButton">
                                                 <property name="text">
@@ -672,14 +901,14 @@
                                                 </property>
                                                 <property name="sizePolicy">
                                                     <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-                                                        <horstretch>0</horstretch>
+                                                        <horstretch>1</horstretch>
                                                         <verstretch>0</verstretch>
                                                     </sizepolicy>
                                                 </property>
                                                 <property name="minimumSize">
                                                     <size>
-                                                        <width>0</width>
-                                                        <height>50</height>
+                                                        <width>120</width>
+                                                        <height>40</height>
                                                     </size>
                                                 </property>
                                                 <property name="icon">
@@ -694,14 +923,14 @@
                                                 </property>
                                                 <property name="sizePolicy">
                                                     <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-                                                        <horstretch>0</horstretch>
+                                                        <horstretch>1</horstretch>
                                                         <verstretch>0</verstretch>
                                                     </sizepolicy>
                                                 </property>
                                                 <property name="minimumSize">
                                                     <size>
-                                                        <width>0</width>
-                                                        <height>50</height>
+                                                        <width>120</width>
+                                                        <height>40</height>
                                                     </size>
                                                 </property>
                                                 <property name="icon">
@@ -717,7 +946,28 @@
                             <attribute name="title">
                                 <string>Folder Encryption</string>
                             </attribute>
+                            <property name="sizePolicy">
+                                <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                                    <horstretch>1</horstretch>
+                                    <verstretch>1</verstretch>
+                                </sizepolicy>
+                            </property>
                             <layout class="QVBoxLayout" name="verticalLayout_4">
+                                <property name="spacing">
+                                    <number>8</number>
+                                </property>
+                                <property name="leftMargin">
+                                    <number>8</number>
+                                </property>
+                                <property name="rightMargin">
+                                    <number>8</number>
+                                </property>
+                                <property name="topMargin">
+                                    <number>8</number>
+                                </property>
+                                <property name="bottomMargin">
+                                    <number>8</number>
+                                </property>
                                 <item>
                                     <widget class="QGroupBox" name="folderSelectionGroup">
                                         <property name="title">
@@ -905,6 +1155,12 @@
                                 </item>
                                 <item>
                                     <layout class="QHBoxLayout" name="horizontalLayout_8">
+                                        <property name="spacing">
+                                            <number>10</number>
+                                        </property>
+                                        <property name="sizeConstraint">
+                                            <enum>QLayout::SetDefaultConstraint</enum>
+                                        </property>
                                         <item>
                                             <widget class="QPushButton" name="folderEncryptButton">
                                                 <property name="text">
@@ -912,14 +1168,14 @@
                                                 </property>
                                                 <property name="sizePolicy">
                                                     <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-                                                        <horstretch>0</horstretch>
+                                                        <horstretch>1</horstretch>
                                                         <verstretch>0</verstretch>
                                                     </sizepolicy>
                                                 </property>
                                                 <property name="minimumSize">
                                                     <size>
-                                                        <width>0</width>
-                                                        <height>50</height>
+                                                        <width>120</width>
+                                                        <height>40</height>
                                                     </size>
                                                 </property>
                                                 <property name="icon">
@@ -934,14 +1190,14 @@
                                                 </property>
                                                 <property name="sizePolicy">
                                                     <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-                                                        <horstretch>0</horstretch>
+                                                        <horstretch>1</horstretch>
                                                         <verstretch>0</verstretch>
                                                     </sizepolicy>
                                                 </property>
                                                 <property name="minimumSize">
                                                     <size>
-                                                        <width>0</width>
-                                                        <height>50</height>
+                                                        <width>120</width>
+                                                        <height>40</height>
                                                     </size>
                                                 </property>
                                                 <property name="icon">
@@ -957,7 +1213,28 @@
                             <attribute name="title">
                                 <string>Benchmark</string>
                             </attribute>
+                            <property name="sizePolicy">
+                                <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                                    <horstretch>1</horstretch>
+                                    <verstretch>1</verstretch>
+                                </sizepolicy>
+                            </property>
                             <layout class="QVBoxLayout" name="verticalLayout_5">
+                                <property name="spacing">
+                                    <number>8</number>
+                                </property>
+                                <property name="leftMargin">
+                                    <number>8</number>
+                                </property>
+                                <property name="rightMargin">
+                                    <number>8</number>
+                                </property>
+                                <property name="topMargin">
+                                    <number>8</number>
+                                </property>
+                                <property name="bottomMargin">
+                                    <number>8</number>
+                                </property>
                                 <item>
                                     <widget class="QTableWidget" name="benchmarkTable">
                                         <property name="sortingEnabled">
@@ -992,6 +1269,25 @@
                                 </item>
                                 <item>
                                     <layout class="QHBoxLayout" name="horizontalLayout_benchmark">
+                                        <property name="spacing">
+                                            <number>10</number>
+                                        </property>
+                                        <property name="sizeConstraint">
+                                            <enum>QLayout::SetDefaultConstraint</enum>
+                                        </property>
+                                        <item>
+                                            <spacer name="horizontalSpacer">
+                                                <property name="orientation">
+                                                    <enum>Qt::Horizontal</enum>
+                                                </property>
+                                                <property name="sizeHint" stdset="0">
+                                                    <size>
+                                                        <width>40</width>
+                                                        <height>20</height>
+                                                    </size>
+                                                </property>
+                                            </spacer>
+                                        </item>
                                         <item>
                                             <widget class="QPushButton" name="benchmarkButton">
                                                 <property name="text">
@@ -999,17 +1295,30 @@
                                                 </property>
                                                 <property name="sizePolicy">
                                                     <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-                                                        <horstretch>0</horstretch>
+                                                        <horstretch>2</horstretch>
                                                         <verstretch>0</verstretch>
                                                     </sizepolicy>
                                                 </property>
                                                 <property name="minimumSize">
                                                     <size>
-                                                        <width>0</width>
-                                                        <height>50</height>
+                                                        <width>150</width>
+                                                        <height>40</height>
                                                     </size>
                                                 </property>
                                             </widget>
+                                        </item>
+                                        <item>
+                                            <spacer name="horizontalSpacer_2">
+                                                <property name="orientation">
+                                                    <enum>Qt::Horizontal</enum>
+                                                </property>
+                                                <property name="sizeHint" stdset="0">
+                                                    <size>
+                                                        <width>40</width>
+                                                        <height>20</height>
+                                                    </size>
+                                                </property>
+                                            </spacer>
                                         </item>
                                     </layout>
                                 </item>
