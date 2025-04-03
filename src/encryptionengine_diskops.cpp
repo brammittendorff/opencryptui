@@ -257,13 +257,13 @@ bool isValidDiskPath(const QString& path) {
     // First, check if the path exists
     QFileInfo fileInfo(path);
     if (!fileInfo.exists()) {
-        SECURE_LOG(ERROR, "DiskOperations", QString("Path does not exist: %1").arg(path));
+        SECURE_LOG(ERROR_LEVEL, "DiskOperations", QString("Path does not exist: %1").arg(path));
         return false;
     }
     
     // Make sure the path is writable
     if (!fileInfo.isWritable()) {
-        SECURE_LOG(ERROR, "DiskOperations", QString("Path is not writable: %1").arg(path));
+        SECURE_LOG(ERROR_LEVEL, "DiskOperations", QString("Path is not writable: %1").arg(path));
         return false;
     }
     
@@ -273,7 +273,7 @@ bool isValidDiskPath(const QString& path) {
         // It's a block device, make sure we have permission to write to it
         QFile device(path);
         if (!device.open(QIODevice::ReadWrite)) {
-            SECURE_LOG(ERROR, "DiskOperations", QString("Cannot open device for writing: %1").arg(path));
+            SECURE_LOG(ERROR_LEVEL, "DiskOperations", QString("Cannot open device for writing: %1").arg(path));
             return false;
         }
         device.close();
@@ -282,7 +282,7 @@ bool isValidDiskPath(const QString& path) {
         // It's a directory, make sure it's mounted and not the root directory
         QStorageInfo storage(path);
         if (!storage.isValid() || !storage.isReady() || storage.isRoot()) {
-            SECURE_LOG(ERROR, "DiskOperations", QString("Invalid storage location or root directory: %1").arg(path));
+            SECURE_LOG(ERROR_LEVEL, "DiskOperations", QString("Invalid storage location or root directory: %1").arg(path));
             return false;
         }
         return true;
@@ -309,7 +309,7 @@ bool isValidDiskPath(const QString& path) {
             QString systemDrive = lines.last().trimmed();
             
             if (systemDrive.compare(path.left(2), Qt::CaseInsensitive) == 0) {
-                SECURE_LOG(ERROR, "DiskOperations", QString("Cannot encrypt system drive: %1").arg(path));
+                SECURE_LOG(ERROR_LEVEL, "DiskOperations", QString("Cannot encrypt system drive: %1").arg(path));
                 return false;
             }
         }
@@ -318,7 +318,7 @@ bool isValidDiskPath(const QString& path) {
         if (path.startsWith("\\\\.\\")) {
             QFile device(path);
             if (!device.open(QIODevice::ReadWrite)) {
-                SECURE_LOG(ERROR, "DiskOperations", QString("Cannot open device for writing: %1").arg(path));
+                SECURE_LOG(ERROR_LEVEL, "DiskOperations", QString("Cannot open device for writing: %1").arg(path));
                 return false;
             }
             device.close();
@@ -329,14 +329,14 @@ bool isValidDiskPath(const QString& path) {
         // It's a directory, make sure it exists and is writable
         QDir dir(path);
         if (!dir.exists()) {
-            SECURE_LOG(ERROR, "DiskOperations", QString("Directory does not exist: %1").arg(path));
+            SECURE_LOG(ERROR_LEVEL, "DiskOperations", QString("Directory does not exist: %1").arg(path));
             return false;
         }
         
         // Create a temp file to check if we can write to the directory
         QTemporaryFile tempFile(path + "/opencrypttest_XXXXXX");
         if (!tempFile.open()) {
-            SECURE_LOG(ERROR, "DiskOperations", QString("Cannot write to directory: %1").arg(path));
+            SECURE_LOG(ERROR_LEVEL, "DiskOperations", QString("Cannot write to directory: %1").arg(path));
             return false;
         }
         
@@ -348,7 +348,7 @@ bool isValidDiskPath(const QString& path) {
         // It's a disk device, check if we can open it for writing
         QFile device(path);
         if (!device.open(QIODevice::ReadWrite)) {
-            SECURE_LOG(ERROR, "DiskOperations", QString("Cannot open device for writing: %1").arg(path));
+            SECURE_LOG(ERROR_LEVEL, "DiskOperations", QString("Cannot open device for writing: %1").arg(path));
             return false;
         }
         device.close();
@@ -368,7 +368,7 @@ bool isValidDiskPath(const QString& path) {
             bool isBootVolume = plist.value("SystemImage").toBool();
             
             if (isBootVolume) {
-                SECURE_LOG(ERROR, "DiskOperations", QString("Cannot encrypt boot volume: %1").arg(path));
+                SECURE_LOG(ERROR_LEVEL, "DiskOperations", QString("Cannot encrypt boot volume: %1").arg(path));
                 return false;
             }
         }
@@ -378,14 +378,14 @@ bool isValidDiskPath(const QString& path) {
         // It's a directory, make sure it's mounted and not the root directory
         QStorageInfo storage(path);
         if (!storage.isValid() || !storage.isReady() || storage.isRoot()) {
-            SECURE_LOG(ERROR, "DiskOperations", QString("Invalid storage location or root directory: %1").arg(path));
+            SECURE_LOG(ERROR_LEVEL, "DiskOperations", QString("Invalid storage location or root directory: %1").arg(path));
             return false;
         }
         
         // Create a temp file to check if we can write to the directory
         QTemporaryFile tempFile(path + "/opencrypttest_XXXXXX");
         if (!tempFile.open()) {
-            SECURE_LOG(ERROR, "DiskOperations", QString("Cannot write to directory: %1").arg(path));
+            SECURE_LOG(ERROR_LEVEL, "DiskOperations", QString("Cannot write to directory: %1").arg(path));
             return false;
         }
         
@@ -398,7 +398,7 @@ bool isValidDiskPath(const QString& path) {
     if (dir.exists()) {
         QTemporaryFile tempFile(path + "/opencrypttest_XXXXXX");
         if (!tempFile.open()) {
-            SECURE_LOG(ERROR, "DiskOperations", QString("Cannot write to directory: %1").arg(path));
+            SECURE_LOG(ERROR_LEVEL, "DiskOperations", QString("Cannot write to directory: %1").arg(path));
             return false;
         }
         return true;
@@ -407,7 +407,7 @@ bool isValidDiskPath(const QString& path) {
     // Otherwise, it might be a device file - try to open it
     QFile device(path);
     if (!device.open(QIODevice::ReadWrite)) {
-        SECURE_LOG(ERROR, "DiskOperations", QString("Cannot open device for writing: %1").arg(path));
+        SECURE_LOG(ERROR_LEVEL, "DiskOperations", QString("Cannot open device for writing: %1").arg(path));
         return false;
     }
     device.close();
@@ -441,7 +441,7 @@ bool createEncryptionHeader(const QString& diskPath, const QString& algorithm,
     // Write the header to the disk/volume
     QFile diskFile(diskPath);
     if (!diskFile.open(QIODevice::ReadWrite)) {
-        SECURE_LOG(ERROR, "DiskOperations", QString("Failed to open disk for writing header: %1").arg(diskPath));
+        SECURE_LOG(ERROR_LEVEL, "DiskOperations", QString("Failed to open disk for writing header: %1").arg(diskPath));
         return false;
     }
     
@@ -450,7 +450,7 @@ bool createEncryptionHeader(const QString& diskPath, const QString& algorithm,
     diskFile.close();
     
     if (bytesWritten != DISK_HEADER_SIZE) {
-        SECURE_LOG(ERROR, "DiskOperations", QString("Failed to write complete header to disk: %1").arg(diskPath));
+        SECURE_LOG(ERROR_LEVEL, "DiskOperations", QString("Failed to write complete header to disk: %1").arg(diskPath));
         return false;
     }
     
@@ -464,7 +464,7 @@ bool readEncryptionHeader(const QString& diskPath, QString& algorithm,
     // Read the header from the disk/volume
     QFile diskFile(diskPath);
     if (!diskFile.open(QIODevice::ReadOnly)) {
-        SECURE_LOG(ERROR, "DiskOperations", QString("Failed to open disk for reading header: %1").arg(diskPath));
+        SECURE_LOG(ERROR_LEVEL, "DiskOperations", QString("Failed to open disk for reading header: %1").arg(diskPath));
         return false;
     }
     
@@ -473,14 +473,14 @@ bool readEncryptionHeader(const QString& diskPath, QString& algorithm,
     diskFile.close();
     
     if (headerData.size() != DISK_HEADER_SIZE) {
-        SECURE_LOG(ERROR, "DiskOperations", QString("Failed to read complete header from disk: %1").arg(diskPath));
+        SECURE_LOG(ERROR_LEVEL, "DiskOperations", QString("Failed to read complete header from disk: %1").arg(diskPath));
         return false;
     }
     
     // Parse the JSON header
     QJsonDocument headerDoc = QJsonDocument::fromJson(headerData);
     if (headerDoc.isNull() || !headerDoc.isObject()) {
-        SECURE_LOG(ERROR, "DiskOperations", QString("Invalid header format on disk: %1").arg(diskPath));
+        SECURE_LOG(ERROR_LEVEL, "DiskOperations", QString("Invalid header format on disk: %1").arg(diskPath));
         return false;
     }
     
@@ -489,7 +489,7 @@ bool readEncryptionHeader(const QString& diskPath, QString& algorithm,
     // Verify the magic string (support both formats for backward compatibility)
     QString magic = headerObj["magic"].toString();
     if (magic != DISK_HEADER_MAGIC && magic != DISK_HEADER_MAGIC_V1) {
-        SECURE_LOG(ERROR, "DiskOperations", QString("Invalid magic number in header on disk: %1").arg(diskPath));
+        SECURE_LOG(ERROR_LEVEL, "DiskOperations", QString("Invalid magic number in header on disk: %1").arg(diskPath));
         return false;
     }
     
@@ -527,13 +527,13 @@ bool createHiddenVolume(const QString& diskPath, qint64 hiddenVolumeSize,
     
     if (!readEncryptionHeader(diskPath, mainAlgorithm, mainKdf, mainIterations, 
                              mainUseHMAC, mainSalt, mainIv, hasHiddenVol)) {
-        SECURE_LOG(ERROR, "DiskOperations", QString("Failed to read main volume header: %1").arg(diskPath));
+        SECURE_LOG(ERROR_LEVEL, "DiskOperations", QString("Failed to read main volume header: %1").arg(diskPath));
         return false;
     }
     
     // Make sure we don't already have a hidden volume
     if (hasHiddenVol) {
-        SECURE_LOG(ERROR, "DiskOperations", QString("Disk already has a hidden volume: %1").arg(diskPath));
+        SECURE_LOG(ERROR_LEVEL, "DiskOperations", QString("Disk already has a hidden volume: %1").arg(diskPath));
         return false;
     }
     
@@ -563,13 +563,13 @@ bool createHiddenVolume(const QString& diskPath, qint64 hiddenVolumeSize,
     // Open the disk file for writing
     QFile diskFile(diskPath);
     if (!diskFile.open(QIODevice::ReadWrite)) {
-        SECURE_LOG(ERROR, "DiskOperations", QString("Failed to open disk for writing hidden volume: %1").arg(diskPath));
+        SECURE_LOG(ERROR_LEVEL, "DiskOperations", QString("Failed to open disk for writing hidden volume: %1").arg(diskPath));
         return false;
     }
     
     // Seek to the hidden volume header position
     if (!diskFile.seek(hiddenVolumeOffset)) {
-        SECURE_LOG(ERROR, "DiskOperations", QString("Failed to seek to hidden volume position: %1").arg(diskPath));
+        SECURE_LOG(ERROR_LEVEL, "DiskOperations", QString("Failed to seek to hidden volume position: %1").arg(diskPath));
         diskFile.close();
         return false;
     }
@@ -601,7 +601,7 @@ bool createHiddenVolume(const QString& diskPath, qint64 hiddenVolumeSize,
     diskFile.close();
     
     if (bytesWritten != DISK_HEADER_SIZE) {
-        SECURE_LOG(ERROR, "DiskOperations", QString("Failed to write complete hidden volume header: %1").arg(diskPath));
+        SECURE_LOG(ERROR_LEVEL, "DiskOperations", QString("Failed to write complete hidden volume header: %1").arg(diskPath));
         return false;
     }
     
@@ -612,7 +612,7 @@ bool readHiddenVolumeHeader(const QString& diskPath, HiddenVolumeInfo& hiddenInf
     // Read the header from the disk/volume
     QFile diskFile(diskPath);
     if (!diskFile.open(QIODevice::ReadOnly)) {
-        SECURE_LOG(ERROR, "DiskOperations", QString("Failed to open disk for reading hidden header: %1").arg(diskPath));
+        SECURE_LOG(ERROR_LEVEL, "DiskOperations", QString("Failed to open disk for reading hidden header: %1").arg(diskPath));
         return false;
     }
     
@@ -622,7 +622,7 @@ bool readHiddenVolumeHeader(const QString& diskPath, HiddenVolumeInfo& hiddenInf
     QJsonDocument mainHeaderDoc = QJsonDocument::fromJson(mainHeaderData);
     
     if (mainHeaderDoc.isNull() || !mainHeaderDoc.isObject()) {
-        SECURE_LOG(ERROR, "DiskOperations", QString("Invalid main header format on disk: %1").arg(diskPath));
+        SECURE_LOG(ERROR_LEVEL, "DiskOperations", QString("Invalid main header format on disk: %1").arg(diskPath));
         diskFile.close();
         return false;
     }
@@ -631,7 +631,7 @@ bool readHiddenVolumeHeader(const QString& diskPath, HiddenVolumeInfo& hiddenInf
     
     // Check if this volume has a hidden volume
     if (!mainHeaderObj.contains("hasHiddenVolume") || !mainHeaderObj["hasHiddenVolume"].toBool()) {
-        SECURE_LOG(ERROR, "DiskOperations", QString("No hidden volume on disk: %1").arg(diskPath));
+        SECURE_LOG(ERROR_LEVEL, "DiskOperations", QString("No hidden volume on disk: %1").arg(diskPath));
         diskFile.close();
         return false;
     }
@@ -644,14 +644,14 @@ bool readHiddenVolumeHeader(const QString& diskPath, HiddenVolumeInfo& hiddenInf
     diskFile.close();
     
     if (hiddenHeaderData.size() != DISK_HEADER_SIZE) {
-        SECURE_LOG(ERROR, "DiskOperations", QString("Failed to read complete hidden header from disk: %1").arg(diskPath));
+        SECURE_LOG(ERROR_LEVEL, "DiskOperations", QString("Failed to read complete hidden header from disk: %1").arg(diskPath));
         return false;
     }
     
     // Parse the JSON header
     QJsonDocument hiddenHeaderDoc = QJsonDocument::fromJson(hiddenHeaderData);
     if (hiddenHeaderDoc.isNull() || !hiddenHeaderDoc.isObject()) {
-        SECURE_LOG(ERROR, "DiskOperations", QString("Invalid hidden header format on disk: %1").arg(diskPath));
+        SECURE_LOG(ERROR_LEVEL, "DiskOperations", QString("Invalid hidden header format on disk: %1").arg(diskPath));
         return false;
     }
     
@@ -660,7 +660,7 @@ bool readHiddenVolumeHeader(const QString& diskPath, HiddenVolumeInfo& hiddenInf
     // Verify the magic string and type
     if (hiddenHeaderObj["magic"].toString() != DISK_HEADER_MAGIC || 
         hiddenHeaderObj["type"].toString() != "hidden") {
-        SECURE_LOG(ERROR, "DiskOperations", QString("Invalid hidden volume header: %1").arg(diskPath));
+        SECURE_LOG(ERROR_LEVEL, "DiskOperations", QString("Invalid hidden volume header: %1").arg(diskPath));
         return false;
     }
     
@@ -681,7 +681,7 @@ bool hasHiddenVolume(const QString& diskPath) {
     // Read the header from the disk/volume
     QFile diskFile(diskPath);
     if (!diskFile.open(QIODevice::ReadOnly)) {
-        SECURE_LOG(ERROR, "DiskOperations", QString("Failed to open disk for checking hidden volume: %1").arg(diskPath));
+        SECURE_LOG(ERROR_LEVEL, "DiskOperations", QString("Failed to open disk for checking hidden volume: %1").arg(diskPath));
         return false;
     }
     
@@ -690,14 +690,14 @@ bool hasHiddenVolume(const QString& diskPath) {
     diskFile.close();
     
     if (headerData.size() != DISK_HEADER_SIZE) {
-        SECURE_LOG(ERROR, "DiskOperations", QString("Failed to read complete header for checking hidden volume: %1").arg(diskPath));
+        SECURE_LOG(ERROR_LEVEL, "DiskOperations", QString("Failed to read complete header for checking hidden volume: %1").arg(diskPath));
         return false;
     }
     
     // Parse the JSON header
     QJsonDocument headerDoc = QJsonDocument::fromJson(headerData);
     if (headerDoc.isNull() || !headerDoc.isObject()) {
-        SECURE_LOG(ERROR, "DiskOperations", QString("Invalid header format for checking hidden volume: %1").arg(diskPath));
+        SECURE_LOG(ERROR_LEVEL, "DiskOperations", QString("Invalid header format for checking hidden volume: %1").arg(diskPath));
         return false;
     }
     

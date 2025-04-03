@@ -15,7 +15,7 @@ EncryptionEngine::EncryptionEngine() : m_currentProvider(nullptr) {
     if (!m_providers.empty()) {
         setProvider(currentProvider());
     } else {
-        SECURE_LOG(ERROR, "EncryptionEngine", "No crypto providers available!");
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "No crypto providers available!");
     }
 }
 
@@ -33,7 +33,7 @@ void EncryptionEngine::initializeProviders() {
         m_providers.push_back(std::make_unique<OpenSSLProvider>());
         SECURE_LOG(INFO, "EncryptionEngine", "OpenSSL provider initialized");
     } catch (const std::exception& e) {
-        SECURE_LOG(ERROR, "EncryptionEngine", 
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
             QString("Failed to initialize OpenSSL provider: %1").arg(e.what()));
     }
     
@@ -41,7 +41,7 @@ void EncryptionEngine::initializeProviders() {
         m_providers.push_back(std::make_unique<LibsodiumProvider>());
         SECURE_LOG(INFO, "EncryptionEngine", "libsodium provider initialized");
     } catch (const std::exception& e) {
-        SECURE_LOG(ERROR, "EncryptionEngine", 
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
             QString("Failed to initialize libsodium provider: %1").arg(e.what()));
     }
     
@@ -49,7 +49,7 @@ void EncryptionEngine::initializeProviders() {
         m_providers.push_back(std::make_unique<Argon2Provider>());
         SECURE_LOG(INFO, "EncryptionEngine", "Argon2 provider initialized");
     } catch (const std::exception& e) {
-        SECURE_LOG(ERROR, "EncryptionEngine", 
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
             QString("Failed to initialize Argon2 provider: %1").arg(e.what()));
     }
 }

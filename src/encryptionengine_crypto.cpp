@@ -14,7 +14,7 @@ bool EncryptionEngine::cryptOperation(const QString &inputPath, const QString &o
 {
     if (!m_currentProvider)
     {
-        SECURE_LOG(ERROR, "EncryptionEngine", "No crypto provider set");
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "No crypto provider set");
         return false;
     }
 
@@ -35,13 +35,13 @@ bool EncryptionEngine::cryptOperation(const QString &inputPath, const QString &o
 
     if (!inputFile.open(QIODevice::ReadOnly))
     {
-        SECURE_LOG(ERROR, "EncryptionEngine", QString("Failed to open input file: %1").arg(inputPath));
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", QString("Failed to open input file: %1").arg(inputPath));
         return false;
     }
 
     if (!outputFile.open(QIODevice::WriteOnly))
     {
-        SECURE_LOG(ERROR, "EncryptionEngine", QString("Failed to open output file: %1").arg(outputPath));
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", QString("Failed to open output file: %1").arg(outputPath));
         return false;
     }
 
@@ -55,7 +55,7 @@ bool EncryptionEngine::cryptOperation(const QString &inputPath, const QString &o
         salt = m_currentProvider->generateRandomBytes(32);
         if (salt.isEmpty())
         {
-            SECURE_LOG(ERROR, "EncryptionEngine", "Failed to generate salt");
+            SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Failed to generate salt");
             inputFile.close();
             outputFile.close();
             return false;
@@ -64,7 +64,7 @@ bool EncryptionEngine::cryptOperation(const QString &inputPath, const QString &o
         iv = m_currentProvider->generateRandomBytes(16);
         if (iv.isEmpty())
         {
-            SECURE_LOG(ERROR, "EncryptionEngine", "Failed to generate IV");
+            SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Failed to generate IV");
             inputFile.close();
             outputFile.close();
             return false;
@@ -83,7 +83,7 @@ bool EncryptionEngine::cryptOperation(const QString &inputPath, const QString &o
             // Ensure we're at the right position after the header
             if (!inputFile.seek(headerSize))
             {
-                SECURE_LOG(ERROR, "EncryptionEngine", "Failed to seek past header in input file");
+                SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Failed to seek past header in input file");
                 inputFile.close();
                 outputFile.close();
                 return false;
@@ -94,7 +94,7 @@ bool EncryptionEngine::cryptOperation(const QString &inputPath, const QString &o
             // Ensure we're at the beginning of the file if no header
             if (!inputFile.seek(0))
             {
-                SECURE_LOG(ERROR, "EncryptionEngine", "Failed to seek to beginning of input file");
+                SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Failed to seek to beginning of input file");
                 inputFile.close();
                 outputFile.close();
                 return false;
@@ -104,7 +104,7 @@ bool EncryptionEngine::cryptOperation(const QString &inputPath, const QString &o
         // Read salt
         if (inputFile.read(salt.data(), salt.size()) != salt.size())
         {
-            SECURE_LOG(ERROR, "EncryptionEngine", "Failed to read salt from input file");
+            SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Failed to read salt from input file");
             inputFile.close();
             outputFile.close();
             return false;
@@ -113,7 +113,7 @@ bool EncryptionEngine::cryptOperation(const QString &inputPath, const QString &o
         // Read IV
         if (inputFile.read(iv.data(), iv.size()) != iv.size())
         {
-            SECURE_LOG(ERROR, "EncryptionEngine", "Failed to read IV from input file");
+            SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Failed to read IV from input file");
             inputFile.close();
             outputFile.close();
             return false;
@@ -130,7 +130,7 @@ bool EncryptionEngine::cryptOperation(const QString &inputPath, const QString &o
 
     if (key.isEmpty())
     {
-        SECURE_LOG(ERROR, "EncryptionEngine", "Key derivation failed");
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Key derivation failed");
         inputFile.close();
         outputFile.close();
         return false;
@@ -151,7 +151,7 @@ bool EncryptionEngine::cryptOperation(const QString &inputPath, const QString &o
         // Reset input file position to beginning for encryption
         if (!inputFile.seek(0))
         {
-            SECURE_LOG(ERROR, "EncryptionEngine", "Failed to seek to beginning of input file before encryption");
+            SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Failed to seek to beginning of input file before encryption");
             inputFile.close();
             outputFile.close();
             return false;
@@ -298,16 +298,16 @@ bool EncryptionEngine::cryptOperation(const QString &inputPath, const QString &o
                         
                         SECURE_LOG(DEBUG, "EncryptionEngine", QString("Decryption %1").arg(success ? "succeeded" : "failed"));
                     } else {
-                        SECURE_LOG(ERROR, "EncryptionEngine", "Failed to read complete encrypted data: expected " + 
+                        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Failed to read complete encrypted data: expected " + 
                                   QString::number(encryptedSize) + " bytes, got " + QString::number(totalBytesRead));
                         success = false;
                     }
                 } else {
-                    SECURE_LOG(ERROR, "EncryptionEngine", "Failed to create temporary file for decryption");
+                    SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Failed to create temporary file for decryption");
                     success = false;
                 }
             } else {
-                SECURE_LOG(ERROR, "EncryptionEngine", "Invalid encrypted data size: " + QString::number(encryptedSize));
+                SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Invalid encrypted data size: " + QString::number(encryptedSize));
                 success = false;
             }
         } else {
@@ -337,7 +337,7 @@ bool EncryptionEngine::performStandardEncryption(EVP_CIPHER_CTX *ctx, const EVP_
         reinterpret_cast<const unsigned char *>(key.data()), 
         reinterpret_cast<const unsigned char *>(iv.data())))
     {
-        SECURE_LOG(ERROR, "EncryptionEngine", 
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
             QString("Standard Encryption Init failed for cipher: %1")
             .arg(EVP_CIPHER_name(cipher)));
         return false;
@@ -354,7 +354,7 @@ bool EncryptionEngine::performStandardEncryption(EVP_CIPHER_CTX *ctx, const EVP_
             reinterpret_cast<unsigned char *>(outBuf.data()), &outLen, 
             reinterpret_cast<const unsigned char *>(buffer.data()), inLen))
         {
-            SECURE_LOG(ERROR, "EncryptionEngine", 
+            SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
                 QString("Standard Encryption Update failed for cipher: %1")
                 .arg(EVP_CIPHER_name(cipher)));
             return false;
@@ -366,7 +366,7 @@ bool EncryptionEngine::performStandardEncryption(EVP_CIPHER_CTX *ctx, const EVP_
     if (1 != EVP_EncryptFinal_ex(ctx, 
         reinterpret_cast<unsigned char *>(outBuf.data()), &outLen))
     {
-        SECURE_LOG(ERROR, "EncryptionEngine", 
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
             QString("Standard Encryption Finalization failed for cipher: %1")
             .arg(EVP_CIPHER_name(cipher)));
         return false;
@@ -391,7 +391,7 @@ bool EncryptionEngine::performStandardDecryption(EVP_CIPHER_CTX *ctx, const EVP_
         reinterpret_cast<const unsigned char *>(key.data()), 
         reinterpret_cast<const unsigned char *>(iv.data())))
     {
-        SECURE_LOG(ERROR, "EncryptionEngine", 
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
             QString("Standard Decryption Init failed for cipher: %1")
             .arg(EVP_CIPHER_name(cipher)));
         return false;
@@ -408,7 +408,7 @@ bool EncryptionEngine::performStandardDecryption(EVP_CIPHER_CTX *ctx, const EVP_
             reinterpret_cast<unsigned char *>(outputBuffer.data()), &outLen, 
             reinterpret_cast<unsigned char *>(buffer.data()), inLen))
         {
-            SECURE_LOG(ERROR, "EncryptionEngine", 
+            SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
                 QString("Standard Decryption Update failed for cipher: %1")
                 .arg(EVP_CIPHER_name(cipher)));
             return false;
@@ -419,7 +419,7 @@ bool EncryptionEngine::performStandardDecryption(EVP_CIPHER_CTX *ctx, const EVP_
     if (!EVP_DecryptFinal_ex(ctx, 
         reinterpret_cast<unsigned char *>(outputBuffer.data()), &outLen))
     {
-        SECURE_LOG(ERROR, "EncryptionEngine", 
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
             QString("Standard Decryption Finalization failed for cipher: %1")
             .arg(EVP_CIPHER_name(cipher)));
         return false;
@@ -460,7 +460,7 @@ bool EncryptionEngine::performAuthenticatedEncryption(EVP_CIPHER_CTX *ctx, const
         reinterpret_cast<const unsigned char *>(key.data()), 
         reinterpret_cast<const unsigned char *>(iv.data())))
     {
-        SECURE_LOG(ERROR, "EncryptionEngine", 
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
             QString("Authenticated Encryption Init failed for cipher: %1")
             .arg(EVP_CIPHER_name(cipher)));
         return false;
@@ -483,7 +483,7 @@ bool EncryptionEngine::performAuthenticatedEncryption(EVP_CIPHER_CTX *ctx, const
             reinterpret_cast<unsigned char *>(outputBuffer.data()), &outLen,
             reinterpret_cast<const unsigned char *>(buffer.constData()), bytesRead))
         {
-            SECURE_LOG(ERROR, "EncryptionEngine", 
+            SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
                 QString("Authenticated Encryption Update failed for cipher: %1")
                 .arg(EVP_CIPHER_name(cipher)));
             return false;
@@ -498,7 +498,7 @@ bool EncryptionEngine::performAuthenticatedEncryption(EVP_CIPHER_CTX *ctx, const
     if (!EVP_EncryptFinal_ex(ctx, 
         reinterpret_cast<unsigned char *>(outputBuffer.data()), &outLen))
     {
-        SECURE_LOG(ERROR, "EncryptionEngine", 
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
             QString("Authenticated Encryption Finalization failed for cipher: %1")
             .arg(EVP_CIPHER_name(cipher)));
         return false;
@@ -512,7 +512,7 @@ bool EncryptionEngine::performAuthenticatedEncryption(EVP_CIPHER_CTX *ctx, const
     // Get the tag
     if (!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, tag.size(), tag.data()))
     {
-        SECURE_LOG(ERROR, "EncryptionEngine", 
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
             QString("Failed to get authentication tag for cipher: %1")
             .arg(EVP_CIPHER_name(cipher)));
         return false;
@@ -563,7 +563,7 @@ bool EncryptionEngine::performAuthenticatedDecryption(EVP_CIPHER_CTX *ctx, const
     // The last 16 bytes should be the tag
     if (encryptedContent.size() < 16)
     {
-        SECURE_LOG(ERROR, "EncryptionEngine", "Encrypted content is too short");
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Encrypted content is too short");
         return false;
     }
 
@@ -578,7 +578,7 @@ bool EncryptionEngine::performAuthenticatedDecryption(EVP_CIPHER_CTX *ctx, const
         reinterpret_cast<const unsigned char *>(key.data()), 
         reinterpret_cast<const unsigned char *>(iv.data())))
     {
-        SECURE_LOG(ERROR, "EncryptionEngine", 
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
             QString("Authenticated Decryption Init failed for cipher: %1")
             .arg(EVP_CIPHER_name(cipher)));
         return false;
@@ -593,7 +593,7 @@ bool EncryptionEngine::performAuthenticatedDecryption(EVP_CIPHER_CTX *ctx, const
         reinterpret_cast<const unsigned char *>(encryptedContent.constData()), 
         encryptedContent.size()))
     {
-        SECURE_LOG(ERROR, "EncryptionEngine", 
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
             QString("Authenticated Decryption Update failed for cipher: %1")
             .arg(EVP_CIPHER_name(cipher)));
         return false;
@@ -602,7 +602,7 @@ bool EncryptionEngine::performAuthenticatedDecryption(EVP_CIPHER_CTX *ctx, const
     // Set the expected tag
     if (!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, tag.size(), tag.data()))
     {
-        SECURE_LOG(ERROR, "EncryptionEngine", 
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
             QString("Failed to set authentication tag for cipher: %1")
             .arg(EVP_CIPHER_name(cipher)));
         return false;
@@ -613,7 +613,7 @@ bool EncryptionEngine::performAuthenticatedDecryption(EVP_CIPHER_CTX *ctx, const
     if (!EVP_DecryptFinal_ex(ctx, 
         reinterpret_cast<unsigned char *>(outputBuffer.data()) + outLen, &tmpLen))
     {
-        SECURE_LOG(ERROR, "EncryptionEngine", 
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
             QString("Authenticated Decryption Finalization failed - authentication error for cipher: %1")
             .arg(EVP_CIPHER_name(cipher)));
         return false;

@@ -14,7 +14,7 @@ bool EncryptionEngine::verifyOutputPathSecurity(const QString& filePath)
     
     // Check if parent directory exists
     if (!parentDir.exists()) {
-        SECURE_LOG(ERROR, "EncryptionEngine", 
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
             QString("Parent directory does not exist: %1").arg(parentPath));
         return false;
     }
@@ -33,7 +33,7 @@ bool EncryptionEngine::verifyOutputPathSecurity(const QString& filePath)
               QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner | 
               QFileDevice::ReadGroup | QFileDevice::ExeGroup)) {
             
-            SECURE_LOG(ERROR, "EncryptionEngine", 
+            SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
                 QString("Could not fix world-writable permissions on: %1").arg(parentPath));
             return false;
         }
@@ -52,7 +52,7 @@ bool EncryptionEngine::verifyOutputPathSecurity(const QString& filePath)
             if (!checkAndFixFilePermissions(filePath, 
                   QFileDevice::ReadOwner | QFileDevice::WriteOwner)) {
                 
-                SECURE_LOG(ERROR, "EncryptionEngine", 
+                SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
                     QString("Could not fix insecure permissions on: %1").arg(filePath));
                 return false;
             }
@@ -67,7 +67,7 @@ bool EncryptionEngine::verifyOutputPathSecurity(const QString& filePath)
     
     for (const QString& badPath : dangerousPaths) {
         if (parentPath.startsWith(badPath)) {
-            SECURE_LOG(ERROR, "EncryptionEngine", 
+            SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
                 QString("Security risk: Output path in insecure location: %1").arg(parentPath));
             return false;
         }
@@ -96,7 +96,7 @@ bool EncryptionEngine::checkAndFixFilePermissions(const QString& filePath, QFile
     // Check if file exists
     QFileInfo fileInfo(filePath);
     if (!fileInfo.exists()) {
-        SECURE_LOG(ERROR, "EncryptionEngine", 
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
             QString("Cannot check permissions, file does not exist: %1").arg(filePath));
         return false;
     }
@@ -112,7 +112,7 @@ bool EncryptionEngine::checkAndFixFilePermissions(const QString& filePath, QFile
                 QString("Successfully fixed file permissions on: %1").arg(filePath));
             return true;
         } else {
-            SECURE_LOG(ERROR, "EncryptionEngine", 
+            SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
                 QString("Failed to set secure permissions on: %1").arg(filePath));
             return false;
         }

@@ -9,13 +9,13 @@ bool EncryptionEngine::encryptDisk(const QString& diskPath, const QString& passw
                                   const QString& kdf, int iterations, bool useHMAC, 
                                   const QStringList& keyfilePaths) {
     if (!m_currentProvider) {
-        SECURE_LOG(ERROR, "EncryptionEngine", "No crypto provider selected");
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "No crypto provider selected");
         return false;
     }
     
     // Validate the disk path
     if (!DiskOperations::isValidDiskPath(diskPath)) {
-        SECURE_LOG(ERROR, "EncryptionEngine", QString("Invalid disk path: %1").arg(diskPath));
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", QString("Invalid disk path: %1").arg(diskPath));
         return false;
     }
     
@@ -34,14 +34,14 @@ bool EncryptionEngine::encryptDisk(const QString& diskPath, const QString& passw
     // Create the encryption header file
     bool headerCreated = DiskOperations::createEncryptionHeader(diskPath, algorithm, kdf, iterations, useHMAC, salt, iv);
     if (!headerCreated) {
-        SECURE_LOG(ERROR, "EncryptionEngine", "Failed to create encryption header for disk");
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Failed to create encryption header for disk");
         return false;
     }
     
     // Open the disk for encryption
     QFile diskFile(diskPath);
     if (!diskFile.open(QIODevice::ReadWrite)) {
-        SECURE_LOG(ERROR, "EncryptionEngine", QString("Failed to open disk for encryption: %1").arg(diskPath));
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", QString("Failed to open disk for encryption: %1").arg(diskPath));
         return false;
     }
     
@@ -51,7 +51,7 @@ bool EncryptionEngine::encryptDisk(const QString& diskPath, const QString& passw
     // Create a temporary file for the encrypted data
     QTemporaryFile tempFile;
     if (!tempFile.open()) {
-        SECURE_LOG(ERROR, "EncryptionEngine", "Failed to create temporary file for encryption");
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Failed to create temporary file for encryption");
         diskFile.close();
         return false;
     }
@@ -63,7 +63,7 @@ bool EncryptionEngine::encryptDisk(const QString& diskPath, const QString& passw
     memset(key.data(), 0, key.size());
     
     if (!encryptionSuccess) {
-        SECURE_LOG(ERROR, "EncryptionEngine", "Failed to encrypt disk contents");
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Failed to encrypt disk contents");
         diskFile.close();
         return false;
     }
@@ -79,7 +79,7 @@ bool EncryptionEngine::encryptDisk(const QString& diskPath, const QString& passw
     
     while ((bytesRead = tempFile.read(buffer.data(), buffer.size())) > 0) {
         if (diskFile.write(buffer.data(), bytesRead) != bytesRead) {
-            SECURE_LOG(ERROR, "EncryptionEngine", "Failed to write encrypted data back to disk");
+            SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Failed to write encrypted data back to disk");
             diskFile.close();
             return false;
         }
@@ -95,13 +95,13 @@ bool EncryptionEngine::decryptDisk(const QString& diskPath, const QString& passw
                                   const QString& kdf, int iterations, bool useHMAC, 
                                   const QStringList& keyfilePaths) {
     if (!m_currentProvider) {
-        SECURE_LOG(ERROR, "EncryptionEngine", "No crypto provider selected");
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "No crypto provider selected");
         return false;
     }
     
     // Validate the disk path
     if (!DiskOperations::isValidDiskPath(diskPath)) {
-        SECURE_LOG(ERROR, "EncryptionEngine", QString("Invalid disk path: %1").arg(diskPath));
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", QString("Invalid disk path: %1").arg(diskPath));
         return false;
     }
     
@@ -121,7 +121,7 @@ bool EncryptionEngine::decryptDisk(const QString& diskPath, const QString& passw
                                                           headerSalt, headerIv, hasHidden);
     
     if (!headerRead) {
-        SECURE_LOG(ERROR, "EncryptionEngine", "Failed to read encryption header from disk");
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Failed to read encryption header from disk");
         return false;
     }
     
@@ -138,7 +138,7 @@ bool EncryptionEngine::decryptDisk(const QString& diskPath, const QString& passw
     // Open the disk for decryption
     QFile diskFile(diskPath);
     if (!diskFile.open(QIODevice::ReadWrite)) {
-        SECURE_LOG(ERROR, "EncryptionEngine", QString("Failed to open disk for decryption: %1").arg(diskPath));
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", QString("Failed to open disk for decryption: %1").arg(diskPath));
         return false;
     }
     
@@ -148,7 +148,7 @@ bool EncryptionEngine::decryptDisk(const QString& diskPath, const QString& passw
     // Create a temporary file for the decrypted data
     QTemporaryFile tempFile;
     if (!tempFile.open()) {
-        SECURE_LOG(ERROR, "EncryptionEngine", "Failed to create temporary file for decryption");
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Failed to create temporary file for decryption");
         diskFile.close();
         return false;
     }
@@ -160,7 +160,7 @@ bool EncryptionEngine::decryptDisk(const QString& diskPath, const QString& passw
     memset(key.data(), 0, key.size());
     
     if (!decryptionSuccess) {
-        SECURE_LOG(ERROR, "EncryptionEngine", "Failed to decrypt disk contents");
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Failed to decrypt disk contents");
         diskFile.close();
         return false;
     }
@@ -176,7 +176,7 @@ bool EncryptionEngine::decryptDisk(const QString& diskPath, const QString& passw
     
     while ((bytesRead = tempFile.read(buffer.data(), buffer.size())) > 0) {
         if (diskFile.write(buffer.data(), bytesRead) != bytesRead) {
-            SECURE_LOG(ERROR, "EncryptionEngine", "Failed to write decrypted data back to disk");
+            SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Failed to write decrypted data back to disk");
             diskFile.close();
             return false;
         }
@@ -192,19 +192,19 @@ bool EncryptionEngine::encryptDiskSection(const QString& diskPath, const QString
                                         const QString& kdf, int iterations, bool useHMAC, 
                                         const QStringList& keyfilePaths, qint64 startOffset, qint64 sectionSize) {
     if (!m_currentProvider) {
-        SECURE_LOG(ERROR, "EncryptionEngine", "No crypto provider selected");
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "No crypto provider selected");
         return false;
     }
     
     // Validate the disk path
     if (!DiskOperations::isValidDiskPath(diskPath)) {
-        SECURE_LOG(ERROR, "EncryptionEngine", QString("Invalid disk path: %1").arg(diskPath));
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", QString("Invalid disk path: %1").arg(diskPath));
         return false;
     }
     
     // Validate section parameters
     if (startOffset < DISK_HEADER_SIZE) {
-        SECURE_LOG(ERROR, "EncryptionEngine", "Start offset cannot be within the header area");
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Start offset cannot be within the header area");
         return false;
     }
     
@@ -224,13 +224,13 @@ bool EncryptionEngine::encryptDiskSection(const QString& diskPath, const QString
     // Open the disk for encryption
     QFile diskFile(diskPath);
     if (!diskFile.open(QIODevice::ReadWrite)) {
-        SECURE_LOG(ERROR, "EncryptionEngine", QString("Failed to open disk for section encryption: %1").arg(diskPath));
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", QString("Failed to open disk for section encryption: %1").arg(diskPath));
         return false;
     }
     
     // Seek to the section start offset
     if (!diskFile.seek(startOffset)) {
-        SECURE_LOG(ERROR, "EncryptionEngine", QString("Failed to seek to section offset: %1").arg(startOffset));
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", QString("Failed to seek to section offset: %1").arg(startOffset));
         diskFile.close();
         return false;
     }
@@ -238,7 +238,7 @@ bool EncryptionEngine::encryptDiskSection(const QString& diskPath, const QString
     // Create a temporary file for the section data
     QTemporaryFile sectionFile;
     if (!sectionFile.open()) {
-        SECURE_LOG(ERROR, "EncryptionEngine", "Failed to create temporary file for section data");
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Failed to create temporary file for section data");
         diskFile.close();
         return false;
     }
@@ -251,7 +251,7 @@ bool EncryptionEngine::encryptDiskSection(const QString& diskPath, const QString
     
     while (totalRead < sectionSize && (bytesRead = diskFile.read(buffer.data(), qMin(qint64(buffer.size()), sectionSize - totalRead))) > 0) {
         if (sectionFile.write(buffer.data(), bytesRead) != bytesRead) {
-            SECURE_LOG(ERROR, "EncryptionEngine", "Failed to write section data to temporary file");
+            SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Failed to write section data to temporary file");
             diskFile.close();
             return false;
         }
@@ -274,7 +274,7 @@ bool EncryptionEngine::encryptDiskSection(const QString& diskPath, const QString
         diskPath, algorithm, kdf, iterations, useHMAC, salt, iv, true);
     
     if (!mainHeaderUpdated) {
-        SECURE_LOG(ERROR, "EncryptionEngine", "Failed to update main disk header for hidden volume");
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Failed to update main disk header for hidden volume");
         diskFile.close();
         return false;
     }
@@ -283,7 +283,7 @@ bool EncryptionEngine::encryptDiskSection(const QString& diskPath, const QString
     bool headerUpdated = DiskOperations::createHiddenVolume(
         diskPath, sectionSize, algorithm, kdf, iterations, useHMAC, salt, iv);
     if (!headerUpdated) {
-        SECURE_LOG(ERROR, "EncryptionEngine", "Failed to update disk header with hidden volume information");
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Failed to update disk header with hidden volume information");
         diskFile.close();
         return false;
     }
@@ -294,7 +294,7 @@ bool EncryptionEngine::encryptDiskSection(const QString& diskPath, const QString
     // Create a temporary file for the encrypted data
     QTemporaryFile encryptedFile;
     if (!encryptedFile.open()) {
-        SECURE_LOG(ERROR, "EncryptionEngine", "Failed to create temporary file for encrypted section");
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Failed to create temporary file for encrypted section");
         diskFile.close();
         return false;
     }
@@ -306,7 +306,7 @@ bool EncryptionEngine::encryptDiskSection(const QString& diskPath, const QString
     memset(key.data(), 0, key.size());
     
     if (!encryptionSuccess) {
-        SECURE_LOG(ERROR, "EncryptionEngine", "Failed to encrypt section data");
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Failed to encrypt section data");
         diskFile.close();
         return false;
     }
@@ -320,7 +320,7 @@ bool EncryptionEngine::encryptDiskSection(const QString& diskPath, const QString
     
     while ((bytesRead = encryptedFile.read(buffer.data(), buffer.size())) > 0) {
         if (diskFile.write(buffer.data(), bytesRead) != bytesRead) {
-            SECURE_LOG(ERROR, "EncryptionEngine", "Failed to write encrypted data back to disk section");
+            SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Failed to write encrypted data back to disk section");
             diskFile.close();
             return false;
         }
@@ -337,13 +337,13 @@ bool EncryptionEngine::decryptDiskSection(const QString& diskPath, const QString
                                         const QString& kdf, int iterations, bool useHMAC, 
                                         const QStringList& keyfilePaths, qint64 startOffset, qint64 sectionSize) {
     if (!m_currentProvider) {
-        SECURE_LOG(ERROR, "EncryptionEngine", "No crypto provider selected");
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "No crypto provider selected");
         return false;
     }
     
     // Validate the disk path
     if (!DiskOperations::isValidDiskPath(diskPath)) {
-        SECURE_LOG(ERROR, "EncryptionEngine", QString("Invalid disk path: %1").arg(diskPath));
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", QString("Invalid disk path: %1").arg(diskPath));
         return false;
     }
     
@@ -395,7 +395,7 @@ bool EncryptionEngine::decryptDiskSection(const QString& diskPath, const QString
             iv = headerIv;
             // Removed lastIv storage for security reasons
         } else {
-            SECURE_LOG(ERROR, "EncryptionEngine", "Failed to read any encryption parameters");
+            SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Failed to read any encryption parameters");
             return false;
         }
     }
@@ -406,13 +406,13 @@ bool EncryptionEngine::decryptDiskSection(const QString& diskPath, const QString
     // Open the disk for decryption
     QFile diskFile(diskPath);
     if (!diskFile.open(QIODevice::ReadWrite)) {
-        SECURE_LOG(ERROR, "EncryptionEngine", QString("Failed to open disk for section decryption: %1").arg(diskPath));
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", QString("Failed to open disk for section decryption: %1").arg(diskPath));
         return false;
     }
     
     // Seek to the section start offset
     if (!diskFile.seek(startOffset)) {
-        SECURE_LOG(ERROR, "EncryptionEngine", QString("Failed to seek to section offset: %1").arg(startOffset));
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", QString("Failed to seek to section offset: %1").arg(startOffset));
         diskFile.close();
         return false;
     }
@@ -420,7 +420,7 @@ bool EncryptionEngine::decryptDiskSection(const QString& diskPath, const QString
     // Create a temporary file for the encrypted section data
     QTemporaryFile encryptedFile;
     if (!encryptedFile.open()) {
-        SECURE_LOG(ERROR, "EncryptionEngine", "Failed to create temporary file for encrypted section");
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Failed to create temporary file for encrypted section");
         diskFile.close();
         return false;
     }
@@ -433,7 +433,7 @@ bool EncryptionEngine::decryptDiskSection(const QString& diskPath, const QString
     
     while (totalRead < sectionSize && (bytesRead = diskFile.read(buffer.data(), qMin(qint64(buffer.size()), sectionSize - totalRead))) > 0) {
         if (encryptedFile.write(buffer.data(), bytesRead) != bytesRead) {
-            SECURE_LOG(ERROR, "EncryptionEngine", "Failed to write encrypted section data to temporary file");
+            SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Failed to write encrypted section data to temporary file");
             diskFile.close();
             return false;
         }
@@ -446,7 +446,7 @@ bool EncryptionEngine::decryptDiskSection(const QString& diskPath, const QString
     // Create a temporary file for the decrypted data
     QTemporaryFile decryptedFile;
     if (!decryptedFile.open()) {
-        SECURE_LOG(ERROR, "EncryptionEngine", "Failed to create temporary file for decrypted section");
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Failed to create temporary file for decrypted section");
         diskFile.close();
         return false;
     }
@@ -458,7 +458,7 @@ bool EncryptionEngine::decryptDiskSection(const QString& diskPath, const QString
     memset(key.data(), 0, key.size());
     
     if (!decryptionSuccess) {
-        SECURE_LOG(ERROR, "EncryptionEngine", "Failed to decrypt section data");
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Failed to decrypt section data");
         diskFile.close();
         return false;
     }
@@ -472,7 +472,7 @@ bool EncryptionEngine::decryptDiskSection(const QString& diskPath, const QString
     
     while ((bytesRead = decryptedFile.read(buffer.data(), buffer.size())) > 0) {
         if (diskFile.write(buffer.data(), bytesRead) != bytesRead) {
-            SECURE_LOG(ERROR, "EncryptionEngine", "Failed to write decrypted data back to disk section");
+            SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Failed to write decrypted data back to disk section");
             diskFile.close();
             return false;
         }

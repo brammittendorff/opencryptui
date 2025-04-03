@@ -21,7 +21,7 @@ QByteArray EncryptionEngine::readKeyfile(const QString& keyfilePath) {
     // Open the keyfile
     QFile keyfile(keyfilePath);
     if (!keyfile.open(QIODevice::ReadOnly)) {
-        SECURE_LOG(ERROR, "EncryptionEngine", 
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
             QString("Failed to open keyfile at path: %1").arg(keyfilePath));
         return QByteArray();
     }
@@ -112,7 +112,7 @@ QByteArray EncryptionEngine::performKeyDerivation(const QByteArray& passwordWith
 {
     // Validate input parameters
     if (passwordWithKeyfile.isEmpty() || salt.isEmpty() || keySize <= 0) {
-        SECURE_LOG(ERROR, "EncryptionEngine", "Invalid key derivation parameters");
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Invalid key derivation parameters");
         return QByteArray();
     }
 
@@ -177,14 +177,14 @@ QByteArray EncryptionEngine::performKeyDerivation(const QByteArray& passwordWith
             derivationSuccessful = (scryptResult == 0);
         }
         else {
-            SECURE_LOG(ERROR, "EncryptionEngine", 
+            SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
                 QString("Unsupported KDF: %1").arg(kdf));
             return QByteArray();
         }
 
         // Verification step
         if (!derivationSuccessful) {
-            SECURE_LOG(ERROR, "EncryptionEngine", 
+            SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
                 QString("Key derivation failed for %1").arg(kdf));
             
             // Secure cleanup
@@ -204,7 +204,7 @@ QByteArray EncryptionEngine::performKeyDerivation(const QByteArray& passwordWith
         return secureKey;
     }
     catch (const std::exception& e) {
-        SECURE_LOG(ERROR, "EncryptionEngine", 
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
             QString("Exception during key derivation: %1").arg(e.what()));
         
         // Secure cleanup in case of exception
@@ -343,7 +343,7 @@ QByteArray EncryptionEngine::generateSecureRandomBytes(int size, bool isSecurity
     
     // Fail if we couldn't get good entropy from any source
     if (!success) {
-        SECURE_LOG(ERROR, "EncryptionEngine", "Secure random generation failed from all sources");
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Secure random generation failed from all sources");
         sodium_memzero(randomData.data(), randomData.size());
         sodium_memzero(mixBuffer.data(), mixBuffer.size());
         sodium_memzero(hardwareBuffer.data(), hardwareBuffer.size());
@@ -354,7 +354,7 @@ QByteArray EncryptionEngine::generateSecureRandomBytes(int size, bool isSecurity
     EntropyTestResult entropyResult = testEntropyQuality(randomData);
     
     if (isSecurityCritical && !entropyResult.passed) {
-        SECURE_LOG(ERROR, "EncryptionEngine", QString("Random data failed entropy test (%1): %2")
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", QString("Random data failed entropy test (%1): %2")
                             .arg(entropyResult.testName)
                             .arg(entropyResult.details));
         

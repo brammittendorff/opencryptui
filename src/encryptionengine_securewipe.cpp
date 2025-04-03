@@ -20,7 +20,7 @@ bool EncryptionEngine::secureDeleteFile(const QString& filePath, int passes)
     
     // Check if file exists and is writable
     if (!fileInfo.exists() || !fileInfo.isWritable()) {
-        SECURE_LOG(ERROR, "EncryptionEngine", 
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
             QString("Cannot securely delete file: %1 - File does not exist or is not writable").arg(filePath));
         return false;
     }
@@ -34,7 +34,7 @@ bool EncryptionEngine::secureDeleteFile(const QString& filePath, int passes)
     
     // Open file for writing
     if (!file.open(QIODevice::ReadWrite)) {
-        SECURE_LOG(ERROR, "EncryptionEngine", 
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
             QString("Cannot open file for secure deletion: %1").arg(filePath));
         return false;
     }
@@ -49,7 +49,7 @@ bool EncryptionEngine::secureDeleteFile(const QString& filePath, int passes)
         for (int pass = 0; pass < passes; pass++) {
             // Reset to beginning of file
             if (!file.seek(0)) {
-                SECURE_LOG(ERROR, "EncryptionEngine", 
+                SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
                     QString("Failed to seek to beginning of file for pass %1: %2").arg(pass).arg(filePath));
                 file.close();
                 return false;
@@ -89,7 +89,7 @@ bool EncryptionEngine::secureDeleteFile(const QString& filePath, int passes)
                 // Write the pattern
                 qint64 bytesWritten = file.write(writeBuffer);
                 if (bytesWritten <= 0) {
-                    SECURE_LOG(ERROR, "EncryptionEngine", 
+                    SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
                         QString("Failed to write during secure deletion pass %1: %2").arg(pass).arg(filePath));
                     file.close();
                     return false;
@@ -124,7 +124,7 @@ bool EncryptionEngine::secureDeleteFile(const QString& filePath, int passes)
         
         // Finally delete the file
         if (!QFile::remove(fileToDelete)) {
-            SECURE_LOG(ERROR, "EncryptionEngine", 
+            SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
                 QString("Failed to delete file after secure overwrite: %1").arg(fileToDelete));
             return false;
         }
@@ -135,7 +135,7 @@ bool EncryptionEngine::secureDeleteFile(const QString& filePath, int passes)
         return true;
     }
     catch (const std::exception& e) {
-        SECURE_LOG(ERROR, "EncryptionEngine", 
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", 
             QString("Exception during secure file deletion: %1").arg(e.what()));
         
         // Make sure file is closed

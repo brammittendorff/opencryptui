@@ -82,7 +82,8 @@ inline bool isReleaseMode() {
 #endif
 
 // For ERROR level compatibility (since we renamed it to ERROR_LEVEL)
-#define ERROR ERROR_LEVEL
+// Use a safer name that won't conflict with Windows headers
+#define SECURE_LOG_ERROR ERROR_LEVEL
 
 // Macro for logging with compile-time optimization
 #define SECURE_LOG(level, component, message) \

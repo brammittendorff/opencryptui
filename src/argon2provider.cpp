@@ -120,7 +120,7 @@ QByteArray Argon2Provider::deriveKey(const QByteArray &password, const QByteArra
 
     if (!success)
     {
-        SECURE_LOG(ERROR, "Argon2Provider", 
+        SECURE_LOG(ERROR_LEVEL, "Argon2Provider", 
             QString("Key derivation failed for KDF: %1").arg(kdf));
         // Use secure memory zeroing to prevent key material leakage
         sodium_memzero(key.data(), key.size());

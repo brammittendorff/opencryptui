@@ -350,7 +350,7 @@ void EncryptionWorker::benchmarkCipher(const QString &algorithm, const QString &
     QStringList keyfilePaths; // If no keyfiles, use an empty QStringList
     key = engine.deriveKey("password", salt, keyfilePaths, kdf, iterations);
     if (key.isEmpty()) {
-        SECURE_LOG(ERROR, "EncryptionWorker", 
+        SECURE_LOG(ERROR_LEVEL, "EncryptionWorker", 
             QString("Key derivation failed for KDF: %1").arg(kdf));
         return;
     }
@@ -358,14 +358,14 @@ void EncryptionWorker::benchmarkCipher(const QString &algorithm, const QString &
     // Perform encryption
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
     if (!ctx) {
-        SECURE_LOG(ERROR, "EncryptionWorker", "Failed to create EVP_CIPHER_CTX");
+        SECURE_LOG(ERROR_LEVEL, "EncryptionWorker", "Failed to create EVP_CIPHER_CTX");
         return;
     }
 
     if (!EVP_EncryptInit_ex(ctx, cipher, nullptr,
                             reinterpret_cast<const unsigned char *>(key.data()),
                             reinterpret_cast<const unsigned char *>(iv.data()))) {
-        SECURE_LOG(ERROR, "EncryptionWorker", "EVP_EncryptInit_ex failed");
+        SECURE_LOG(ERROR_LEVEL, "EncryptionWorker", "EVP_EncryptInit_ex failed");
         EVP_CIPHER_CTX_free(ctx);
         return;
     }
