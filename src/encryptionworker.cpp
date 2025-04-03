@@ -317,8 +317,20 @@ void EncryptionWorker::benchmarkCipher(const QString &algorithm, const QString &
         return;
     }
 
-    const int dataSize = 100 * 1024 * 1024; // 100 MB
-    QByteArray testData(dataSize, 'A');
+    // Use a smaller buffer size for benchmarking to avoid memory issues
+    // 10MB is sufficient for benchmarking and less likely to cause memory pressure
+    const int dataSize = 10 * 1024 * 1024; // 10 MB instead of 100 MB
+    
+    // Only allocate the memory if we can
+    QByteArray testData;
+    try {
+        testData.resize(dataSize);
+        testData.fill('A');
+    } catch (const std::bad_alloc&) {
+        SECURE_LOG(ERROR_LEVEL, "EncryptionWorker", "Memory allocation failed for benchmark data");
+        return;
+    }
+    
     QByteArray key(32, 'K');
     QByteArray iv(16, 'I');
     QByteArray salt(16, 'S');
@@ -358,24 +370,51 @@ void EncryptionWorker::benchmarkCipher(const QString &algorithm, const QString &
         return;
     }
 
-    QByteArray ciphertext(testData.size() + EVP_MAX_BLOCK_LENGTH, 0);
-    int len;
+    // Only allocate the ciphertext buffer if we can
+    QByteArray ciphertext;
+    try {
+        ciphertext.resize(testData.size() + EVP_MAX_BLOCK_LENGTH);
+    } catch (const std::bad_alloc&) {
+        SECURE_LOG(ERROR_LEVEL, "EncryptionWorker", "Memory allocation failed for ciphertext buffer");
+        EVP_CIPHER_CTX_free(ctx);
+        return;
+    }
+    
+    int len = 0;
     int ciphertextLen = 0;
-    if (!EVP_EncryptUpdate(ctx, reinterpret_cast<unsigned char *>(ciphertext.data()), &len,
-                           reinterpret_cast<const unsigned char *>(testData.data()), testData.size())) {
-        SECURE_LOG(ERROR, "EncryptionWorker", "EVP_EncryptUpdate failed");
+    
+    bool encryptSuccess = EVP_EncryptUpdate(ctx, 
+                                reinterpret_cast<unsigned char *>(ciphertext.data()), 
+                                &len,
+                                reinterpret_cast<const unsigned char *>(testData.data()), 
+                                testData.size()) == 1;
+    
+    if (!encryptSuccess) {
+        SECURE_LOG(ERROR_LEVEL, "EncryptionWorker", "EVP_EncryptUpdate failed");
         EVP_CIPHER_CTX_free(ctx);
         return;
     }
+    
     ciphertextLen += len;
-    if (!EVP_EncryptFinal_ex(ctx, reinterpret_cast<unsigned char *>(ciphertext.data()) + len, &len)) {
-        SECURE_LOG(ERROR, "EncryptionWorker", "EVP_EncryptFinal_ex failed");
+    
+    encryptSuccess = EVP_EncryptFinal_ex(ctx, 
+                            reinterpret_cast<unsigned char *>(ciphertext.data()) + len, 
+                            &len) == 1;
+                            
+    if (!encryptSuccess) {
+        SECURE_LOG(ERROR_LEVEL, "EncryptionWorker", "EVP_EncryptFinal_ex failed");
         EVP_CIPHER_CTX_free(ctx);
         return;
     }
+    
     ciphertextLen += len;
-
+    
+    // Always free the cipher context
     EVP_CIPHER_CTX_free(ctx);
+    
+    // Clear memory as soon as we're done with it to reduce memory footprint
+    ciphertext.clear();
+    testData.clear();
 
     qint64 elapsed = timer.elapsed();
     double throughput = (dataSize / (1024.0 * 1024.0)) / (elapsed / 1000.0);

@@ -706,10 +706,26 @@ void EncryptionEngine::hashWhitenData(const QByteArray& input, QByteArray& outpu
         unsigned int hashLen;
         
         EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
-        EVP_DigestInit_ex(mdctx, EVP_sha512(), NULL);
-        EVP_DigestUpdate(mdctx, blockInput.constData(), blockInput.size());
-        EVP_DigestFinal_ex(mdctx, hash, &hashLen);
-        EVP_MD_CTX_free(mdctx);
+        if (mdctx) {
+            bool success = true;
+            
+            success = success && (EVP_DigestInit_ex(mdctx, EVP_sha512(), NULL) == 1);
+            success = success && (EVP_DigestUpdate(mdctx, blockInput.constData(), blockInput.size()) == 1);
+            success = success && (EVP_DigestFinal_ex(mdctx, hash, &hashLen) == 1);
+            
+            // Always free the context
+            EVP_MD_CTX_free(mdctx);
+            
+            if (!success) {
+                SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Hash operation failed in hashWhitenData");
+                // Clear any partial results
+                sodium_memzero(hash, sizeof(hash));
+                hashLen = 0;
+            }
+        } else {
+            SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Failed to allocate MD context in hashWhitenData");
+            hashLen = 0;
+        }
         
         // Copy as much of the hash as needed
         int bytesToCopy = std::min(blockSize, output.size() - i);

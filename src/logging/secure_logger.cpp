@@ -17,9 +17,16 @@ SecureLogger::SecureLogger()
 }
 
 SecureLogger::~SecureLogger() {
-    if (m_logFile && m_logFile->isOpen()) {
-        m_logFile->close();
+    // Close and delete file if it exists
+    if (m_logFile) {
+        if (m_logFile->isOpen()) {
+            m_logFile->close();
+        }
         delete m_logFile;
+    }
+    
+    // Delete stream if it exists
+    if (m_logStream) {
         delete m_logStream;
     }
 }

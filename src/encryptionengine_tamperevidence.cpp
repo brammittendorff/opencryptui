@@ -19,19 +19,31 @@ QByteArray EncryptionEngine::generateDigitalSignature(QFile& inputFile, const QB
     QByteArray signatureKey(crypto_sign_SECRETKEYBYTES, 0);
     
     // Derive a separate key for signing
-    EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
-    EVP_DigestInit_ex(mdctx, EVP_sha512(), NULL);
-    
-    // Include original key and a fixed suffix for domain separation
     QByteArray signingMaterial = key;
     signingMaterial.append("SIG_KEY_DOMAIN_SEPARATION");
     
-    EVP_DigestUpdate(mdctx, signingMaterial.constData(), signingMaterial.size());
+    unsigned char hash[EVP_MAX_MD_SIZE] = {0};
+    unsigned int hashLen = 0;
     
-    unsigned char hash[EVP_MAX_MD_SIZE];
-    unsigned int hashLen;
-    EVP_DigestFinal_ex(mdctx, hash, &hashLen);
+    EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
+    if (!mdctx) {
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Failed to allocate MD context for signature key derivation");
+        return QByteArray(); // Return empty signature on error
+    }
+    
+    bool success = true;
+    success = success && (EVP_DigestInit_ex(mdctx, EVP_sha512(), NULL) == 1);
+    success = success && (EVP_DigestUpdate(mdctx, signingMaterial.constData(), signingMaterial.size()) == 1);
+    success = success && (EVP_DigestFinal_ex(mdctx, hash, &hashLen) == 1);
+    
+    // Always free the context
     EVP_MD_CTX_free(mdctx);
+    
+    if (!success) {
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Signature key derivation failed");
+        sodium_memzero(hash, sizeof(hash));
+        return QByteArray(); // Return empty signature on error
+    }
     
     // Use the hash as seed for signature key
     memcpy(signatureKey.data(), hash, std::min<size_t>(hashLen, crypto_sign_SECRETKEYBYTES));
@@ -44,16 +56,39 @@ QByteArray EncryptionEngine::generateDigitalSignature(QFile& inputFile, const QB
     
     // Hash the file content in chunks
     mdctx = EVP_MD_CTX_new();
-    EVP_DigestInit_ex(mdctx, EVP_sha512(), NULL);
-    
-    QByteArray buffer(4096, 0);
-    while (!inputFile.atEnd()) {
-        qint64 bytesRead = inputFile.read(buffer.data(), buffer.size());
-        EVP_DigestUpdate(mdctx, buffer.constData(), bytesRead);
+    if (!mdctx) {
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Failed to allocate MD context for file hashing");
+        sodium_memzero(signatureKey.data(), signatureKey.size());
+        return QByteArray(); // Return empty signature on error
     }
     
-    EVP_DigestFinal_ex(mdctx, hash, &hashLen);
+    success = true;
+    success = success && (EVP_DigestInit_ex(mdctx, EVP_sha512(), NULL) == 1);
+    
+    if (success) {
+        QByteArray buffer(4096, 0);
+        while (!inputFile.atEnd() && success) {
+            qint64 bytesRead = inputFile.read(buffer.data(), buffer.size());
+            if (bytesRead > 0) {
+                success = success && (EVP_DigestUpdate(mdctx, buffer.constData(), bytesRead) == 1);
+            } else if (bytesRead < 0) {
+                success = false;
+                SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "File read error during signature generation");
+            }
+        }
+        
+        success = success && (EVP_DigestFinal_ex(mdctx, hash, &hashLen) == 1);
+    }
+    
+    // Always free the context
     EVP_MD_CTX_free(mdctx);
+    
+    if (!success) {
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "File hashing failed during signature generation");
+        sodium_memzero(signatureKey.data(), signatureKey.size());
+        sodium_memzero(hash, sizeof(hash));
+        return QByteArray(); // Return empty signature on error
+    }
     
     // Create signature
     QByteArray signature(crypto_sign_BYTES + hashLen, 0);
@@ -189,18 +224,33 @@ bool EncryptionEngine::verifySignature(QFile& inputFile, const QByteArray& key, 
     QByteArray derivedPrivateKey(crypto_sign_SECRETKEYBYTES, 0);
     
     // Derive private key same way as during signing
-    EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
-    EVP_DigestInit_ex(mdctx, EVP_sha512(), NULL);
-    
     QByteArray signingMaterial = key;
     signingMaterial.append("SIG_KEY_DOMAIN_SEPARATION");
     
-    EVP_DigestUpdate(mdctx, signingMaterial.constData(), signingMaterial.size());
+    unsigned char hash[EVP_MAX_MD_SIZE] = {0};
+    unsigned int hashLen = 0;
     
-    unsigned char hash[EVP_MAX_MD_SIZE];
-    unsigned int hashLen;
-    EVP_DigestFinal_ex(mdctx, hash, &hashLen);
+    EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
+    if (!mdctx) {
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Failed to allocate MD context for signature verification");
+        inputFile.seek(originalPosition);
+        return false;
+    }
+    
+    bool success = true;
+    success = success && (EVP_DigestInit_ex(mdctx, EVP_sha512(), NULL) == 1);
+    success = success && (EVP_DigestUpdate(mdctx, signingMaterial.constData(), signingMaterial.size()) == 1);
+    success = success && (EVP_DigestFinal_ex(mdctx, hash, &hashLen) == 1);
+    
+    // Always free the context
     EVP_MD_CTX_free(mdctx);
+    
+    if (!success) {
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Key derivation failed during signature verification");
+        sodium_memzero(hash, sizeof(hash));
+        inputFile.seek(originalPosition);
+        return false;
+    }
     
     // Copy derived key
     memcpy(derivedPrivateKey.data(), hash, std::min<size_t>(hashLen, crypto_sign_SECRETKEYBYTES));
@@ -223,24 +273,48 @@ bool EncryptionEngine::verifySignature(QFile& inputFile, const QByteArray& key, 
     // Hash the file content (excluding signature block)
     inputFile.seek(0);
     mdctx = EVP_MD_CTX_new();
-    EVP_DigestInit_ex(mdctx, EVP_sha512(), NULL);
-    
-    qint64 dataSize = inputFile.size() - 12 - signatureLength;
-    QByteArray buffer(4096, 0);
-    
-    qint64 remaining = dataSize;
-    while (remaining > 0) {
-        qint64 toRead = std::min(remaining, static_cast<qint64>(buffer.size()));
-        qint64 bytesRead = inputFile.read(buffer.data(), toRead);
-        
-        if (bytesRead <= 0) break;
-        
-        EVP_DigestUpdate(mdctx, buffer.constData(), bytesRead);
-        remaining -= bytesRead;
+    if (!mdctx) {
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "Failed to allocate MD context for file hashing");
+        inputFile.seek(originalPosition);
+        return false;
     }
     
-    EVP_DigestFinal_ex(mdctx, hash, &hashLen);
+    success = true;
+    success = success && (EVP_DigestInit_ex(mdctx, EVP_sha512(), NULL) == 1);
+    
+    if (success) {
+        qint64 dataSize = inputFile.size() - 12 - signatureLength;
+        QByteArray buffer(4096, 0);
+        
+        qint64 remaining = dataSize;
+        while (remaining > 0 && success) {
+            qint64 toRead = std::min(remaining, static_cast<qint64>(buffer.size()));
+            qint64 bytesRead = inputFile.read(buffer.data(), toRead);
+            
+            if (bytesRead <= 0) {
+                success = false;
+                SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "File read error during signature verification");
+                break;
+            }
+            
+            success = success && (EVP_DigestUpdate(mdctx, buffer.constData(), bytesRead) == 1);
+            remaining -= bytesRead;
+        }
+        
+        if (success) {
+            success = success && (EVP_DigestFinal_ex(mdctx, hash, &hashLen) == 1);
+        }
+    }
+    
+    // Always free the context
     EVP_MD_CTX_free(mdctx);
+    
+    if (!success) {
+        SECURE_LOG(ERROR_LEVEL, "EncryptionEngine", "File hashing failed during signature verification");
+        sodium_memzero(hash, sizeof(hash));
+        inputFile.seek(originalPosition);
+        return false;
+    }
     
     // Verify signature
     int result = crypto_sign_verify_detached(
