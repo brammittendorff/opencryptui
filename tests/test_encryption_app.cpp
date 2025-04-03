@@ -16,23 +16,23 @@
 #include <QLabel>
 #include "logging/secure_logger.h"
 
-// Override qDebug/qInfo/qWarning in CI environments to reduce test output
-#if defined(QT_CI_BUILD) || defined(CI) || defined(GITLAB_CI) || defined(GITHUB_ACTIONS) || defined(TRAVIS)
+// Test application always has logging enabled
 #include <QLoggingCategory>
 
-// Disable all Qt logging for CI builds
-void ciMessageHandler(QtMsgType, const QMessageLogContext &, const QString &) {
-    // Do nothing - suppress output
-}
-
-// Install the handler at the start of the program
-struct InstallMessageHandler {
-    InstallMessageHandler() {
-        qInstallMessageHandler(ciMessageHandler);
-        QLoggingCategory::setFilterRules("*.debug=false\n*.info=false\n*.warning=false");
+// Enable all logging for the test application in all environments
+struct EnableLoggingForTests {
+    EnableLoggingForTests() {
+        // Get logger instance 
+        SecureLogger& logger = SecureLogger::getInstance();
+        
+        // Enable full logging for tests
+        logger.setLogLevel(SecureLogger::LogLevel::DEBUG);
+        logger.setLogToFile(true);
+        
+        // Also enable Qt's native logging
+        QLoggingCategory::setFilterRules("*.debug=true\n*.info=true\n*.warning=true");
     }
-} installHandler;
-#endif
+} enableTestLogging;
 
 class TestOpenCryptUI : public QObject
 {

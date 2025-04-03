@@ -13,25 +13,13 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
     
-    // Configure logging
+    // Configure logging - simplified approach
     SecureLogger& logger = SecureLogger::getInstance();
     
-    // Configure logging based on build mode
-    if (isReleaseMode()) {
-        // Disable detailed logging in release mode
-        logger.setLogLevel(SecureLogger::LogLevel::ERROR_LEVEL);
-        logger.setLogToFile(false);
-    } else {
-        #ifdef QT_DEBUG
-            // More verbose logging in debug mode
-            logger.setLogLevel(SecureLogger::LogLevel::DEBUG);
-            logger.setLogToFile(true);
-        #else
-            // Limited logging in release mode
-            logger.setLogLevel(SecureLogger::LogLevel::INFO);
-            logger.setLogToFile(false);
-        #endif
-    }
+    // No logging in the main application (OpenCryptUI)
+    // All logging is done in the test version (OpenCryptUITest)
+    logger.setLogLevel(SecureLogger::LogLevel::ERROR_LEVEL);
+    logger.setLogToFile(false);
 
     QApplication app(argc, argv);
 

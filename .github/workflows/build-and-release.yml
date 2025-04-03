@@ -357,50 +357,27 @@ jobs:
           name: ${{ matrix.os }}-build
           path: build/
 
-      - name: Create test log directory
-        run: mkdir -p build/Testing/Temporary
-
-      # Platform-specific test preparation
+      # Install platform-specific dependencies for testing
       - name: Install xvfb (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get install -y xvfb
 
-      - name: Configure Qt test environment (Windows) 
-        if: matrix.os == 'windows-latest'
-        shell: msys2 {0}
-        run: |
-          echo "Setting up minimal platform for Windows tests"
-          export QT_QPA_PLATFORM=minimal
-          echo "QT_QPA_PLATFORM=minimal" >> $GITHUB_ENV
-          
-          # For tests, we want to see diagnostics
-          unset CI
-          unset QT_LOGGING_RULES
-          unset QT_MESSAGE_PATTERN
-          
-          # Make sure test executable is runnable
-          if [ -f "build/OpenCryptUITest.exe" ]; then
-            chmod +x build/OpenCryptUITest.exe
-          fi
-
-      # Run tests consistently across all platforms
+      # Run tests on each platform
       - name: Run tests (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
           cd build
           echo "Running tests with maximum verbosity..."
-          xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" ./OpenCryptUITest -v4 | tee Testing/Temporary/LastTest.log
-          echo "Test execution complete with exit code: $?" >> Testing/Temporary/LastTest.log
-          echo "Test timestamp: $(date)" >> Testing/Temporary/LastTest.log
+          mkdir -p Testing/Temporary
+          xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" ./OpenCryptUITest -v4 > Testing/Temporary/LastTest.log 2>&1
 
       - name: Run tests (macOS)
         if: matrix.os == 'macos-latest'
         run: |
           cd build
           echo "Running tests with maximum verbosity..."
-          ./OpenCryptUITest -v4 | tee Testing/Temporary/LastTest.log
-          echo "Test execution complete with exit code: $?" >> Testing/Temporary/LastTest.log
-          echo "Test timestamp: $(date)" >> Testing/Temporary/LastTest.log
+          mkdir -p Testing/Temporary
+          ./OpenCryptUITest -v4 > Testing/Temporary/LastTest.log 2>&1
 
       - name: Run tests (Windows)
         if: matrix.os == 'windows-latest'
@@ -408,47 +385,21 @@ jobs:
         run: |
           cd build
           echo "Running tests with maximum verbosity..."
+          mkdir -p Testing/Temporary
+          
+          # Set minimal platform for Windows
+          export QT_QPA_PLATFORM=minimal
           
           if [ -f "./OpenCryptUITest.exe" ]; then
-            ./OpenCryptUITest.exe -v4 | tee Testing/Temporary/LastTest.log
-            TEST_EXIT_CODE=$?
-            
-            echo "Test execution complete with exit code: $TEST_EXIT_CODE" >> Testing/Temporary/LastTest.log
-            echo "Test timestamp: $(date)" >> Testing/Temporary/LastTest.log
-            
-            if [ $TEST_EXIT_CODE -ne 0 ]; then
-              echo "Test execution failed with code $TEST_EXIT_CODE"
-              # Show additional diagnostic information
-              echo "Directory contents:"
-              ls -la
-            fi
+            # Make executable runnable
+            chmod +x ./OpenCryptUITest.exe
+            ./OpenCryptUITest.exe -v4 > Testing/Temporary/LastTest.log 2>&1
           else
-            echo "ERROR: OpenCryptUITest.exe not found! Creating empty log file."
-            echo "Test executable not found in $(pwd)" > Testing/Temporary/LastTest.log
+            echo "ERROR: OpenCryptUITest.exe not found!" > Testing/Temporary/LastTest.log
             echo "Directory contents: $(ls -la)" >> Testing/Temporary/LastTest.log
           fi
 
-      - name: Ensure test log exists and display content
-        if: always() # Run even if tests fail
-        run: |
-          mkdir -p build/Testing/Temporary
-          
-          # Create a log file if it doesn't exist
-          if [ ! -f "build/Testing/Temporary/LastTest.log" ]; then
-            echo "Test run completed at $(date)" > build/Testing/Temporary/LastTest.log
-            echo "No test output captured - this is a placeholder file" >> build/Testing/Temporary/LastTest.log
-          elif [ ! -s "build/Testing/Temporary/LastTest.log" ]; then
-            # File exists but is empty
-            echo "Test log file exists but is empty. Adding placeholder content." >> build/Testing/Temporary/LastTest.log
-            echo "Test timestamp: $(date)" >> build/Testing/Temporary/LastTest.log
-            echo "This is an automatically generated log because the original log was empty." >> build/Testing/Temporary/LastTest.log
-          fi
-          
-          # Display log information
-          echo "Log file size: $(wc -c < build/Testing/Temporary/LastTest.log || echo 'unknown') bytes"
-          echo "Test log content (first 20 lines):"
-          head -20 build/Testing/Temporary/LastTest.log || echo "Cannot read log file"
-
+      # Upload test results
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
