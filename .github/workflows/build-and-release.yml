@@ -323,14 +323,55 @@ jobs:
           name: ${{ matrix.os }}-build
           path: build/
 
-      - name: Run tests (Linux)
+      - name: Run tests and generate screenshot (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
-          sudo apt-get install -y xvfb
+          sudo apt-get install -y xvfb scrot imagemagick
           xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" cmake --build build --target all
           cd build
           echo "Running tests with minimal output..."
           xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" ./ci_test.sh
+          
+          # Create screenshot capture script
+          cat > capture_screenshot.sh << 'EOF'
+          #!/bin/bash
+          # Start the application in the background
+          echo "Starting application..."
+          export DISPLAY=:99
+          ./OpenCryptUI &
+          APP_PID=$!
+          
+          # Wait for the window to appear and become stable
+          echo "Waiting for window to stabilize..."
+          sleep 3
+          
+          # Take the screenshot
+          echo "Taking screenshot..."
+          scrot -u "opencryptui_screenshot.png"
+          
+          # Terminate the application
+          kill $APP_PID
+          
+          # Optimize the image
+          convert opencryptui_screenshot.png -quality 90 opencryptui_screenshot.png
+          
+          echo "Screenshot captured successfully!"
+          EOF
+          
+          chmod +x capture_screenshot.sh
+          
+          # Run the screenshot capture script
+          echo "Capturing application screenshot..."
+          xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" ./capture_screenshot.sh
+          
+          # Check if screenshot was created successfully
+          if [ -f "opencryptui_screenshot.png" ]; then
+            echo "Screenshot created successfully"
+            # Copy the screenshot to the repository root
+            cp opencryptui_screenshot.png ../opencryptui.png
+          else
+            echo "Failed to create screenshot"
+          fi
 
       - name: Run tests (macOS)
         if: matrix.os == 'macos-latest'
@@ -355,6 +396,26 @@ jobs:
         with:
           name: test-results-${{ matrix.os }}
           path: build/Testing/Temporary/LastTest.log
+      
+      - name: Commit updated screenshot
+        if: matrix.os == 'ubuntu-latest' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          if [ -f "opencryptui.png" ]; then
+            git config --local user.email "github-actions[bot]@users.noreply.github.com"
+            git config --local user.name "github-actions[bot]"
+            
+            # Check if the screenshot has actually changed
+            git diff --quiet opencryptui.png || {
+              echo "Screenshot has changed, committing..."
+              git add opencryptui.png
+              git commit -m "Update application screenshot [skip ci]"
+              
+              # Push the changes
+              git push https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
+            }
+          else
+            echo "Screenshot file not found, skipping commit"
+          fi
 
   release:
     needs: build

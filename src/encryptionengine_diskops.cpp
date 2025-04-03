@@ -298,12 +298,15 @@ bool isValidDiskPath(const QString& path) {
         
         // DriveType: 2=Removable, 3=Fixed, 4=Network, 5=Optical, 6=RAM disk
         // Only allow removable drives (2), network drives (4), or RAM disks (6)
-        int driveType = output.trimmed().split("\n").last().trimmed().toInt();
+        QStringList outputLines = output.trimmed().split('\n');
+        int driveType = outputLines.last().trimmed().toInt();
         if (driveType == 3) {
             // It's a fixed drive, make sure it's not the system drive
             process.start("wmic", QStringList() << "OS" << "get" << "SystemDrive");
             process.waitForFinished();
-            QString systemDrive = process.readAllStandardOutput().trimmed().split("\n").last().trimmed();
+            QString output = process.readAllStandardOutput().trimmed();
+            QStringList lines = output.split('\n');
+            QString systemDrive = lines.last().trimmed();
             
             if (systemDrive.compare(path.left(2), Qt::CaseInsensitive) == 0) {
                 SECURE_LOG(ERROR, "DiskOperations", QString("Cannot encrypt system drive: %1").arg(path));
