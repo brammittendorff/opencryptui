@@ -357,46 +357,42 @@ jobs:
           name: ${{ matrix.os }}-build
           path: build/
 
-      # Install platform-specific dependencies for testing
-      - name: Install xvfb (Linux)
-        if: matrix.os == 'ubuntu-latest'
-        run: sudo apt-get install -y xvfb
-
-      # Run tests on each platform
       - name: Run tests (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
+          sudo apt-get install -y xvfb
+          xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" cmake --build build --target all
           cd build
-          echo "Running tests with maximum verbosity..."
           mkdir -p Testing/Temporary
-          xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" ./OpenCryptUITest -v4 > Testing/Temporary/LastTest.log 2>&1
+          echo "Running tests with minimal output..."
+          xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" ./OpenCryptUITest -v4 | tee Testing/Temporary/LastTest.log
 
       - name: Run tests (macOS)
         if: matrix.os == 'macos-latest'
         run: |
+          cmake --build build --target all
           cd build
-          echo "Running tests with maximum verbosity..."
           mkdir -p Testing/Temporary
-          ./OpenCryptUITest -v4 > Testing/Temporary/LastTest.log 2>&1
+          echo "Running tests with minimal output..."
+          ./OpenCryptUITest -v4 | tee Testing/Temporary/LastTest.log
 
       - name: Run tests (Windows)
         if: matrix.os == 'windows-latest'
         shell: msys2 {0}
         run: |
+          cmake --build build --target all
           cd build
-          echo "Running tests with maximum verbosity..."
           mkdir -p Testing/Temporary
-          
-          # Set minimal platform for Windows
+          echo "Running tests with minimal output..."
           export QT_QPA_PLATFORM=minimal
           
           if [ -f "./OpenCryptUITest.exe" ]; then
-            # Make executable runnable
             chmod +x ./OpenCryptUITest.exe
-            ./OpenCryptUITest.exe -v4 > Testing/Temporary/LastTest.log 2>&1
+            ./OpenCryptUITest.exe -v4 | tee Testing/Temporary/LastTest.log
           else
-            echo "ERROR: OpenCryptUITest.exe not found!" > Testing/Temporary/LastTest.log
-            echo "Directory contents: $(ls -la)" >> Testing/Temporary/LastTest.log
+            echo "ERROR: OpenCryptUITest.exe not found!" | tee Testing/Temporary/LastTest.log
+            echo "Directory contents: $(ls -la)" | tee -a Testing/Temporary/LastTest.log
+            exit 1
           fi
 
       # Upload test results
