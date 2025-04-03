@@ -365,7 +365,7 @@ jobs:
           cd build
           mkdir -p Testing/Temporary
           echo "Running tests with minimal output..."
-          xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" ./OpenCryptUITest -v4 | tee Testing/Temporary/LastTest.log
+          xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" ./OpenCryptUITest -v2 | tee Testing/Temporary/LastTest.log
 
       - name: Run tests (macOS)
         if: matrix.os == 'macos-latest'
@@ -374,7 +374,7 @@ jobs:
           cd build
           mkdir -p Testing/Temporary
           echo "Running tests with minimal output..."
-          ./OpenCryptUITest -v4 | tee Testing/Temporary/LastTest.log
+          ./OpenCryptUITest -v2 | tee Testing/Temporary/LastTest.log
 
       - name: Run tests (Windows)
         if: matrix.os == 'windows-latest'
@@ -388,7 +388,8 @@ jobs:
           
           if [ -f "./OpenCryptUITest.exe" ]; then
             chmod +x ./OpenCryptUITest.exe
-            ./OpenCryptUITest.exe -v4 | tee Testing/Temporary/LastTest.log
+            # Use -v2 instead of -v4, as -v4 is not a valid option for QtTest
+            ./OpenCryptUITest.exe -v2 | tee Testing/Temporary/LastTest.log
           else
             echo "ERROR: OpenCryptUITest.exe not found!" | tee Testing/Temporary/LastTest.log
             echo "Directory contents: $(ls -la)" | tee -a Testing/Temporary/LastTest.log
