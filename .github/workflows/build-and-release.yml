@@ -397,8 +397,27 @@ jobs:
           name: test-results-${{ matrix.os }}
           path: build/Testing/Temporary/LastTest.log
       
+      - name: Upload screenshot
+        if: matrix.os == 'ubuntu-latest' && success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: opencryptui-screenshot
+          path: opencryptui.png
+
+  update-screenshot:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && success()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Download screenshot
+        uses: actions/download-artifact@v4
+        with:
+          name: opencryptui-screenshot
+          
       - name: Commit updated screenshot
-        if: matrix.os == 'ubuntu-latest' && github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           if [ -f "opencryptui.png" ]; then
             git config --local user.email "github-actions[bot]@users.noreply.github.com"
@@ -416,7 +435,7 @@ jobs:
           else
             echo "Screenshot file not found, skipping commit"
           fi
-
+          
   release:
     needs: build
     runs-on: ubuntu-latest
