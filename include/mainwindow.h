@@ -15,6 +15,20 @@
 #include <QJsonObject>
 #include <QFile>
 #include <QDir>
+#include <QSettings>
+
+#ifdef Q_OS_WIN
+    #include <windows.h>
+    #include <shellapi.h>
+#elif defined(Q_OS_UNIX)
+    #include <unistd.h>
+    #include <sys/types.h>
+#endif
+
+#ifdef Q_OS_MACOS
+    #include <Security/Authorization.h>
+    #include <Security/AuthorizationTags.h>
+#endif
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -41,6 +55,11 @@ private slots:
     void on_folderDecryptButton_clicked();
     void on_folderBrowseButton_clicked();
     void on_folderKeyfileBrowseButton_clicked();
+    void on_diskEncryptButton_clicked();
+    void on_diskDecryptButton_clicked();
+    void on_diskBrowseButton_clicked();
+    void on_diskKeyfileBrowseButton_clicked();
+    void on_refreshDisksButton_clicked();
     void updateProgress(int value);
     void handleFinished(bool success, const QString &errorMessage);
     void showEstimatedTime(double seconds);
@@ -81,6 +100,13 @@ private:
     void updateBenchmarkTable(int iterations, double mbps, double ms, const QString &cipher, const QString &kdf);
 
     void safeConnect(const QObject* sender, const char* signal, const QObject* receiver, const char* method);
+
+    // Helper function for disk encryption
+    bool containsKeyfile(QListWidget* listWidget, const QString& path);
+    
+    // Admin privilege functions for disk encryption
+    bool hasAdminPrivileges();
+    bool elevatePrivileges(const QString& diskPath);
 
     void loadPreferences();
     void savePreferences();

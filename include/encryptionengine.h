@@ -16,6 +16,7 @@ struct evp_cipher_ctx_st;
 typedef struct evp_cipher_ctx_st EVP_CIPHER_CTX;
 
 #include "cryptoprovider.h"
+#include "encryptionengine_diskops.h"
 
 class EncryptionEngine
 {
@@ -32,6 +33,14 @@ public:
     bool decryptFile(const QString& filePath, const QString& password, const QString& algorithm, const QString& kdf, int iterations, bool useHMAC, const QString& customHeader, const QStringList& keyfilePaths = QStringList());
     bool encryptFolder(const QString& folderPath, const QString& password, const QString& algorithm, const QString& kdf, int iterations, bool useHMAC, const QString& customHeader, const QStringList& keyfilePaths = QStringList());
     bool decryptFolder(const QString& folderPath, const QString& password, const QString& algorithm, const QString& kdf, int iterations, bool useHMAC, const QString& customHeader, const QStringList& keyfilePaths = QStringList());
+    
+    // Disk encryption methods
+    bool encryptDisk(const QString& diskPath, const QString& password, const QString& algorithm, const QString& kdf, int iterations, bool useHMAC, const QStringList& keyfilePaths = QStringList());
+    bool decryptDisk(const QString& diskPath, const QString& password, const QString& algorithm, const QString& kdf, int iterations, bool useHMAC, const QStringList& keyfilePaths = QStringList());
+    
+    // Hidden volume support - encrypt/decrypt specific section of disk
+    bool encryptDiskSection(const QString& diskPath, const QString& password, const QString& algorithm, const QString& kdf, int iterations, bool useHMAC, const QStringList& keyfilePaths, qint64 startOffset, qint64 sectionSize);
+    bool decryptDiskSection(const QString& diskPath, const QString& password, const QString& algorithm, const QString& kdf, int iterations, bool useHMAC, const QStringList& keyfilePaths, qint64 startOffset, qint64 sectionSize);
 
     bool compressFolder(const QString& folderPath, const QString& outputFilePath);
     bool decompressFolder(const QString& filePath, const QString& outputFolderPath);

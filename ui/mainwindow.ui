@@ -41,89 +41,497 @@
                         <property name="currentIndex">
                             <number>0</number>
                         </property>
+                        <widget class="QWidget" name="diskTab">
+                            <attribute name="title">
+                                <string>Disk Encryption</string>
+                            </attribute>
+                            <layout class="QVBoxLayout" name="verticalLayout_6">
+                                <item>
+                                    <widget class="QGroupBox" name="diskSelectionGroup">
+                                        <property name="title">
+                                            <string>Disk Selection</string>
+                                        </property>
+                                        <layout class="QVBoxLayout" name="diskSelectionLayout">
+                                            <item>
+                                                <layout class="QHBoxLayout" name="horizontalLayout_10">
+                                                    <item>
+                                                        <widget class="QComboBox" name="diskComboBox">
+                                                            <property name="sizePolicy">
+                                                                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                                                                    <horstretch>0</horstretch>
+                                                                    <verstretch>0</verstretch>
+                                                                </sizepolicy>
+                                                            </property>
+                                                            <property name="placeholderText">
+                                                                <string>Select Disk or Volume</string>
+                                                            </property>
+                                                        </widget>
+                                                    </item>
+                                                    <item>
+                                                        <widget class="QPushButton" name="refreshDisksButton">
+                                                            <property name="text">
+                                                                <string>Refresh</string>
+                                                            </property>
+                                                            <property name="icon">
+                                                                <iconset theme="view-refresh"/>
+                                                            </property>
+                                                        </widget>
+                                                    </item>
+                                                </layout>
+                                            </item>
+                                            <item>
+                                                <layout class="QHBoxLayout" name="horizontalLayout_11">
+                                                    <item>
+                                                        <widget class="QLineEdit" name="diskPathLineEdit">
+                                                            <property name="placeholderText">
+                                                                <string>Disk Path</string>
+                                                            </property>
+                                                        </widget>
+                                                    </item>
+                                                    <item>
+                                                        <widget class="QPushButton" name="diskBrowseButton">
+                                                            <property name="text">
+                                                                <string>Browse</string>
+                                                            </property>
+                                                            <property name="icon">
+                                                                <iconset theme="document-open"/>
+                                                            </property>
+                                                        </widget>
+                                                    </item>
+                                                </layout>
+                                            </item>
+                                            <item>
+                                                <widget class="QLabel" name="diskInfoLabel">
+                                                    <property name="text">
+                                                        <string>Select a disk to view details</string>
+                                                    </property>
+                                                    <property name="wordWrap">
+                                                        <bool>true</bool>
+                                                    </property>
+                                                </widget>
+                                            </item>
+                                        </layout>
+                                    </widget>
+                                </item>
+                                <item>
+                                    <widget class="QGroupBox" name="diskEncryptionGroup">
+                                        <property name="title">
+                                            <string>Encryption Settings</string>
+                                        </property>
+                                        <layout class="QVBoxLayout" name="encryptionSettingsLayout">
+                                            <item>
+                                                <widget class="QTabWidget" name="diskSecurityTabs">
+                                                    <property name="currentIndex">
+                                                        <number>0</number>
+                                                    </property>
+                                                    <widget class="QWidget" name="standardVolumeTab">
+                                                        <attribute name="title">
+                                                            <string>Standard Volume</string>
+                                                        </attribute>
+                                                        <layout class="QVBoxLayout" name="standardVolumeLayout">
+                                                            <item>
+                                                                <widget class="QLineEdit" name="diskPasswordLineEdit">
+                                                                    <property name="echoMode">
+                                                                        <enum>QLineEdit::Password</enum>
+                                                                    </property>
+                                                                    <property name="placeholderText">
+                                                                        <string>Password</string>
+                                                                    </property>
+                                                                </widget>
+                                                            </item>
+                                                            <item>
+                                                                <widget class="QLineEdit" name="diskConfirmPasswordLineEdit">
+                                                                    <property name="echoMode">
+                                                                        <enum>QLineEdit::Password</enum>
+                                                                    </property>
+                                                                    <property name="placeholderText">
+                                                                        <string>Confirm Password</string>
+                                                                    </property>
+                                                                </widget>
+                                                            </item>
+                                                        </layout>
+                                                    </widget>
+                                                    <widget class="QWidget" name="hiddenVolumeTab">
+                                                        <attribute name="title">
+                                                            <string>Hidden Volume</string>
+                                                        </attribute>
+                                                        <layout class="QVBoxLayout" name="hiddenVolumeLayout">
+                                                            <item>
+                                                                <widget class="QLabel" name="hiddenVolumeInfoLabel">
+                                                                    <property name="text">
+                                                                        <string>A hidden volume creates a concealed encrypted area within the main encrypted volume. If forced to reveal your password, you can provide the outer volume password, keeping the hidden volume secure.</string>
+                                                                    </property>
+                                                                    <property name="wordWrap">
+                                                                        <bool>true</bool>
+                                                                    </property>
+                                                                </widget>
+                                                            </item>
+                                                            <item>
+                                                                <widget class="QLineEdit" name="outerPasswordLineEdit">
+                                                                    <property name="echoMode">
+                                                                        <enum>QLineEdit::Password</enum>
+                                                                    </property>
+                                                                    <property name="placeholderText">
+                                                                        <string>Outer Volume Password</string>
+                                                                    </property>
+                                                                </widget>
+                                                            </item>
+                                                            <item>
+                                                                <widget class="QLineEdit" name="hiddenPasswordLineEdit">
+                                                                    <property name="echoMode">
+                                                                        <enum>QLineEdit::Password</enum>
+                                                                    </property>
+                                                                    <property name="placeholderText">
+                                                                        <string>Hidden Volume Password (different from outer)</string>
+                                                                    </property>
+                                                                </widget>
+                                                            </item>
+                                                            <item>
+                                                                <layout class="QHBoxLayout" name="hiddenVolumeSizeLayout">
+                                                                    <item>
+                                                                        <widget class="QLabel" name="hiddenVolumeSizeLabel">
+                                                                            <property name="text">
+                                                                                <string>Hidden Volume Size (%):</string>
+                                                                            </property>
+                                                                        </widget>
+                                                                    </item>
+                                                                    <item>
+                                                                        <widget class="QSpinBox" name="hiddenVolumeSizeSpinBox">
+                                                                            <property name="minimum">
+                                                                                <number>10</number>
+                                                                            </property>
+                                                                            <property name="maximum">
+                                                                                <number>80</number>
+                                                                            </property>
+                                                                            <property name="value">
+                                                                                <number>30</number>
+                                                                            </property>
+                                                                            <property name="suffix">
+                                                                                <string>%</string>
+                                                                            </property>
+                                                                        </widget>
+                                                                    </item>
+                                                                </layout>
+                                                            </item>
+                                                        </layout>
+                                                    </widget>
+                                                </widget>
+                                            </item>
+                                            <item>
+                                                <widget class="QGroupBox" name="encryptionAlgorithmGroup">
+                                                    <property name="title">
+                                                        <string>Algorithm Settings</string>
+                                                    </property>
+                                                    <layout class="QVBoxLayout" name="algorithmLayout">
+                                                        <item>
+                                                            <widget class="QComboBox" name="diskAlgorithmComboBox">
+                                                                <property name="toolTip">
+                                                                    <string>Select Encryption Algorithm</string>
+                                                                </property>
+                                                            </widget>
+                                                        </item>
+                                                        <item>
+                                                            <widget class="QComboBox" name="diskKdfComboBox">
+                                                                <property name="toolTip">
+                                                                    <string>Select Key Derivation Function</string>
+                                                                </property>
+                                                            </widget>
+                                                        </item>
+                                                        <item>
+                                                            <layout class="QHBoxLayout" name="diskHorizontalLayout_9">
+                                                                <item>
+                                                                    <widget class="QLabel" name="diskIterationsLabel">
+                                                                        <property name="text">
+                                                                            <string>Iterations:</string>
+                                                                        </property>
+                                                                    </widget>
+                                                                </item>
+                                                                <item>
+                                                                    <widget class="QSpinBox" name="diskIterationsSpinBox">
+                                                                        <property name="minimum">
+                                                                            <number>10</number>
+                                                                        </property>
+                                                                        <property name="maximum">
+                                                                            <number>1000000</number>
+                                                                        </property>
+                                                                        <property name="value">
+                                                                            <number>10</number>
+                                                                        </property>
+                                                                    </widget>
+                                                                </item>
+                                                            </layout>
+                                                        </item>
+                                                        <item>
+                                                            <widget class="QCheckBox" name="diskHmacCheckBox">
+                                                                <property name="text">
+                                                                    <string>Enable HMAC Integrity Check</string>
+                                                                </property>
+                                                                <property name="checked">
+                                                                    <bool>true</bool>
+                                                                </property>
+                                                            </widget>
+                                                        </item>
+                                                    </layout>
+                                                </widget>
+                                            </item>
+                                            <item>
+                                                <widget class="QGroupBox" name="diskKeyfileGroup">
+                                                    <property name="title">
+                                                        <string>Keyfiles (Optional)</string>
+                                                    </property>
+                                                    <layout class="QVBoxLayout" name="keyfileLayout">
+                                                        <item>
+                                                            <widget class="QPushButton" name="diskKeyfileBrowseButton">
+                                                                <property name="text">
+                                                                    <string>Browse Keyfiles</string>
+                                                                </property>
+                                                                <property name="icon">
+                                                                    <iconset theme="document-open"/>
+                                                                </property>
+                                                            </widget>
+                                                        </item>
+                                                        <item>
+                                                            <widget class="CustomListWidget" name="diskKeyfileListWidget"/>
+                                                        </item>
+                                                    </layout>
+                                                </widget>
+                                            </item>
+                                        </layout>
+                                    </widget>
+                                </item>
+                                <item>
+                                    <widget class="QProgressBar" name="diskProgressBar">
+                                        <property name="visible">
+                                            <bool>false</bool>
+                                        </property>
+                                    </widget>
+                                </item>
+                                <item>
+                                    <widget class="QLabel" name="diskEstimatedTimeLabel">
+                                        <property name="text">
+                                            <string>Estimated time: </string>
+                                        </property>
+                                        <property name="visible">
+                                            <bool>false</bool>
+                                        </property>
+                                    </widget>
+                                </item>
+                                <item>
+                                    <layout class="QHBoxLayout" name="horizontalLayout_12">
+                                        <item>
+                                            <widget class="QPushButton" name="diskEncryptButton">
+                                                <property name="text">
+                                                    <string>Encrypt Disk</string>
+                                                </property>
+                                                <property name="sizePolicy">
+                                                    <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                                                        <horstretch>0</horstretch>
+                                                        <verstretch>0</verstretch>
+                                                    </sizepolicy>
+                                                </property>
+                                                <property name="minimumSize">
+                                                    <size>
+                                                        <width>0</width>
+                                                        <height>50</height>
+                                                    </size>
+                                                </property>
+                                                <property name="icon">
+                                                    <iconset theme="document-encrypt"/>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                        <item>
+                                            <widget class="QPushButton" name="diskDecryptButton">
+                                                <property name="text">
+                                                    <string>Decrypt Disk</string>
+                                                </property>
+                                                <property name="sizePolicy">
+                                                    <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                                                        <horstretch>0</horstretch>
+                                                        <verstretch>0</verstretch>
+                                                    </sizepolicy>
+                                                </property>
+                                                <property name="minimumSize">
+                                                    <size>
+                                                        <width>0</width>
+                                                        <height>50</height>
+                                                    </size>
+                                                </property>
+                                                <property name="icon">
+                                                    <iconset theme="document-decrypt"/>
+                                                </property>
+                                            </widget>
+                                        </item>
+                                    </layout>
+                                </item>
+                            </layout>
+                        </widget>
                         <widget class="QWidget" name="fileTab">
                             <attribute name="title">
                                 <string>File Encryption</string>
                             </attribute>
                             <layout class="QVBoxLayout" name="verticalLayout_3">
                                 <item>
-                                    <layout class="QHBoxLayout" name="horizontalLayout_5">
-                                        <item>
-                                            <widget class="QLineEdit" name="filePathLineEdit">
-                                                <property name="placeholderText">
-                                                    <string>File Path</string>
-                                                </property>
-                                            </widget>
-                                        </item>
-                                        <item>
-                                            <widget class="QPushButton" name="fileBrowseButton">
-                                                <property name="text">
-                                                    <string>Browse</string>
-                                                </property>
-                                            </widget>
-                                        </item>
-                                    </layout>
-                                </item>
-                                <item>
-                                    <widget class="QLineEdit" name="filePasswordLineEdit">
-                                        <property name="echoMode">
-                                            <enum>QLineEdit::Password</enum>
+                                    <widget class="QGroupBox" name="fileSelectionGroup">
+                                        <property name="title">
+                                            <string>File Selection</string>
                                         </property>
-                                        <property name="placeholderText">
-                                            <string>Password</string>
-                                        </property>
+                                        <layout class="QVBoxLayout" name="fileSelectionLayout">
+                                            <item>
+                                                <layout class="QHBoxLayout" name="horizontalLayout_5">
+                                                    <item>
+                                                        <widget class="QLineEdit" name="filePathLineEdit">
+                                                            <property name="placeholderText">
+                                                                <string>File Path</string>
+                                                            </property>
+                                                        </widget>
+                                                    </item>
+                                                    <item>
+                                                        <widget class="QPushButton" name="fileBrowseButton">
+                                                            <property name="text">
+                                                                <string>Browse</string>
+                                                            </property>
+                                                            <property name="icon">
+                                                                <iconset theme="document-open"/>
+                                                            </property>
+                                                        </widget>
+                                                    </item>
+                                                </layout>
+                                            </item>
+                                            <item>
+                                                <widget class="QLabel" name="fileInfoLabel">
+                                                    <property name="text">
+                                                        <string>Select a file to view details</string>
+                                                    </property>
+                                                    <property name="wordWrap">
+                                                        <bool>true</bool>
+                                                    </property>
+                                                </widget>
+                                            </item>
+                                        </layout>
                                     </widget>
                                 </item>
                                 <item>
-                                    <widget class="QComboBox" name="fileAlgorithmComboBox"/>
-                                </item>
-                                <item>
-                                    <widget class="QComboBox" name="kdfComboBox">
-                                        <property name="toolTip">
-                                            <string>Select Key Derivation Function</string>
+                                    <widget class="QGroupBox" name="fileEncryptionGroup">
+                                        <property name="title">
+                                            <string>Encryption Settings</string>
                                         </property>
+                                        <layout class="QVBoxLayout" name="fileEncryptionSettingsLayout">
+                                            <item>
+                                                <widget class="QTabWidget" name="fileSecurityTabs">
+                                                    <property name="currentIndex">
+                                                        <number>0</number>
+                                                    </property>
+                                                    <widget class="QWidget" name="filePasswordTab">
+                                                        <attribute name="title">
+                                                            <string>Password</string>
+                                                        </attribute>
+                                                        <layout class="QVBoxLayout" name="filePasswordLayout">
+                                                            <item>
+                                                                <widget class="QLineEdit" name="filePasswordLineEdit">
+                                                                    <property name="echoMode">
+                                                                        <enum>QLineEdit::Password</enum>
+                                                                    </property>
+                                                                    <property name="placeholderText">
+                                                                        <string>Password</string>
+                                                                    </property>
+                                                                </widget>
+                                                            </item>
+                                                            <item>
+                                                                <widget class="QLineEdit" name="fileConfirmPasswordLineEdit">
+                                                                    <property name="echoMode">
+                                                                        <enum>QLineEdit::Password</enum>
+                                                                    </property>
+                                                                    <property name="placeholderText">
+                                                                        <string>Confirm Password</string>
+                                                                    </property>
+                                                                </widget>
+                                                            </item>
+                                                        </layout>
+                                                    </widget>
+                                                </widget>
+                                            </item>
+                                            <item>
+                                                <widget class="QGroupBox" name="fileAlgorithmGroup">
+                                                    <property name="title">
+                                                        <string>Algorithm Settings</string>
+                                                    </property>
+                                                    <layout class="QVBoxLayout" name="fileAlgorithmLayout">
+                                                        <item>
+                                                            <widget class="QComboBox" name="fileAlgorithmComboBox">
+                                                                <property name="toolTip">
+                                                                    <string>Select Encryption Algorithm</string>
+                                                                </property>
+                                                            </widget>
+                                                        </item>
+                                                        <item>
+                                                            <widget class="QComboBox" name="kdfComboBox">
+                                                                <property name="toolTip">
+                                                                    <string>Select Key Derivation Function</string>
+                                                                </property>
+                                                            </widget>
+                                                        </item>
+                                                        <item>
+                                                            <layout class="QHBoxLayout" name="horizontalLayout_9">
+                                                                <item>
+                                                                    <widget class="QLabel" name="iterationsLabel">
+                                                                        <property name="text">
+                                                                            <string>Iterations:</string>
+                                                                        </property>
+                                                                    </widget>
+                                                                </item>
+                                                                <item>
+                                                                    <widget class="QSpinBox" name="iterationsSpinBox">
+                                                                        <property name="minimum">
+                                                                            <number>10</number>
+                                                                        </property>
+                                                                        <property name="maximum">
+                                                                            <number>1000000</number>
+                                                                        </property>
+                                                                        <property name="value">
+                                                                            <number>10</number>
+                                                                        </property>
+                                                                    </widget>
+                                                                </item>
+                                                            </layout>
+                                                        </item>
+                                                        <item>
+                                                            <widget class="QCheckBox" name="hmacCheckBox">
+                                                                <property name="text">
+                                                                    <string>Enable HMAC Integrity Check</string>
+                                                                </property>
+                                                                <property name="checked">
+                                                                    <bool>true</bool>
+                                                                </property>
+                                                            </widget>
+                                                        </item>
+                                                    </layout>
+                                                </widget>
+                                            </item>
+                                            <item>
+                                                <widget class="QGroupBox" name="fileKeyfileGroup">
+                                                    <property name="title">
+                                                        <string>Keyfiles (Optional)</string>
+                                                    </property>
+                                                    <layout class="QVBoxLayout" name="fileKeyfileLayout">
+                                                        <item>
+                                                            <widget class="QPushButton" name="fileKeyfileBrowseButton">
+                                                                <property name="text">
+                                                                    <string>Browse Keyfiles</string>
+                                                                </property>
+                                                                <property name="icon">
+                                                                    <iconset theme="document-open"/>
+                                                                </property>
+                                                            </widget>
+                                                        </item>
+                                                        <item>
+                                                            <widget class="CustomListWidget" name="fileKeyfileListWidget"/>
+                                                        </item>
+                                                    </layout>
+                                                </widget>
+                                            </item>
+                                        </layout>
                                     </widget>
-                                </item>
-                                <item>
-                                    <layout class="QHBoxLayout" name="horizontalLayout_9">
-                                        <item>
-                                            <widget class="QLabel" name="iterationsLabel">
-                                                <property name="text">
-                                                    <string>Iterations:</string>
-                                                </property>
-                                            </widget>
-                                        </item>
-                                        <item>
-                                            <widget class="QSpinBox" name="iterationsSpinBox">
-                                                <property name="minimum">
-                                                    <number>10</number>
-                                                </property>
-                                                <property name="maximum">
-                                                    <number>1000000</number>
-                                                </property>
-                                                <property name="value">
-                                                    <number>10</number>
-                                                </property>
-                                            </widget>
-                                        </item>
-                                    </layout>
-                                </item>
-                                <item>
-                                    <widget class="QCheckBox" name="hmacCheckBox">
-                                        <property name="text">
-                                            <string>Enable HMAC Integrity Check</string>
-                                        </property>
-                                    </widget>
-                                </item>
-                                <item>
-                                    <widget class="QPushButton" name="fileKeyfileBrowseButton">
-                                        <property name="text">
-                                            <string>Browse Keyfiles</string>
-                                        </property>
-                                    </widget>
-                                </item>
-                                <item>
-                                    <widget class="CustomListWidget" name="fileKeyfileListWidget"/>
                                 </item>
                                 <item>
                                     <widget class="QProgressBar" name="fileProgressBar">
@@ -147,7 +555,7 @@
                                         <item>
                                             <widget class="QPushButton" name="fileEncryptButton">
                                                 <property name="text">
-                                                    <string>Encrypt</string>
+                                                    <string>Encrypt File</string>
                                                 </property>
                                                 <property name="sizePolicy">
                                                     <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
@@ -160,13 +568,16 @@
                                                         <width>0</width>
                                                         <height>50</height>
                                                     </size>
+                                                </property>
+                                                <property name="icon">
+                                                    <iconset theme="document-encrypt"/>
                                                 </property>
                                             </widget>
                                         </item>
                                         <item>
                                             <widget class="QPushButton" name="fileDecryptButton">
                                                 <property name="text">
-                                                    <string>Decrypt</string>
+                                                    <string>Decrypt File</string>
                                                 </property>
                                                 <property name="sizePolicy">
                                                     <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
@@ -179,6 +590,9 @@
                                                         <width>0</width>
                                                         <height>50</height>
                                                     </size>
+                                                </property>
+                                                <property name="icon">
+                                                    <iconset theme="document-decrypt"/>
                                                 </property>
                                             </widget>
                                         </item>
@@ -192,83 +606,166 @@
                             </attribute>
                             <layout class="QVBoxLayout" name="verticalLayout_4">
                                 <item>
-                                    <layout class="QHBoxLayout" name="horizontalLayout_7">
-                                        <item>
-                                            <widget class="QLineEdit" name="folderPathLineEdit">
-                                                <property name="placeholderText">
-                                                    <string>Folder Path</string>
-                                                </property>
-                                            </widget>
-                                        </item>
-                                        <item>
-                                            <widget class="QPushButton" name="folderBrowseButton">
-                                                <property name="text">
-                                                    <string>Browse</string>
-                                                </property>
-                                            </widget>
-                                        </item>
-                                    </layout>
-                                </item>
-                                <item>
-                                    <widget class="QLineEdit" name="folderPasswordLineEdit">
-                                        <property name="echoMode">
-                                            <enum>QLineEdit::Password</enum>
+                                    <widget class="QGroupBox" name="folderSelectionGroup">
+                                        <property name="title">
+                                            <string>Folder Selection</string>
                                         </property>
-                                        <property name="placeholderText">
-                                            <string>Password</string>
-                                        </property>
+                                        <layout class="QVBoxLayout" name="folderSelectionLayout">
+                                            <item>
+                                                <layout class="QHBoxLayout" name="horizontalLayout_7">
+                                                    <item>
+                                                        <widget class="QLineEdit" name="folderPathLineEdit">
+                                                            <property name="placeholderText">
+                                                                <string>Folder Path</string>
+                                                            </property>
+                                                        </widget>
+                                                    </item>
+                                                    <item>
+                                                        <widget class="QPushButton" name="folderBrowseButton">
+                                                            <property name="text">
+                                                                <string>Browse</string>
+                                                            </property>
+                                                            <property name="icon">
+                                                                <iconset theme="document-open"/>
+                                                            </property>
+                                                        </widget>
+                                                    </item>
+                                                </layout>
+                                            </item>
+                                            <item>
+                                                <widget class="QLabel" name="folderInfoLabel">
+                                                    <property name="text">
+                                                        <string>Select a folder to view details</string>
+                                                    </property>
+                                                    <property name="wordWrap">
+                                                        <bool>true</bool>
+                                                    </property>
+                                                </widget>
+                                            </item>
+                                        </layout>
                                     </widget>
                                 </item>
                                 <item>
-                                    <widget class="QComboBox" name="folderAlgorithmComboBox"/>
-                                </item>
-                                <item>
-                                    <widget class="QComboBox" name="folderKdfComboBox">
-                                        <property name="toolTip">
-                                            <string>Select Key Derivation Function</string>
+                                    <widget class="QGroupBox" name="folderEncryptionGroup">
+                                        <property name="title">
+                                            <string>Encryption Settings</string>
                                         </property>
+                                        <layout class="QVBoxLayout" name="folderEncryptionSettingsLayout">
+                                            <item>
+                                                <widget class="QTabWidget" name="folderSecurityTabs">
+                                                    <property name="currentIndex">
+                                                        <number>0</number>
+                                                    </property>
+                                                    <widget class="QWidget" name="folderPasswordTab">
+                                                        <attribute name="title">
+                                                            <string>Password</string>
+                                                        </attribute>
+                                                        <layout class="QVBoxLayout" name="folderPasswordLayout">
+                                                            <item>
+                                                                <widget class="QLineEdit" name="folderPasswordLineEdit">
+                                                                    <property name="echoMode">
+                                                                        <enum>QLineEdit::Password</enum>
+                                                                    </property>
+                                                                    <property name="placeholderText">
+                                                                        <string>Password</string>
+                                                                    </property>
+                                                                </widget>
+                                                            </item>
+                                                            <item>
+                                                                <widget class="QLineEdit" name="folderConfirmPasswordLineEdit">
+                                                                    <property name="echoMode">
+                                                                        <enum>QLineEdit::Password</enum>
+                                                                    </property>
+                                                                    <property name="placeholderText">
+                                                                        <string>Confirm Password</string>
+                                                                    </property>
+                                                                </widget>
+                                                            </item>
+                                                        </layout>
+                                                    </widget>
+                                                </widget>
+                                            </item>
+                                            <item>
+                                                <widget class="QGroupBox" name="folderAlgorithmGroup">
+                                                    <property name="title">
+                                                        <string>Algorithm Settings</string>
+                                                    </property>
+                                                    <layout class="QVBoxLayout" name="folderAlgorithmLayout">
+                                                        <item>
+                                                            <widget class="QComboBox" name="folderAlgorithmComboBox">
+                                                                <property name="toolTip">
+                                                                    <string>Select Encryption Algorithm</string>
+                                                                </property>
+                                                            </widget>
+                                                        </item>
+                                                        <item>
+                                                            <widget class="QComboBox" name="folderKdfComboBox">
+                                                                <property name="toolTip">
+                                                                    <string>Select Key Derivation Function</string>
+                                                                </property>
+                                                            </widget>
+                                                        </item>
+                                                        <item>
+                                                            <layout class="QHBoxLayout" name="folderHorizontalLayout_9">
+                                                                <item>
+                                                                    <widget class="QLabel" name="folderIterationsLabel">
+                                                                        <property name="text">
+                                                                            <string>Iterations:</string>
+                                                                        </property>
+                                                                    </widget>
+                                                                </item>
+                                                                <item>
+                                                                    <widget class="QSpinBox" name="folderIterationsSpinBox">
+                                                                        <property name="minimum">
+                                                                            <number>10</number>
+                                                                        </property>
+                                                                        <property name="maximum">
+                                                                            <number>1000000</number>
+                                                                        </property>
+                                                                        <property name="value">
+                                                                            <number>10</number>
+                                                                        </property>
+                                                                    </widget>
+                                                                </item>
+                                                            </layout>
+                                                        </item>
+                                                        <item>
+                                                            <widget class="QCheckBox" name="folderHmacCheckBox">
+                                                                <property name="text">
+                                                                    <string>Enable HMAC Integrity Check</string>
+                                                                </property>
+                                                                <property name="checked">
+                                                                    <bool>true</bool>
+                                                                </property>
+                                                            </widget>
+                                                        </item>
+                                                    </layout>
+                                                </widget>
+                                            </item>
+                                            <item>
+                                                <widget class="QGroupBox" name="folderKeyfileGroup">
+                                                    <property name="title">
+                                                        <string>Keyfiles (Optional)</string>
+                                                    </property>
+                                                    <layout class="QVBoxLayout" name="folderKeyfileLayout">
+                                                        <item>
+                                                            <widget class="QPushButton" name="folderKeyfileBrowseButton">
+                                                                <property name="text">
+                                                                    <string>Browse Keyfiles</string>
+                                                                </property>
+                                                                <property name="icon">
+                                                                    <iconset theme="document-open"/>
+                                                                </property>
+                                                            </widget>
+                                                        </item>
+                                                        <item>
+                                                            <widget class="CustomListWidget" name="folderKeyfileListWidget"/>
+                                                        </item>
+                                                    </layout>
+                                                </widget>
+                                            </item>
+                                        </layout>
                                     </widget>
-                                </item>
-                                <item>
-                                    <layout class="QHBoxLayout" name="folderHorizontalLayout_9">
-                                        <item>
-                                            <widget class="QLabel" name="folderIterationsLabel">
-                                                <property name="text">
-                                                    <string>Iterations:</string>
-                                                </property>
-                                            </widget>
-                                        </item>
-                                        <item>
-                                            <widget class="QSpinBox" name="folderIterationsSpinBox">
-                                                <property name="minimum">
-                                                    <number>10</number>
-                                                </property>
-                                                <property name="maximum">
-                                                    <number>1000000</number>
-                                                </property>
-                                                <property name="value">
-                                                    <number>10</number>
-                                                </property>
-                                            </widget>
-                                        </item>
-                                    </layout>
-                                </item>
-                                <item>
-                                    <widget class="QCheckBox" name="folderHmacCheckBox">
-                                        <property name="text">
-                                            <string>Enable HMAC Integrity Check</string>
-                                        </property>
-                                    </widget>
-                                </item>
-                                <item>
-                                    <widget class="QPushButton" name="folderKeyfileBrowseButton">
-                                        <property name="text">
-                                            <string>Browse Keyfiles</string>
-                                        </property>
-                                    </widget>
-                                </item>
-                                <item>
-                                    <widget class="CustomListWidget" name="folderKeyfileListWidget"/>
                                 </item>
                                 <item>
                                     <widget class="QProgressBar" name="folderProgressBar">
@@ -306,6 +803,9 @@
                                                         <height>50</height>
                                                     </size>
                                                 </property>
+                                                <property name="icon">
+                                                    <iconset theme="document-encrypt"/>
+                                                </property>
                                             </widget>
                                         </item>
                                         <item>
@@ -324,6 +824,9 @@
                                                         <width>0</width>
                                                         <height>50</height>
                                                     </size>
+                                                </property>
+                                                <property name="icon">
+                                                    <iconset theme="document-decrypt"/>
                                                 </property>
                                             </widget>
                                         </item>

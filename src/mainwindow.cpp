@@ -76,6 +76,8 @@ void MainWindow::setupUI()
     ui->fileEstimatedTimeLabel->setVisible(false);
     ui->folderProgressBar->setVisible(false);
     ui->folderEstimatedTimeLabel->setVisible(false);
+    ui->diskProgressBar->setVisible(false);
+    ui->diskEstimatedTimeLabel->setVisible(false);
 
     // Add crypto provider items
     QStringList providers = encryptionEngine.availableProviders();
@@ -98,10 +100,20 @@ void MainWindow::setupUI()
     // Install event filter on all relevant widgets
     ui->filePasswordLineEdit->installEventFilter(this);
     ui->folderPasswordLineEdit->installEventFilter(this);
+    ui->diskPasswordLineEdit->installEventFilter(this);
     ui->fileEncryptButton->installEventFilter(this);
     ui->fileDecryptButton->installEventFilter(this);
     ui->folderEncryptButton->installEventFilter(this);
     ui->folderDecryptButton->installEventFilter(this);
+    ui->diskEncryptButton->installEventFilter(this);
+    ui->diskDecryptButton->installEventFilter(this);
+    
+    // Initialize disk encryption tab
+    ui->diskIterationsSpinBox->setValue(10);
+    ui->diskHmacCheckBox->setChecked(true);
+    
+    // Populate disk selection dropdown
+    on_refreshDisksButton_clicked();
 }
 
 MainWindow::~MainWindow()
@@ -123,17 +135,21 @@ void MainWindow::setupComboBoxes()
                               "AES-128-CBC", "AES-192-CBC", "Camellia-256-CBC", "Camellia-128-CBC"};
     ui->fileAlgorithmComboBox->addItems(algorithms);
     ui->folderAlgorithmComboBox->addItems(algorithms);
+    ui->diskAlgorithmComboBox->addItems(algorithms);
 
     QStringList kdfs = {"Scrypt", "PBKDF2"};
 
     ui->kdfComboBox->addItems(kdfs);
     ui->folderKdfComboBox->addItems(kdfs);
+    ui->diskKdfComboBox->addItems(kdfs);
 
     ui->iterationsSpinBox->setValue(10);
     ui->folderIterationsSpinBox->setValue(10);
+    ui->diskIterationsSpinBox->setValue(10);
 
     ui->hmacCheckBox->setChecked(true);
     ui->folderHmacCheckBox->setChecked(true);
+    ui->diskHmacCheckBox->setChecked(true);
 }
 
 void MainWindow::connectSignalsAndSlots()
@@ -153,6 +169,13 @@ void MainWindow::connectSignalsAndSlots()
     // Folder encryption/decryption
     safeConnect(ui->folderEncryptButton, SIGNAL(clicked()), this, SLOT(on_folderEncryptButton_clicked()));
     safeConnect(ui->folderDecryptButton, SIGNAL(clicked()), this, SLOT(on_folderDecryptButton_clicked()));
+
+    // Disk encryption/decryption
+    safeConnect(ui->diskEncryptButton, SIGNAL(clicked()), this, SLOT(on_diskEncryptButton_clicked()));
+    safeConnect(ui->diskDecryptButton, SIGNAL(clicked()), this, SLOT(on_diskDecryptButton_clicked()));
+    safeConnect(ui->diskBrowseButton, SIGNAL(clicked()), this, SLOT(on_diskBrowseButton_clicked()));
+    safeConnect(ui->diskKeyfileBrowseButton, SIGNAL(clicked()), this, SLOT(on_diskKeyfileBrowseButton_clicked()));
+    safeConnect(ui->refreshDisksButton, SIGNAL(clicked()), this, SLOT(on_refreshDisksButton_clicked()));
 
     // Other button connections
     safeConnect(ui->fileBrowseButton, SIGNAL(clicked()), this, SLOT(on_fileBrowseButton_clicked()));
@@ -257,6 +280,7 @@ void MainWindow::updateProgress(int value)
     qDebug() << "Update Progress: value=" << value;
     ui->fileProgressBar->setValue(value);
     ui->folderProgressBar->setValue(value);
+    ui->diskProgressBar->setValue(value);
 }
 
 void MainWindow::handleFinished(bool success, const QString &errorMessage)
@@ -264,8 +288,17 @@ void MainWindow::handleFinished(bool success, const QString &errorMessage)
     qDebug() << "Handle Finished: success=" << success << ", errorMessage=" << errorMessage;
     ui->fileProgressBar->setVisible(false);
     ui->folderProgressBar->setVisible(false);
+    ui->diskProgressBar->setVisible(false);
     ui->fileEstimatedTimeLabel->setVisible(false);
     ui->folderEstimatedTimeLabel->setVisible(false);
+    ui->diskEstimatedTimeLabel->setVisible(false);
+    ui->fileEncryptButton->setEnabled(true);
+    ui->fileDecryptButton->setEnabled(true);
+    ui->folderEncryptButton->setEnabled(true);
+    ui->folderDecryptButton->setEnabled(true);
+    ui->diskEncryptButton->setEnabled(true);
+    ui->diskDecryptButton->setEnabled(true);
+    
     if (success)
     {
         QMessageBox::information(this, "Success", "Operation completed successfully.");
@@ -282,6 +315,7 @@ void MainWindow::showEstimatedTime(double seconds)
     QString timeText = QString("Estimated time: %1 seconds").arg(seconds, 0, 'f', 2);
     ui->fileEstimatedTimeLabel->setText(timeText);
     ui->folderEstimatedTimeLabel->setText(timeText);
+    ui->diskEstimatedTimeLabel->setText(timeText);
 }
 
 void MainWindow::on_fileBrowseButton_clicked()
@@ -619,21 +653,27 @@ void MainWindow::on_cryptoProviderComboBox_currentIndexChanged(const QString &pr
         // Store current selections if possible
         QString currentFileAlgo = ui->fileAlgorithmComboBox->currentText();
         QString currentFolderAlgo = ui->folderAlgorithmComboBox->currentText();
+        QString currentDiskAlgo = ui->diskAlgorithmComboBox->currentText();
         QString currentFileKDF = ui->kdfComboBox->currentText();
         QString currentFolderKDF = ui->folderKdfComboBox->currentText();
+        QString currentDiskKDF = ui->diskKdfComboBox->currentText();
 
         // Update available algorithms and KDFs based on the selected provider
         QStringList algorithms = encryptionEngine.supportedCiphers();
         ui->fileAlgorithmComboBox->clear();
         ui->folderAlgorithmComboBox->clear();
+        ui->diskAlgorithmComboBox->clear();
         ui->fileAlgorithmComboBox->addItems(algorithms);
         ui->folderAlgorithmComboBox->addItems(algorithms);
+        ui->diskAlgorithmComboBox->addItems(algorithms);
 
         QStringList kdfs = encryptionEngine.supportedKDFs();
         ui->kdfComboBox->clear();
         ui->folderKdfComboBox->clear();
+        ui->diskKdfComboBox->clear();
         ui->kdfComboBox->addItems(kdfs);
         ui->folderKdfComboBox->addItems(kdfs);
+        ui->diskKdfComboBox->addItems(kdfs);
 
         // Try to restore previous selections if they're available in the new provider
         if (algorithms.contains(currentFileAlgo))
@@ -641,12 +681,18 @@ void MainWindow::on_cryptoProviderComboBox_currentIndexChanged(const QString &pr
 
         if (algorithms.contains(currentFolderAlgo))
             ui->folderAlgorithmComboBox->setCurrentText(currentFolderAlgo);
+            
+        if (algorithms.contains(currentDiskAlgo))
+            ui->diskAlgorithmComboBox->setCurrentText(currentDiskAlgo);
 
         if (kdfs.contains(currentFileKDF))
             ui->kdfComboBox->setCurrentText(currentFileKDF);
 
         if (kdfs.contains(currentFolderKDF))
             ui->folderKdfComboBox->setCurrentText(currentFolderKDF);
+            
+        if (kdfs.contains(currentDiskKDF))
+            ui->diskKdfComboBox->setCurrentText(currentDiskKDF);
 
         // Update hardware acceleration status
         checkHardwareAcceleration();
