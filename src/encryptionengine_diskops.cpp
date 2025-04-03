@@ -7,7 +7,6 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QProcess>
-#include <QDebug>
 #include <QRandomGenerator>
 #include <QSettings>
 

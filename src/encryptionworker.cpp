@@ -88,19 +88,26 @@ void EncryptionWorker::process()
     QByteArray salt(32, 0); // Salt for key derivation
 
     if (encrypt) {
+        SECURE_LOG(DEBUG, "EncryptionWorker", "Generating random salt for encryption");
         if (RAND_bytes(reinterpret_cast<unsigned char*>(salt.data()), salt.size()) != 1) {
+            SECURE_LOG(ERROR_LEVEL, "EncryptionWorker", "Failed to generate cryptographically secure random salt");
             emit finished(false, "Failed to generate random salt");
             return;
         }
     } else {
+        SECURE_LOG(DEBUG, "EncryptionWorker", QString("Opening encrypted file to read salt: %1").arg(path));
         QFile inputFile(path);
         if (!inputFile.open(QIODevice::ReadOnly)) {
+            SECURE_LOG(ERROR_LEVEL, "EncryptionWorker", QString("Failed to open input file: %1 (error: %2)")
+                .arg(path).arg(inputFile.errorString()));
             emit finished(false, "Failed to open input file");
             return;
         }
 
         // Read the salt
         if (inputFile.read(salt.data(), salt.size()) != salt.size()) {
+            SECURE_LOG(ERROR_LEVEL, "EncryptionWorker", 
+                QString("Failed to read salt from file: %1 (corruption possible)").arg(path));
             emit finished(false, "Failed to read salt from file");
             return;
         }
@@ -109,12 +116,22 @@ void EncryptionWorker::process()
     }
 
     // Derive the key using the password and keyfile(s)
+    SECURE_LOG(DEBUG, "EncryptionWorker", 
+        QString("Deriving key with KDF: %1, iterations: %2, using keyfiles: %3")
+        .arg(kdf)
+        .arg(iterations)
+        .arg(keyfilePaths.isEmpty() ? "No" : "Yes"));
+        
     QByteArray key = engine.deriveKey(password, salt, keyfilePaths, kdf, iterations);
 
     if (key.isEmpty()) {
+        SECURE_LOG(ERROR_LEVEL, "EncryptionWorker", 
+            QString("Key derivation failed using KDF: %1").arg(kdf));
         emit finished(false, "Key derivation failed");
         return;
     }
+    
+    SECURE_LOG(DEBUG, "EncryptionWorker", "Key derivation completed successfully");
 
     if (isDisk) {
         // Disk encryption/decryption
@@ -254,12 +271,21 @@ void EncryptionWorker::process()
 
     if (success) {
         emit progress(100);
-        emit finished(true, QString());
-
+        
         double fileSizeMB = getFileSizeInBytes(path) / (1024.0 * 1024.0);
         double mbps = fileSizeMB / seconds;
+        
+        SECURE_LOG(INFO, "EncryptionWorker", 
+            QString("Operation completed successfully in %.2f seconds (%.2f MB/s)")
+            .arg(seconds).arg(mbps));
+            
+        emit finished(true, QString());
         emit benchmarkResultReady(iterations, mbps, seconds * 1000, algorithm, kdf);
     } else {
+        SECURE_LOG(ERROR_LEVEL, "EncryptionWorker", 
+            QString("Operation failed for path: %1 (algorithm: %2, KDF: %3)")
+            .arg(path).arg(algorithm).arg(kdf));
+            
         emit finished(false, "Encryption/Decryption failed");
     }
 }

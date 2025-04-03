@@ -1,6 +1,5 @@
 #include "cryptoprovider.h"
 #include "logging/secure_logger.h"
-#include <QDebug>
 #include <argon2.h>
 #include <openssl/rand.h>
 #include <sodium.h>

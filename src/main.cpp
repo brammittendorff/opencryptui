@@ -1,6 +1,5 @@
 #include "mainwindow.h"
 #include <QApplication>
-#include <QDebug>
 #include <openssl/crypto.h>
 #include "version.h"
 #include "logging/secure_logger.h"
@@ -9,7 +8,8 @@ int main(int argc, char *argv[])
 {
     // Initialize OpenSSL with error checking
     if (!OPENSSL_init_crypto(OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_ADD_ALL_DIGESTS | OPENSSL_INIT_LOAD_CRYPTO_STRINGS, NULL)) {
-        qCritical() << "Failed to initialize OpenSSL";
+        // Using our secure logger instead of qCritical
+        SecureLogger::getInstance().log(SecureLogger::LogLevel::ERROR_LEVEL, "MainApplication", "Failed to initialize OpenSSL");
         return EXIT_FAILURE;
     }
     
@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
     // Check if running in CI environment
     if (isRunningInCI()) {
         // Disable all logging in CI/CD environment
-        logger.setLogLevel(SecureLogger::LogLevel::ERROR);
+        logger.setLogLevel(SecureLogger::LogLevel::ERROR_LEVEL);
         logger.setLogToFile(false);
     } else {
         #ifdef QT_DEBUG

@@ -2,7 +2,6 @@
 #include "logging/secure_logger.h"
 #include <QFile>
 #include <QTemporaryFile>
-#include <QDebug>
 #include <QCoreApplication>
 #include <QDataStream>
 #include <QStandardPaths>

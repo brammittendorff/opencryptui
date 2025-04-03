@@ -2,7 +2,6 @@
 #include "encryptionengine_diskops.h"
 #include "logging/secure_logger.h"
 #include <QFile>
-#include <QDebug>
 
 // Disk encryption implementation for EncryptionEngine class
 
