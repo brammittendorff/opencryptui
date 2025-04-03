@@ -51,6 +51,9 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(OPENSSL_INCLUDE_DIR $ENV{OPENSSL_INCLUDE_DIR})
     set(OPENSSL_LIBRARIES $ENV{OPENSSL_LIBRARIES})
     link_directories(${ARGON2_LIB_DIR} ${SODIUM_LIB_DIR})
+    
+    # Find macOS Security framework
+    find_library(SECURITY_FRAMEWORK Security REQUIRED)
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Windows")
     set(ARGON2_LIB_DIR $ENV{ARGON2_LIB_DIR})
     set(ARGON2_INCLUDE_DIR $ENV{ARGON2_INCLUDE_DIR})
@@ -128,6 +131,11 @@ target_link_libraries(EncryptionLib PRIVATE
     argon2
     sodium
 )
+
+# Add Security framework on macOS
+if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    target_link_libraries(EncryptionLib PRIVATE ${SECURITY_FRAMEWORK})
+endif()
 
 # Create the main executable and link against the library
 add_executable(OpenCryptUI WIN32 src/main.cpp)
