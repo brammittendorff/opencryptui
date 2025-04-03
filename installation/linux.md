@@ -21,3 +21,21 @@
    cmake -S . -B build -G Ninja
    cmake --build build --config Release
    ```
+
+3. **Run the application**:
+   ```sh
+   cd build
+   ./OpenCryptUI
+   ```
+
+4. **Run the tests**:
+   ```sh
+   cd build
+   ./OpenCryptUITest
+   ```
+
+5. **Run tests with minimal logging (CI mode)**:
+   ```sh
+   cd build
+   env CI=true QT_LOGGING_RULES="*.debug=false;*.info=false;*.warning=false" QT_MESSAGE_PATTERN="" ./OpenCryptUITest -silent -v1
+   ```

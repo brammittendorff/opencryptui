@@ -32,26 +32,27 @@
 
 2. **Set environment variables and configure the build**:
    ```sh
+   # Find Qt5 paths
    QT5_CONFIG=$(find /mingw64/ -name "Qt5Config.cmake" -o -name "qt5-config.cmake" | head -n 1)
    if [ -z "$QT5_CONFIG" ]; then
      echo "Qt5Config.cmake not found!"
      exit 1
    fi
    QT5_DIR=$(dirname ${QT5_CONFIG})
-   echo "Qt5_DIR=${QT5_DIR}" >> $GITHUB_ENV
-   echo "CMAKE_MODULE_PATH=${QT5_DIR}" >> $GITHUB_ENV
-
-   echo "Setting up environment variables..."
-   echo "OPENSSL_ROOT_DIR=/mingw64" >> $GITHUB_ENV
-   echo "OPENSSL_INCLUDE_DIR=/mingw64/include" >> $GITHUB_ENV
-   echo "OPENSSL_CRYPTO_LIBRARY=/mingw64/lib/libcrypto.a" >> $GITHUB_ENV
-   echo "OPENSSL_SSL_LIBRARY=/mingw64/lib/libssl.a" >> $GITHUB_ENV
-   echo "CMAKE_PREFIX_PATH=/mingw64" >> $GITHUB_ENV
-   echo "ARGON2_LIB_DIR=/mingw64/lib" >> $GITHUB_ENV
-   echo "ARGON2_INCLUDE_DIR=/mingw64/include" >> $GITHUB_ENV
-   echo "SODIUM_LIB_DIR=/mingw64/lib" >> $GITHUB_ENV
-   echo "SODIUM_INCLUDE_DIR=/mingw64/include" >> $GITHUB_ENV
-   echo "/mingw64/bin" >> $GITHUB_PATH
+   
+   # Set environment variables for the build
+   export Qt5_DIR=${QT5_DIR}
+   export CMAKE_MODULE_PATH=${QT5_DIR}
+   export OPENSSL_ROOT_DIR=/mingw64
+   export OPENSSL_INCLUDE_DIR=/mingw64/include
+   export OPENSSL_CRYPTO_LIBRARY=/mingw64/lib/libcrypto.a
+   export OPENSSL_SSL_LIBRARY=/mingw64/lib/libssl.a
+   export CMAKE_PREFIX_PATH=/mingw64
+   export ARGON2_LIB_DIR=/mingw64/lib
+   export ARGON2_INCLUDE_DIR=/mingw64/include
+   export SODIUM_LIB_DIR=/mingw64/lib
+   export SODIUM_INCLUDE_DIR=/mingw64/include
+   export PATH=$PATH:/mingw64/bin
    ```
 
 3. **Build the project**:
@@ -72,33 +73,55 @@
    ```sh
    mkdir -p build/platforms
    mkdir -p build/styles
+   mkdir -p build/imageformats
+   mkdir -p build/iconengines
 
+   # Find ntldd.exe for dependency scanning
    NTLDD_PATH=$(find /mingw64/bin -name "ntldd.exe" | head -n 1)
    if [ -z "$NTLDD_PATH" ]; then
      echo "ntldd.exe not found!"
      exit 1
    fi
 
+   # Scan for dependencies
    DLL_PATHS=$(mktemp)
-   "$NTLDD_PATH" -R build/OpenCryptUI.exe | while IFS= read -r line
-   do
-     if [[ "$line" =~ [A-Za-z]:\\[^[:space:]]+\.dll ]]; then
-       dll_path="${BASH_REMATCH[0]}"
-       echo "$dll_path" >> "$DLL_PATHS"
-     fi
-   done
+   "$NTLDD_PATH" -R build/OpenCryptUI.exe | grep -i "mingw" | grep -v "not found" | awk '{print $3}' | sort -u > "$DLL_PATHS"
 
-   cat "$DLL_PATHS" | while IFS= read -r dll_path
-   do
-     if [[ "$dll_path" != *Windows* ]]; then
-       cp "$dll_path" build/
+   # Copy dependencies
+   while IFS= read -r dll_path; do
+     if [[ -f "$dll_path" ]]; then
+       cp "$dll_path" build/ || echo "Failed to copy $dll_path"
      fi
-   done
+   done < "$DLL_PATHS"
    rm "$DLL_PATHS"
 
-   cp /mingw64/bin/libglib-2.0-0.dll build/
-   cp /mingw64/bin/libgraphite2.dll build/
-   cp /mingw64/bin/libintl-8.dll build/
+   # Copy essential Qt plugins
    cp /mingw64/share/qt5/plugins/platforms/qwindows.dll build/platforms/
    cp /mingw64/share/qt5/plugins/styles/qwindowsvistastyle.dll build/styles/
+   cp /mingw64/share/qt5/plugins/imageformats/qjpeg.dll build/imageformats/
+   cp /mingw64/share/qt5/plugins/imageformats/qgif.dll build/imageformats/
+   cp /mingw64/share/qt5/plugins/imageformats/qsvg.dll build/imageformats/
+   cp /mingw64/share/qt5/plugins/imageformats/qpng.dll build/imageformats/
+   cp /mingw64/share/qt5/plugins/iconengines/qsvgicon.dll build/iconengines/
+   ```
+
+5. **Run the application**:
+   ```sh
+   cd build
+   ./OpenCryptUI.exe
+   ```
+
+6. **Run the tests**:
+   ```sh
+   cd build
+   ./OpenCryptUITest.exe
+   ```
+
+7. **Run tests with minimal logging (CI mode)**:
+   ```sh
+   cd build
+   export CI=true
+   export QT_LOGGING_RULES="*.debug=false;*.info=false;*.warning=false"
+   export QT_MESSAGE_PATTERN=""
+   ./OpenCryptUITest.exe -silent -v1
    ```

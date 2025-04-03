@@ -172,34 +172,7 @@ jobs:
         shell: bash
         run: cmake --build build --config Release
 
-      - name: Create CI Test Script (Linux/macOS)
-        if: matrix.os != 'windows-latest'
-        run: |
-          cat << 'EOFSCRIPT' > build/ci_test.sh
-          #!/bin/bash
-          # CI Test Runner - Runs tests with minimal log output
-          export CI=true
-          export QT_LOGGING_RULES="*.debug=false;*.info=false;*.warning=false"
-          export QT_MESSAGE_PATTERN=""
-          ./OpenCryptUITest -silent -v1
-          exit $?
-          EOFSCRIPT
-          chmod +x build/ci_test.sh
-
-      - name: Create CI Test Script (Windows) 
-        if: matrix.os == 'windows-latest'
-        shell: msys2 {0}
-        run: |
-          cat << 'EOFSCRIPT' > build/ci_test.sh
-          #!/bin/bash
-          # CI Test Runner - Runs tests with minimal log output
-          export CI=true
-          export QT_LOGGING_RULES="*.debug=false;*.info=false;*.warning=false"
-          export QT_MESSAGE_PATTERN=""
-          ./OpenCryptUITest.exe -silent -v1
-          exit $?
-          EOFSCRIPT
-          chmod +x build/ci_test.sh
+      # CI Test script steps have been removed in favor of direct commands in the run steps below
 
       - name: Copy DLLs for Windows
         if: matrix.os == 'windows-latest'
@@ -330,7 +303,7 @@ jobs:
           xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" cmake --build build --target all
           cd build
           echo "Running tests with minimal output..."
-          xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" ./ci_test.sh
+          xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" env CI=true QT_LOGGING_RULES="*.debug=false;*.info=false;*.warning=false" QT_MESSAGE_PATTERN="" ./OpenCryptUITest -silent -v1
 
       - name: Run tests (macOS)
         if: matrix.os == 'macos-latest'
@@ -338,7 +311,7 @@ jobs:
           cmake --build build --target all
           cd build
           echo "Running tests with minimal output..."
-          ./ci_test.sh
+          env CI=true QT_LOGGING_RULES="*.debug=false;*.info=false;*.warning=false" QT_MESSAGE_PATTERN="" ./OpenCryptUITest -silent -v1
 
       - name: Run tests (Windows)
         if: matrix.os == 'windows-latest'
@@ -347,7 +320,42 @@ jobs:
           cmake --build build --target all
           cd build
           echo "Running tests with minimal output..."
-          ./ci_test.sh
+          export CI=true
+          export QT_LOGGING_RULES="*.debug=false;*.info=false;*.warning=false"
+          export QT_MESSAGE_PATTERN=""
+          
+          # Check if the test executable exists and is executable
+          if [ -f "./OpenCryptUITest.exe" ]; then
+            echo "Found test executable: $(ls -la ./OpenCryptUITest.exe)"
+            
+            # Make sure it has executable permissions
+            chmod +x ./OpenCryptUITest.exe
+            
+            # Run test with error checking
+            ./OpenCryptUITest.exe -silent -v1 || {
+              echo "Test execution failed with code $?";
+              echo "Directory contents:";
+              ls -la;
+              echo "DLL dependencies:";
+              ldd ./OpenCryptUITest.exe || echo "ldd not available, trying ntldd";
+              if command -v ntldd >/dev/null; then
+                ntldd ./OpenCryptUITest.exe;
+              else
+                echo "ntldd not in path, searching for it";
+                NTLDD_PATH=$(find /mingw64/bin -name "ntldd.exe" 2>/dev/null);
+                if [ -n "$NTLDD_PATH" ]; then
+                  "$NTLDD_PATH" ./OpenCryptUITest.exe;
+                else
+                  echo "ntldd not found";
+                fi
+              fi
+              exit 1;
+            }
+          else
+            echo "ERROR: OpenCryptUITest.exe not found! Directory contents:"
+            ls -la
+            exit 1
+          fi
 
       - name: Upload test results
         if: always()

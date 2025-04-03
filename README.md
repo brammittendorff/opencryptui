@@ -37,29 +37,30 @@ To build the project, follow these steps:
 
 1. Clone the repository:
    ```bash
-   git clone <repository_url>
+   git clone https://github.com/brammittendorff/opencryptui.git
    cd opencryptui
    ```
 
-2. Create a build directory and navigate to it:
+2. Configure the project with CMake:
    ```bash
-   mkdir build
+   cmake -S . -B build
+   ```
+
+3. Build the project:
+   ```bash
+   cmake --build build --config Release
+   ```
+
+4. Run the application:
+   ```bash
    cd build
-   ```
-
-3. Run CMake to configure the project:
-   ```bash
-   cmake ..
-   ```
-
-4. Build the project using `make`:
-   ```bash
-   make
-   ```
-
-5. Run the application:
-   ```bash
    ./OpenCryptUI
+   ```
+
+5. Run the tests:
+   ```bash
+   cd build
+   ./OpenCryptUITest
    ```
 
 ## Detailed Installation Instructions

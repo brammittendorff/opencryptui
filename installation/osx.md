@@ -21,16 +21,37 @@
 
 2. **Set environment variables**:
    ```sh
-   echo "ARGON2_LIB_DIR=$(brew --prefix argon2)/lib" >> $GITHUB_ENV
-   echo "ARGON2_INCLUDE_DIR=$(brew --prefix argon2)/include" >> $GITHUB_ENV
-   echo "SODIUM_LIB_DIR=$(brew --prefix libsodium)/lib" >> $GITHUB_ENV
-   echo "SODIUM_INCLUDE_DIR=$(brew --prefix libsodium)/include" >> $GITHUB_ENV
-   echo "Qt5_DIR=$(brew --prefix qt@5)/lib/cmake/Qt5" >> $GITHUB_ENV
-   echo "CMAKE_PREFIX_PATH=$(brew --prefix qt@5)" >> $GITHUB_ENV
+   export ARGON2_LIB_DIR=$(brew --prefix argon2)/lib
+   export ARGON2_INCLUDE_DIR=$(brew --prefix argon2)/include
+   export SODIUM_LIB_DIR=$(brew --prefix libsodium)/lib
+   export SODIUM_INCLUDE_DIR=$(brew --prefix libsodium)/include
+   export Qt5_DIR=$(brew --prefix qt@5)/lib/cmake/Qt5
+   export CMAKE_PREFIX_PATH=$(brew --prefix qt@5)
+   export OPENSSL_ROOT_DIR=$(brew --prefix openssl)
+   export OPENSSL_INCLUDE_DIR=$(brew --prefix openssl)/include
+   export OPENSSL_LIBRARIES=$(brew --prefix openssl)/lib
    ```
 
 3. **Build the project**:
    ```sh
    cmake -S . -B build -G Ninja
    cmake --build build --config Release
+   ```
+
+4. **Run the application**:
+   ```sh
+   cd build
+   ./OpenCryptUI
+   ```
+
+5. **Run the tests**:
+   ```sh
+   cd build
+   ./OpenCryptUITest
+   ```
+
+6. **Run tests with minimal logging (CI mode)**:
+   ```sh
+   cd build
+   env CI=true QT_LOGGING_RULES="*.debug=false;*.info=false;*.warning=false" QT_MESSAGE_PATTERN="" ./OpenCryptUITest -silent -v1
    ```
