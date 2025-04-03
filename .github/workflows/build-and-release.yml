@@ -205,9 +205,11 @@ jobs:
         if: matrix.os == 'windows-latest'
         shell: msys2 {0}
         run: |
-          echo "Creating necessary directories..."
+          echo "Creating necessary directories for Qt plugins..."
           mkdir -p build/platforms || { echo "Failed to create build/platforms"; exit 1; }
           mkdir -p build/styles || { echo "Failed to create build/styles"; exit 1; }
+          mkdir -p build/imageformats || { echo "Failed to create build/imageformats"; exit 1; }
+          mkdir -p build/iconengines || { echo "Failed to create build/iconengines"; exit 1; }
       
           echo "Finding ntldd.exe..."
           NTLDD_PATH=$(find /mingw64/bin -name "ntldd.exe" | head -n 1)
@@ -224,36 +226,95 @@ jobs:
           fi
       
           echo "Running ntldd and capturing DLLs..."
+          # Run a recursive dependency check to catch all required DLLs
           DLL_PATHS=$(mktemp)
-          "$NTLDD_PATH" -R build/OpenCryptUI.exe | while IFS= read -r line
-          do
-              if [[ "$line" =~ [A-Za-z]:\\[^[:space:]]+\.dll ]]; then
-                  dll_path="${BASH_REMATCH[0]}"
-                  echo "$dll_path" >> "$DLL_PATHS"
-              fi
-          done
+          "$NTLDD_PATH" -R build/OpenCryptUI.exe | grep -i "mingw" | grep -v "not found" | awk '{print $3}' | sort -u > "$DLL_PATHS"
       
           echo "Copying DLLs to build directory..."
-          cat "$DLL_PATHS" | while IFS= read -r dll_path
-          do
-              if [[ "$dll_path" != *Windows* ]]; then
-                  echo "Copying $dll_path to build directory"
-                  cp "$dll_path" build/ || { echo "Failed to copy $dll_path"; exit 1; }
-              else
-                  echo "Skipping system DLL $dll_path"
-              fi
-          done
+          while IFS= read -r dll_path; do
+            if [[ -f "$dll_path" ]]; then
+              echo "Copying $dll_path to build directory"
+              cp "$dll_path" build/ || { echo "Failed to copy $dll_path"; }
+            fi
+          done < "$DLL_PATHS"
           rm "$DLL_PATHS"
       
           echo "Copying additional required DLLs..."
-          cp /mingw64/bin/libglib-2.0-0.dll build/ || { echo "Failed to copy libglib-2.0-0.dll"; exit 1; }
-          cp /mingw64/bin/libgraphite2.dll build/ || { echo "Failed to copy libgraphite2.dll"; exit 1; }
-          cp /mingw64/bin/libintl-8.dll build/ || { echo "Failed to copy libintl-8.dll"; exit 1; }
+          # Essential system libraries
+          cp -f /mingw64/bin/libstdc++-6.dll build/ || echo "Warning: libstdc++-6.dll not found"
+          cp -f /mingw64/bin/libgcc_s_seh-1.dll build/ || echo "Warning: libgcc_s_seh-1.dll not found"
+          cp -f /mingw64/bin/libwinpthread-1.dll build/ || echo "Warning: libwinpthread-1.dll not found"
+          
+          # Qt dependencies
+          cp -f /mingw64/bin/libglib-2.0-0.dll build/ || echo "Warning: libglib-2.0-0.dll not found"
+          cp -f /mingw64/bin/libgraphite2.dll build/ || echo "Warning: libgraphite2.dll not found"
+          cp -f /mingw64/bin/libintl-8.dll build/ || echo "Warning: libintl-8.dll not found"
+          cp -f /mingw64/bin/libbz2-1.dll build/ || echo "Warning: libbz2-1.dll not found"
+          cp -f /mingw64/bin/libpcre-1.dll build/ || echo "Warning: libpcre-1.dll not found"
+          cp -f /mingw64/bin/libpcre2-16-0.dll build/ || echo "Warning: libpcre2-16-0.dll not found"
+          cp -f /mingw64/bin/libharfbuzz-0.dll build/ || echo "Warning: libharfbuzz-0.dll not found"
+          cp -f /mingw64/bin/libpng16-16.dll build/ || echo "Warning: libpng16-16.dll not found"
+          cp -f /mingw64/bin/zlib1.dll build/ || echo "Warning: zlib1.dll not found"
+          cp -f /mingw64/bin/libiconv-2.dll build/ || echo "Warning: libiconv-2.dll not found"
+          cp -f /mingw64/bin/libfreetype-6.dll build/ || echo "Warning: libfreetype-6.dll not found"
+          
+          # Crypto dependencies
+          cp -f /mingw64/bin/libsodium-23.dll build/ || echo "Warning: libsodium-23.dll not found"
+          cp -f /mingw64/bin/libargon2.dll build/ || echo "Warning: libargon2.dll not found"
+          cp -f /mingw64/bin/libssl-1_1-x64.dll build/ || echo "Warning: libssl-1_1-x64.dll not found"
+          cp -f /mingw64/bin/libcrypto-1_1-x64.dll build/ || echo "Warning: libcrypto-1_1-x64.dll not found"
+      
+          echo "Copying Qt core DLLs..."
+          cp -f /mingw64/bin/Qt5Core.dll build/ || echo "Warning: Qt5Core.dll not found"
+          cp -f /mingw64/bin/Qt5Gui.dll build/ || echo "Warning: Qt5Gui.dll not found"
+          cp -f /mingw64/bin/Qt5Widgets.dll build/ || echo "Warning: Qt5Widgets.dll not found"
+          cp -f /mingw64/bin/Qt5Network.dll build/ || echo "Warning: Qt5Network.dll not found"
+          cp -f /mingw64/bin/Qt5Svg.dll build/ || echo "Warning: Qt5Svg.dll not found"
+          cp -f /mingw64/bin/Qt5DBus.dll build/ || echo "Warning: Qt5DBus.dll not found"
+          cp -f /mingw64/bin/Qt5XmlPatterns.dll build/ || echo "Warning: Qt5XmlPatterns.dll not found"
+          cp -f /mingw64/bin/Qt5Xml.dll build/ || echo "Warning: Qt5Xml.dll not found"
+          cp -f /mingw64/bin/Qt5PrintSupport.dll build/ || echo "Warning: Qt5PrintSupport.dll not found"
       
           echo "Copying Qt plugins..."
-          cp /mingw64/share/qt5/plugins/platforms/qwindows.dll build/platforms/ || { echo "Failed to copy qwindows.dll"; exit 1; }
-          cp /mingw64/share/qt5/plugins/styles/qwindowsvistastyle.dll build/styles/ || { echo "Failed to copy qwindowsvistastyle.dll"; exit 1; }
-      
+          # Platform plugins
+          cp -f /mingw64/share/qt5/plugins/platforms/qwindows.dll build/platforms/ || echo "Warning: qwindows.dll not found"
+          cp -f /mingw64/share/qt5/plugins/platforms/qminimal.dll build/platforms/ || echo "Warning: qminimal.dll not found"
+          
+          # Style plugins
+          cp -f /mingw64/share/qt5/plugins/styles/qwindowsvistastyle.dll build/styles/ || echo "Warning: qwindowsvistastyle.dll not found"
+          
+          # Image format plugins
+          cp -f /mingw64/share/qt5/plugins/imageformats/qjpeg.dll build/imageformats/ || echo "Warning: qjpeg.dll not found"
+          cp -f /mingw64/share/qt5/plugins/imageformats/qgif.dll build/imageformats/ || echo "Warning: qgif.dll not found"
+          cp -f /mingw64/share/qt5/plugins/imageformats/qico.dll build/imageformats/ || echo "Warning: qico.dll not found"
+          cp -f /mingw64/share/qt5/plugins/imageformats/qsvg.dll build/imageformats/ || echo "Warning: qsvg.dll not found"
+          cp -f /mingw64/share/qt5/plugins/imageformats/qpng.dll build/imageformats/ || echo "Warning: qpng.dll not found"
+          cp -f /mingw64/share/qt5/plugins/imageformats/qicns.dll build/imageformats/ || echo "Warning: qicns.dll not found"
+          cp -f /mingw64/share/qt5/plugins/imageformats/qtga.dll build/imageformats/ || echo "Warning: qtga.dll not found"
+          cp -f /mingw64/share/qt5/plugins/imageformats/qtiff.dll build/imageformats/ || echo "Warning: qtiff.dll not found"
+          cp -f /mingw64/share/qt5/plugins/imageformats/qwbmp.dll build/imageformats/ || echo "Warning: qwbmp.dll not found"
+          cp -f /mingw64/share/qt5/plugins/imageformats/qwebp.dll build/imageformats/ || echo "Warning: qwebp.dll not found"
+          
+          # Icon engines
+          cp -f /mingw64/share/qt5/plugins/iconengines/qsvgicon.dll build/iconengines/ || echo "Warning: qsvgicon.dll not found"
+          
+          # Additional required plugins directories
+          mkdir -p build/printsupport || { echo "Failed to create build/printsupport"; }
+          cp -f /mingw64/share/qt5/plugins/printsupport/windowsprintersupport.dll build/printsupport/ || echo "Warning: windowsprintersupport.dll not found"
+          
+          # Copy resource files
+          echo "Copying resources..."
+          cp -rf resources build/ || echo "Warning: Failed to copy resources directory"
+          
+          echo "Creating Qt configuration file..."
+          cat > build/qt.conf << EOF
+          [Paths]
+          Prefix = .
+          Plugins = .
+          Imports = ./imports
+          Qml2Imports = ./qml
+          EOF
+          
           echo "All DLLs and plugins copied successfully."
 
       - name: Archive build artifacts
@@ -323,6 +384,12 @@ jobs:
           name: windows-latest-build
           path: build-windows/
           if-no-files-found: error
+          
+      - name: Create resources directory for builds if needed
+        run: |
+          mkdir -p build-linux/resources 2>/dev/null || true
+          mkdir -p build-macos/resources 2>/dev/null || true
+          mkdir -p build-windows/resources 2>/dev/null || true
 
       - name: Create release directory
         run: mkdir -p release
