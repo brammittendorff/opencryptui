@@ -67,14 +67,15 @@ bool MainWindow::elevatePrivileges(const QString& diskPath)
     
 #ifdef Q_OS_WIN
     // On Windows, use ShellExecute to run the same program with "runas" verb
-    SHELLEXECUTEINFO sei = {0};
-    sei.cbSize = sizeof(SHELLEXECUTEINFO);
+    // Use the Unicode version (ShellExecuteExW) with SHELLEXECUTEINFOW
+    SHELLEXECUTEINFOW sei = {0};
+    sei.cbSize = sizeof(SHELLEXECUTEINFOW);
     sei.lpVerb = L"runas";  // This requests elevation
-    sei.lpFile = (LPCWSTR)qApp->applicationFilePath().utf16();
+    sei.lpFile = reinterpret_cast<LPCWSTR>(qApp->applicationFilePath().utf16());
     sei.lpParameters = L"--elevated";  // Pass a parameter to indicate we're running elevated
     sei.nShow = SW_NORMAL;
     
-    success = ShellExecuteEx(&sei);
+    success = ShellExecuteExW(&sei);
     
     // If we successfully started the elevated process, we should close this instance
     if (success) {

@@ -55,7 +55,7 @@ void SecureLogger::log(LogLevel level, const QString& component, const QString& 
         case LogLevel::WARNING:
             qWarning() << logEntry;
             break;
-        case LogLevel::ERROR:
+        case LogLevel::ERROR_LEVEL:
             qCritical() << logEntry;
             break;
     }
@@ -98,7 +98,7 @@ QString SecureLogger::logLevelToString(LogLevel level) {
         case LogLevel::DEBUG: return "DEBUG";
         case LogLevel::INFO: return "INFO";
         case LogLevel::WARNING: return "WARNING";
-        case LogLevel::ERROR: return "ERROR";
+        case LogLevel::ERROR_LEVEL: return "ERROR";
         default: return "UNKNOWN";
     }
 }

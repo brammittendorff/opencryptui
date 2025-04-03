@@ -14,7 +14,7 @@ public:
         DEBUG,
         INFO,
         WARNING,
-        ERROR
+        ERROR_LEVEL  // Changed from ERROR to avoid Windows macro conflict
     };
 
     // Singleton pattern
