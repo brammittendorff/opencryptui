@@ -9,6 +9,7 @@
 #include <QProcess>
 #include <QDebug>
 #include <QRandomGenerator>
+#include <QSettings>
 
 // Header format for the encrypted disk
 #define DISK_HEADER_MAGIC "OPENCRYPT_DISK_V2"  // Updated version for hidden volume support

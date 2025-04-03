@@ -3,6 +3,9 @@
 #include <QDebug>
 #include <argon2.h>
 #include <openssl/rand.h>
+#include <sodium.h>
+#include <sys/sysinfo.h>
+#include <algorithm>
 
 Argon2Provider::Argon2Provider()
 {
@@ -23,14 +26,26 @@ QByteArray Argon2Provider::deriveKey(const QByteArray &password, const QByteArra
 
     if (kdf == "Argon2")
     {
-        // Determine memory cost - use reasonable defaults if not specified
-        uint32_t memoryKb = 1 << 16; // 64 MB
+        // Determine memory cost - use government-level defaults
+        // For high-security government applications, use much higher memory cost
+        uint32_t memoryKb = 1 << 20; // 1 GB for government-grade security
+        
+        // Dynamic scaling based on available RAM
+        struct sysinfo info;
+        if(sysinfo(&info) == 0) {
+            // If we have more than 8GB RAM, use 2GB for Argon2
+            if(info.totalram > (8ULL * 1024 * 1024 * 1024)) {
+                memoryKb = 1 << 21; // 2 GB
+            }
+        }
 
-        // Adjust iterations if too small
-        uint32_t time_cost = iterations > 0 ? iterations : 3;
+        // Adjust iterations if too small - higher for government security
+        uint32_t time_cost = iterations > 0 ? iterations : 5;
+        // Enforce minimum of 5 iterations
+        time_cost = std::max(time_cost, 5U);
 
-        // Parallelism factor
-        uint32_t parallelism = 1;
+        // Parallelism factor - increased for multi-core systems
+        uint32_t parallelism = 4; // Use 4 threads by default for modern CPUs
 
         // Argon2id is the preferred variant for general use cases
         int success = argon2id_hash_raw(
@@ -72,11 +87,26 @@ QByteArray Argon2Provider::deriveKey(const QByteArray &password, const QByteArra
     {
         SECURE_LOG(ERROR, "Argon2Provider", 
             QString("Key derivation failed for KDF: %1").arg(kdf));
-        key.fill(0); // Clear sensitive data
+        // Use secure memory zeroing to prevent key material leakage
+        sodium_memzero(key.data(), key.size());
         return QByteArray();
     }
-
-    return key;
+    
+    // Create a secure copy with proper memory protections
+    QByteArray secureKey(key.size(), 0);
+    
+    // Lock the memory pages to prevent swapping to disk
+    if (sodium_mlock(secureKey.data(), secureKey.size()) != 0) {
+        SECURE_LOG(WARNING, "Argon2Provider", "Failed to lock memory pages - key material may be swapped to disk");
+    }
+    
+    // Copy the key material to the secured memory
+    memcpy(secureKey.data(), key.data(), key.size());
+    
+    // Erase the original key data securely
+    sodium_memzero(key.data(), key.size());
+    
+    return secureKey;
 }
 
 bool Argon2Provider::encrypt(QFile &inputFile, QFile &outputFile, const QByteArray &key,

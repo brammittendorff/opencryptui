@@ -16,12 +16,17 @@
 #include <QJsonObject>
 #include <QFile>
 #include <QDir>
+#include <QTimer>
+#include <QProgressBar>
+#include <QLabel>
+#include <QCheckBox>
 #include "encryptionengine.h"
 #include <QDirIterator>
 #include <QProcess>
 #include "version.h"
 #include "encryptionworker.h"
 #include <QStatusBar>
+#include <QStandardPaths>
 
 // Add the static member initialization here
 QTextStream *MainWindow::s_logStream = nullptr;
@@ -78,6 +83,22 @@ void MainWindow::setupUI()
     ui->folderEstimatedTimeLabel->setVisible(false);
     ui->diskProgressBar->setVisible(false);
     ui->diskEstimatedTimeLabel->setVisible(false);
+    
+    // Create and set up security status labels
+    fileSecurityStatusLabel = new QLabel(this);
+    folderSecurityStatusLabel = new QLabel(this);
+    diskSecurityStatusLabel = new QLabel(this);
+    
+    // Style the labels
+    QString baseStyle = "font-weight: bold; padding: 5px; border-radius: 3px;";
+    fileSecurityStatusLabel->setStyleSheet(baseStyle);
+    folderSecurityStatusLabel->setStyleSheet(baseStyle);
+    diskSecurityStatusLabel->setStyleSheet(baseStyle);
+    
+    // Add labels to layout near path fields
+    ui->fileSelectionLayout->addWidget(fileSecurityStatusLabel);
+    ui->folderSelectionLayout->addWidget(folderSecurityStatusLabel);
+    ui->diskSelectionLayout->addWidget(diskSecurityStatusLabel);
 
     // Add crypto provider items
     QStringList providers = encryptionEngine.availableProviders();
@@ -152,6 +173,118 @@ void MainWindow::setupComboBoxes()
     ui->diskHmacCheckBox->setChecked(true);
 }
 
+void MainWindow::updateSecurityStatus(const QString &path, QLabel *statusLabel)
+{
+    if (!statusLabel || path.isEmpty()) return;
+    
+    QFileInfo fileInfo(path);
+    bool isSecure = true;
+    QString statusText;
+    QString styleSheet = "font-weight: bold; padding: 5px; border-radius: 3px;";
+    
+    // Check if in standard temp directory
+    if (path.startsWith("/tmp/") || path.startsWith(QDir::tempPath())) {
+        isSecure = false;
+        statusText = "⚠️ INSECURE: File in temporary directory";
+    }
+    
+    // Check if in user's home directory with proper permissions
+    else if (fileInfo.exists()) {
+        QFile file(path);
+        QFileDevice::Permissions perms = file.permissions();
+        
+        // Check if world-readable
+        if (perms & QFileDevice::ReadOther) {
+            isSecure = false;
+            statusText = "⚠️ INSECURE: File readable by others";
+        }
+        
+        // Check if world-writable
+        else if (perms & QFileDevice::WriteOther) {
+            isSecure = false;
+            statusText = "⚠️ INSECURE: File writable by others";
+        }
+        
+        // Check if in a world-readable directory
+        else {
+            QString parentDir = fileInfo.absolutePath();
+            QFileInfo dirInfo(parentDir);
+            if (QFile(parentDir).permissions() & QFileDevice::ReadOther) {
+                isSecure = false;
+                statusText = "⚠️ WARNING: Parent directory accessible by others";
+            }
+        }
+    }
+    
+    // Default secure status
+    if (isSecure) {
+        statusText = "✅ SECURE: Location has proper permissions";
+        styleSheet += "background-color: #d4edda; color: #155724;";
+    } else {
+        styleSheet += "background-color: #f8d7da; color: #721c24;";
+    }
+    
+    statusLabel->setText(statusText);
+    statusLabel->setStyleSheet(styleSheet);
+    statusLabel->setVisible(true);
+}
+
+void MainWindow::showSecurityTips(const QString &context)
+{
+    QString tips;
+    
+    if (context == "file") {
+        tips = "File Encryption Security Tips:\n\n"
+               "• Store encrypted files in private locations only you can access\n"
+               "• Use both a strong password AND keyfile for critical files\n"
+               "• Enable HMAC for file integrity verification\n"
+               "• For maximum security, use AES-256-GCM or ChaCha20-Poly1305\n"
+               "• Verify file permissions before and after encryption\n"
+               "• Create encrypted backups stored in separate locations";
+    }
+    else if (context == "folder") {
+        tips = "Folder Encryption Security Tips:\n\n"
+               "• Choose a secure location for your encrypted folder\n"
+               "• Use a different password than for individual files\n"
+               "• Consider encrypted containers instead of folder encryption\n"
+               "• Keep an inventory of encrypted folder contents\n"
+               "• Test decryption regularly to ensure accessibility";
+    }
+    else if (context == "disk") {
+        tips = "Disk Encryption Security Tips:\n\n"
+               "• Always use full disk encryption for portable devices\n"
+               "• Create a secure rescue key and store it separately\n"
+               "• Remember that disk encryption doesn't protect mounted volumes\n"
+               "• Consider hidden volumes for plausible deniability\n"
+               "• Keep firmware and encryption software updated\n"
+               "• Combine with strong boot password for maximum security";
+    }
+    else {
+        tips = "General Encryption Security Tips:\n\n"
+               "• Use unique strong passwords (16+ characters)\n"
+               "• Store keyfiles on separate physical devices\n"
+               "• Never share encryption passwords electronically\n"
+               "• Choose secure storage locations with proper permissions\n"
+               "• Regular backup your encrypted data and keys\n"
+               "• Be aware of physical security (shoulder surfing)";
+    }
+    
+    QMessageBox tipBox;
+    tipBox.setWindowTitle("Security Tips");
+    tipBox.setText(tips);
+    tipBox.setIcon(QMessageBox::Information);
+    
+    // Add button to view comprehensive security guide
+    tipBox.addButton("Close", QMessageBox::RejectRole);
+    QPushButton *guideButton = tipBox.addButton("Full Security Guide", QMessageBox::ActionRole);
+    
+    tipBox.exec();
+    
+    if (tipBox.clickedButton() == guideButton) {
+        on_actionSecurityGuide_triggered();
+    }
+}
+
 void MainWindow::connectSignalsAndSlots()
 {
     if (m_signalsConnected)
@@ -191,6 +324,31 @@ void MainWindow::connectSignalsAndSlots()
     safeConnect(ui->actionAboutCiphers, SIGNAL(triggered()), this, SLOT(on_actionAboutCiphers_triggered()));
     safeConnect(ui->actionAboutKDFs, SIGNAL(triggered()), this, SLOT(on_actionAboutKDFs_triggered()));
     safeConnect(ui->actionAboutIterations, SIGNAL(triggered()), this, SLOT(on_actionAboutIterations_triggered()));
+    safeConnect(ui->actionSecurityGuide, SIGNAL(triggered()), this, SLOT(on_actionSecurityGuide_triggered()));
+    
+    // Connect path changes to security status updates
+    connect(ui->filePathLineEdit, &QLineEdit::textChanged, [this](const QString &text) {
+        updateSecurityStatus(text, fileSecurityStatusLabel);
+    });
+    connect(ui->folderPathLineEdit, &QLineEdit::textChanged, [this](const QString &text) {
+        updateSecurityStatus(text, folderSecurityStatusLabel);
+    });
+    connect(ui->diskPathLineEdit, &QLineEdit::textChanged, [this](const QString &text) {
+        updateSecurityStatus(text, diskSecurityStatusLabel);
+    });
+    
+    // Add security tip buttons
+    QPushButton* fileHelpBtn = new QPushButton(QIcon::fromTheme("help-contents"), "Security Tips", this);
+    QPushButton* folderHelpBtn = new QPushButton(QIcon::fromTheme("help-contents"), "Security Tips", this);
+    QPushButton* diskHelpBtn = new QPushButton(QIcon::fromTheme("help-contents"), "Security Tips", this);
+    
+    ui->fileEncryptionGroup->layout()->addWidget(fileHelpBtn);
+    ui->folderEncryptionGroup->layout()->addWidget(folderHelpBtn);
+    ui->diskEncryptionGroup->layout()->addWidget(diskHelpBtn);
+    
+    connect(fileHelpBtn, &QPushButton::clicked, [this](){ showSecurityTips("file"); });
+    connect(folderHelpBtn, &QPushButton::clicked, [this](){ showSecurityTips("folder"); });
+    connect(diskHelpBtn, &QPushButton::clicked, [this](){ showSecurityTips("disk"); });
 
     m_signalsConnected = true;
 }
@@ -326,6 +484,7 @@ void MainWindow::on_fileBrowseButton_clicked()
     if (!filePath.isEmpty())
     {
         ui->filePathLineEdit->setText(filePath);
+        updateSecurityStatus(filePath, fileSecurityStatusLabel);
     }
 }
 
@@ -336,6 +495,7 @@ void MainWindow::on_folderBrowseButton_clicked()
     if (!folderPath.isEmpty())
     {
         ui->folderPathLineEdit->setText(folderPath);
+        updateSecurityStatus(folderPath, folderSecurityStatusLabel);
     }
 }
 
@@ -642,6 +802,175 @@ void MainWindow::on_actionAboutIterations_triggered()
         "For maximum security, consider using higher iteration counts, especially if performance is not a critical concern.");
 
     QMessageBox::information(this, "About Iterations", aboutIterationsText);
+}
+
+void MainWindow::on_actionSecurityGuide_triggered()
+{
+    QString securityGuideText = QString(
+        "Security Best Practices Guide\n\n"
+        "Secure Password Creation:\n"
+        "• Use a MINIMUM of 12 characters, preferably 16+ for highly sensitive data\n"
+        "• Include uppercase letters, lowercase letters, numbers, and special characters\n"
+        "• Avoid dictionary words, names, dates, or predictable patterns\n"
+        "• Consider using a passphrase (multiple words with special characters)\n"
+        "• Never reuse passwords from other services or applications\n\n"
+        
+        "File Security:\n"
+        "• Store encrypted files in locations only you have access to\n"
+        "• Never store encrypted files in shared directories or cloud services that don't use E2E encryption\n"
+        "• Keep keyfiles on separate physical devices (USB drive) from encrypted files\n"
+        "• Consider using both a password AND keyfile for critical data\n"
+        "• NEVER share passwords through email, messaging, or unencrypted channels\n\n"
+        
+        "Encryption Settings:\n"
+        "• For highest security, use AES-256-GCM or ChaCha20-Poly1305 ciphers\n"
+        "• Enable HMAC for additional integrity protection\n"
+        "• Use Argon2 KDF when available or Scrypt as alternative\n"
+        "• Use high iteration counts (10+) for sensitive data\n"
+        "• Use tamper evidence features for critical files\n\n"
+        
+        "Safe Computing Practices:\n"
+        "• Keep your device secure and updated with latest security patches\n"
+        "• Use a secure, up-to-date operating system\n"
+        "• Be aware of physical surroundings when entering passwords\n"
+        "• Scan files for malware before encryption/decryption\n"
+        "• Close the application when not in use\n\n"
+        
+        "Emergency Preparation:\n"
+        "• Keep secure offline backups of critical encryption keys\n"
+        "• Document recovery procedures and store securely\n"
+        "• Test recovery process periodically to ensure it works\n"
+        "• Consider secure key escrow for organizational use\n\n"
+        
+        "Remember: The security of your data is only as strong as your weakest practice!"
+    );
+
+    QMessageBox::information(this, "Security Guide", securityGuideText);
+}
+
+void MainWindow::setupSecurePasswordFields()
+{
+    // Configure password fields for security
+    ui->filePasswordLineEdit->setEchoMode(QLineEdit::Password);
+    ui->folderPasswordLineEdit->setEchoMode(QLineEdit::Password);
+    ui->diskPasswordLineEdit->setEchoMode(QLineEdit::Password);
+    ui->diskConfirmPasswordLineEdit->setEchoMode(QLineEdit::Password);
+    
+    // Create password strength indicator labels
+    QLabel* fileStrengthLabel = new QLabel(this);
+    QLabel* folderStrengthLabel = new QLabel(this);
+    QLabel* diskStrengthLabel = new QLabel(this);
+    
+    // Add labels to layouts
+    ui->filePasswordLayout->addWidget(fileStrengthLabel);
+    ui->folderPasswordLayout->addWidget(folderStrengthLabel);
+    ui->standardVolumeLayout->addWidget(diskStrengthLabel);
+    
+    // Store references as member variables for later use
+    filePasswordStrengthLabel = fileStrengthLabel;
+    folderPasswordStrengthLabel = folderStrengthLabel;
+    diskPasswordStrengthLabel = diskStrengthLabel;
+    
+    // Enable password strength indicators
+    connect(ui->filePasswordLineEdit, &QLineEdit::textChanged, this, &MainWindow::checkPasswordStrength);
+    connect(ui->folderPasswordLineEdit, &QLineEdit::textChanged, this, &MainWindow::checkPasswordStrength);
+    connect(ui->diskPasswordLineEdit, &QLineEdit::textChanged, this, &MainWindow::checkPasswordStrength);
+    
+    // Set placeholder text with password recommendations
+    QString pwdHint = "Enter strong password (min. 12 chars, mix of letters/numbers/symbols)";
+    ui->filePasswordLineEdit->setPlaceholderText(pwdHint);
+    ui->folderPasswordLineEdit->setPlaceholderText(pwdHint);
+    ui->diskPasswordLineEdit->setPlaceholderText(pwdHint);
+    ui->diskConfirmPasswordLineEdit->setPlaceholderText("Re-enter password to confirm");
+    
+    // Disable auto-completion for password fields
+    ui->filePasswordLineEdit->setAttribute(Qt::WA_InputMethodEnabled, false);
+    ui->folderPasswordLineEdit->setAttribute(Qt::WA_InputMethodEnabled, false);
+    ui->diskPasswordLineEdit->setAttribute(Qt::WA_InputMethodEnabled, false);
+    ui->diskConfirmPasswordLineEdit->setAttribute(Qt::WA_InputMethodEnabled, false);
+    
+    // Add "Show Password" checkboxes
+    QCheckBox* showFilePassword = new QCheckBox("Show Password", this);
+    ui->filePasswordLayout->addWidget(showFilePassword);
+    connect(showFilePassword, &QCheckBox::toggled, [this](bool checked) {
+        ui->filePasswordLineEdit->setEchoMode(checked ? QLineEdit::Normal : QLineEdit::Password);
+    });
+    
+    QCheckBox* showFolderPassword = new QCheckBox("Show Password", this);
+    ui->folderPasswordLayout->addWidget(showFolderPassword);
+    connect(showFolderPassword, &QCheckBox::toggled, [this](bool checked) {
+        ui->folderPasswordLineEdit->setEchoMode(checked ? QLineEdit::Normal : QLineEdit::Password);
+    });
+}
+
+void MainWindow::checkPasswordStrength(const QString &password)
+{
+    // Get the sender object to determine which password field was updated
+    QObject* sender = QObject::sender();
+    if (!sender) return;
+    
+    QLabel* strengthLabel = nullptr;
+    
+    if (sender == ui->filePasswordLineEdit) {
+        strengthLabel = filePasswordStrengthLabel;
+    } else if (sender == ui->folderPasswordLineEdit) {
+        strengthLabel = folderPasswordStrengthLabel;
+    } else if (sender == ui->diskPasswordLineEdit) {
+        strengthLabel = diskPasswordStrengthLabel;
+    }
+    
+    if (!strengthLabel) return;
+    
+    // Calculate password strength
+    int score = 0;
+    
+    // Length check (up to 5 points)
+    score += qMin(5, password.length() / 2);
+    
+    // Complexity checks
+    bool hasUppercase = false;
+    bool hasLowercase = false;
+    bool hasDigit = false;
+    bool hasSpecial = false;
+    
+    for (const QChar &c : password) {
+        if (c.isUpper()) hasUppercase = true;
+        else if (c.isLower()) hasLowercase = true;
+        else if (c.isDigit()) hasDigit = true;
+        else if (c.isPunct() || c.isSymbol()) hasSpecial = true;
+    }
+    
+    if (hasUppercase) score += 1;
+    if (hasLowercase) score += 1;
+    if (hasDigit) score += 2;
+    if (hasSpecial) score += 3;
+    
+    // Set color and text based on score
+    QString strengthText;
+    QString colorStyle;
+    
+    if (password.isEmpty()) {
+        strengthText = "";
+        colorStyle = "";
+    } else if (score < 6) {
+        strengthText = "Very Weak";
+        colorStyle = "color: #e74c3c;"; // Red
+    } else if (score < 8) {
+        strengthText = "Weak";
+        colorStyle = "color: #e67e22;"; // Orange
+    } else if (score < 10) {
+        strengthText = "Moderate";
+        colorStyle = "color: #f1c40f;"; // Yellow
+    } else if (score < 12) {
+        strengthText = "Strong";
+        colorStyle = "color: #2ecc71;"; // Green
+    } else {
+        strengthText = "Very Strong";
+        colorStyle = "color: #27ae60;"; // Dark Green
+    }
+    
+    strengthLabel->setText(strengthText);
+    strengthLabel->setStyleSheet(colorStyle);
 }
 
 void MainWindow::on_cryptoProviderComboBox_currentIndexChanged(const QString &providerName)

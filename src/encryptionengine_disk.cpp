@@ -27,7 +27,7 @@ bool EncryptionEngine::encryptDisk(const QString& diskPath, const QString& passw
     
     // Generate secure IV for encryption
     QByteArray iv = generateSecureIV();
-    lastIv = iv; // Store for later use
+    // Removed lastIv storage for security reasons // Store for later use
     
     // Derive the encryption key from the password and keyfiles
     QByteArray key = deriveKey(password, salt, keyfilePaths, kdf, iterations);
@@ -131,7 +131,7 @@ bool EncryptionEngine::decryptDisk(const QString& diskPath, const QString& passw
     QString kdfOverride = headerKdf;
     int iterOverride = headerIterations;
     bool hmacOverride = headerUseHMAC;
-    lastIv = headerIv;
+    // Removed lastIv storage for security reasons
     
     // Derive the encryption key from the password and keyfiles
     QByteArray key = deriveKey(password, headerSalt, keyfilePaths, kdfOverride, iterOverride);
@@ -217,7 +217,7 @@ bool EncryptionEngine::encryptDiskSection(const QString& diskPath, const QString
     
     // Generate secure IV for encryption
     QByteArray iv = generateSecureIV();
-    lastIv = iv; // Store for later use
+    // Removed lastIv storage for security reasons // Store for later use
     
     // Derive the encryption key from the password and keyfiles
     QByteArray key = deriveKey(password, salt, keyfilePaths, kdf, iterations);
@@ -372,7 +372,7 @@ bool EncryptionEngine::decryptDiskSection(const QString& diskPath, const QString
         iterOverride = hiddenInfo.iterations;
         hmacOverride = hiddenInfo.useHMAC;
         sectionSize = hiddenInfo.size; // Use the stored size for accuracy
-        lastIv = iv;
+        // Removed lastIv storage for security reasons
     } else {
         // If not a hidden volume or not found, use provided parameters
         // but still need salt and IV from somewhere
@@ -394,7 +394,7 @@ bool EncryptionEngine::decryptDiskSection(const QString& diskPath, const QString
         if (headerRead) {
             salt = headerSalt;
             iv = headerIv;
-            lastIv = iv;
+            // Removed lastIv storage for security reasons
         } else {
             SECURE_LOG(ERROR, "EncryptionEngine", "Failed to read any encryption parameters");
             return false;

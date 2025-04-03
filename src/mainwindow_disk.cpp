@@ -110,26 +110,46 @@ bool MainWindow::elevatePrivileges(const QString& diskPath)
         QMetaObject::invokeMethod(this, "close", Qt::QueuedConnection);
     }
 #elif defined(Q_OS_MAC)
-    // On macOS, use AuthorizationExecuteWithPrivileges
-    AuthorizationRef authRef;
-    OSStatus status = AuthorizationCreate(NULL, kAuthorizationEmptyEnvironment,
-                                      kAuthorizationFlagDefaults, &authRef);
+    // On macOS, use a more modern approach for recent macOS versions
+    // Note: AuthorizationExecuteWithPrivileges is deprecated in macOS 10.7+
     
-    if (status == errAuthorizationSuccess) {
-        const char *path = qApp->applicationFilePath().toUtf8().constData();
-        const char *args[] = {"--elevated", NULL};
-        
-        status = AuthorizationExecuteWithPrivileges(authRef, path, 
-                                                kAuthorizationFlagDefaults, 
-                                                (char **)args, NULL);
+    // First, try to use a script approach with osascript
+    QProcess osascript;
+    QString scriptCmd = QString("do shell script \"\\\"%1\\\" --elevated\" with administrator privileges")
+                        .arg(qApp->applicationFilePath().replace("\"", "\\\""));
+    
+    osascript.start("osascript", QStringList() << "-e" << scriptCmd);
+    osascript.waitForFinished();
+    
+    if (osascript.exitCode() == 0) {
+        success = true;
+        // If we successfully started the elevated process, we should close this instance
+        QMetaObject::invokeMethod(this, "close", Qt::QueuedConnection);
+    } else {
+        // Fallback to the deprecated API for older macOS versions
+        AuthorizationRef authRef;
+        OSStatus status = AuthorizationCreate(NULL, kAuthorizationEmptyEnvironment,
+                                          kAuthorizationFlagDefaults, &authRef);
         
         if (status == errAuthorizationSuccess) {
-            success = true;
-            // If we successfully started the elevated process, we should close this instance
-            QMetaObject::invokeMethod(this, "close", Qt::QueuedConnection);
+            const char *path = qApp->applicationFilePath().toUtf8().constData();
+            const char *args[] = {"--elevated", NULL};
+            
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+            status = AuthorizationExecuteWithPrivileges(authRef, path, 
+                                                    kAuthorizationFlagDefaults, 
+                                                    (char **)args, NULL);
+#pragma clang diagnostic pop
+            
+            if (status == errAuthorizationSuccess) {
+                success = true;
+                // If we successfully started the elevated process, we should close this instance
+                QMetaObject::invokeMethod(this, "close", Qt::QueuedConnection);
+            }
+            
+            AuthorizationFree(authRef, kAuthorizationFlagDefaults);
         }
-        
-        AuthorizationFree(authRef, kAuthorizationFlagDefaults);
     }
 #endif
 

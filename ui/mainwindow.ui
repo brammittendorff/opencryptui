@@ -137,6 +137,9 @@
                                                                     <property name="placeholderText">
                                                                         <string>Password</string>
                                                                     </property>
+                                                                    <property name="maximumHeight">
+                                                                        <number>25</number>
+                                                                    </property>
                                                                 </widget>
                                                             </item>
                                                             <item>
@@ -146,6 +149,9 @@
                                                                     </property>
                                                                     <property name="placeholderText">
                                                                         <string>Confirm Password</string>
+                                                                    </property>
+                                                                    <property name="maximumHeight">
+                                                                        <number>25</number>
                                                                     </property>
                                                                 </widget>
                                                             </item>
@@ -174,6 +180,9 @@
                                                                     <property name="placeholderText">
                                                                         <string>Outer Volume Password</string>
                                                                     </property>
+                                                                    <property name="maximumHeight">
+                                                                        <number>25</number>
+                                                                    </property>
                                                                 </widget>
                                                             </item>
                                                             <item>
@@ -183,6 +192,9 @@
                                                                     </property>
                                                                     <property name="placeholderText">
                                                                         <string>Hidden Volume Password (different from outer)</string>
+                                                                    </property>
+                                                                    <property name="maximumHeight">
+                                                                        <number>25</number>
                                                                     </property>
                                                                 </widget>
                                                             </item>
@@ -435,6 +447,9 @@
                                                                     <property name="placeholderText">
                                                                         <string>Password</string>
                                                                     </property>
+                                                                    <property name="maximumHeight">
+                                                                        <number>25</number>
+                                                                    </property>
                                                                 </widget>
                                                             </item>
                                                             <item>
@@ -444,6 +459,9 @@
                                                                     </property>
                                                                     <property name="placeholderText">
                                                                         <string>Confirm Password</string>
+                                                                    </property>
+                                                                    <property name="maximumHeight">
+                                                                        <number>25</number>
                                                                     </property>
                                                                 </widget>
                                                             </item>
@@ -669,6 +687,9 @@
                                                                     <property name="placeholderText">
                                                                         <string>Password</string>
                                                                     </property>
+                                                                    <property name="maximumHeight">
+                                                                        <number>25</number>
+                                                                    </property>
                                                                 </widget>
                                                             </item>
                                                             <item>
@@ -678,6 +699,9 @@
                                                                     </property>
                                                                     <property name="placeholderText">
                                                                         <string>Confirm Password</string>
+                                                                    </property>
+                                                                    <property name="maximumHeight">
+                                                                        <number>25</number>
                                                                     </property>
                                                                 </widget>
                                                             </item>
@@ -920,15 +944,21 @@
                 <addaction name="actionAbout"/>
                 <addaction name="actionAboutCiphers"/>
                 <addaction name="actionAboutKDFs"/>
-                <addaction name="actionAboutIterations"/> <!-- Add this line -->
+                <addaction name="actionAboutIterations"/>
+                <addaction name="actionSecurityGuide"/>
             </widget>
             <addaction name="menuFile"/>
             <addaction name="menuEdit"/>
             <addaction name="menuHelp"/>
         </widget>
-        <action name="actionAboutIterations"> <!-- Add this block -->
+        <action name="actionAboutIterations">
             <property name="text">
                 <string>About Iterations</string>
+            </property>
+        </action>
+        <action name="actionSecurityGuide">
+            <property name="text">
+                <string>Security Guide</string>
             </property>
         </action>
         <action name="actionExit">

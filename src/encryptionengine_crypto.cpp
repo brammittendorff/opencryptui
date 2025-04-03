@@ -1,7 +1,12 @@
 #include "encryptionengine.h"
 #include "logging/secure_logger.h"
 #include <QFile>
+#include <QTemporaryFile>
 #include <QDebug>
+#include <QCoreApplication>
+#include <QDataStream>
+#include <QStandardPaths>
+#include <QDir>
 #include <openssl/rand.h>
 #include <openssl/evp.h>
 #include <sodium.h>
@@ -14,6 +19,9 @@ bool EncryptionEngine::cryptOperation(const QString &inputPath, const QString &o
         return false;
     }
 
+    // Always force integrity check (HMAC/AEAD) for government-grade security
+    bool enforceIntegrity = true;
+    
     SECURE_LOG(DEBUG, "EncryptionEngine", QString("Starting cryptOperation with provider: %1").arg(m_currentProviderName));
     SECURE_LOG(DEBUG, "EncryptionEngine", QString("Encrypt mode: %1").arg(encrypt ? "Encryption" : "Decryption"));
     SECURE_LOG(DEBUG, "EncryptionEngine", QString("Input file: %1").arg(inputPath));
@@ -21,7 +29,7 @@ bool EncryptionEngine::cryptOperation(const QString &inputPath, const QString &o
     SECURE_LOG(DEBUG, "EncryptionEngine", QString("Algorithm: %1").arg(algorithm));
     SECURE_LOG(DEBUG, "EncryptionEngine", QString("KDF: %1").arg(kdf));
     SECURE_LOG(DEBUG, "EncryptionEngine", QString("Iterations: %1").arg(iterations));
-    SECURE_LOG(DEBUG, "EncryptionEngine", QString("Use HMAC: %1").arg(useHMAC ? "Yes" : "No"));
+    SECURE_LOG(DEBUG, "EncryptionEngine", QString("Use HMAC: %1").arg((useHMAC || enforceIntegrity) ? "Yes (Enforced)" : "No"));
 
     QFile inputFile(inputPath);
     QFile outputFile(outputPath);
@@ -116,7 +124,7 @@ bool EncryptionEngine::cryptOperation(const QString &inputPath, const QString &o
         SECURE_LOG(DEBUG, "EncryptionEngine", QString("Read IV (hex): %1").arg(QString(iv.toHex())));
     }
 
-    lastIv = iv; // Store for debugging
+    // Removed storage of IV in class member for security reasons
 
     // Derive key using the password and keyfiles
     QByteArray key = deriveKey(password, salt, keyfilePaths, kdf, iterations);
@@ -150,24 +158,176 @@ bool EncryptionEngine::cryptOperation(const QString &inputPath, const QString &o
             return false;
         }
 
+        // Generate digital signature for tamper evidence
+        QByteArray signature;
+        if (enforceIntegrity) {
+            // Create Ed25519 signature of the input data for tamper evidence
+            signature = generateDigitalSignature(inputFile, key);
+            // Reset file position for encryption
+            inputFile.seek(0);
+        }
+        
         // Perform encryption
-        success = m_currentProvider->encrypt(inputFile, outputFile, key, iv, algorithm, useHMAC);
+        success = m_currentProvider->encrypt(inputFile, outputFile, key, iv, algorithm, useHMAC || enforceIntegrity);
+        
+        // Append digital signature if enabled
+        if (enforceIntegrity && success) {
+            // Add signature and validation data to the end of the file
+            appendSignature(outputFile, signature);
+        }
     }
     else
     {
-        // Perform decryption
-        success = m_currentProvider->decrypt(inputFile, outputFile, key, iv, algorithm, useHMAC);
+        // For decryption, we need to properly handle the signature that may exist at the end of the file
+        QByteArray storedSignature;
+        bool hasSignature = false;
+        bool validSignature = true;
+        
+        // Save file position before signature verification
+        qint64 decryptionStartPos = customHeader.size() + salt.size() + iv.size();
+        qint64 signatureSize = 0;
+        
+        // Check if file has a signature
+        if (enforceIntegrity) {
+            // Create a copy of the file to examine without disturbing the original file position
+            QFile signatureCheckFile(inputPath);
+            if (signatureCheckFile.open(QIODevice::ReadOnly)) {
+                // Check file size to see if it's large enough to have a signature
+                hasSignature = signatureCheckFile.size() > (decryptionStartPos + 64); // Header + minimum content + signature
+                
+                if (hasSignature) {
+                    // Look for signature marker at end of file
+                    signatureCheckFile.seek(signatureCheckFile.size() - 12); // Magic + length + CRC
+                    QDataStream in(&signatureCheckFile);
+                    in.setByteOrder(QDataStream::BigEndian);
+                    
+                    quint32 magic;
+                    in >> magic;
+                    
+                    if (magic == 0x5349475F) { // "SIG_"
+                        // Read signature length
+                        quint32 sigLength;
+                        in >> sigLength;
+                        
+                        // Sanity check the signature length
+                        if (sigLength > 0 && sigLength < signatureCheckFile.size() - decryptionStartPos - 12) {
+                            signatureSize = sigLength + 12; // signature + magic + length + CRC
+                            
+                            // Save original position before verification
+                            qint64 savePos = inputFile.pos();
+                            
+                            // Verify the signature if we have one
+                            validSignature = verifySignature(inputFile, key, storedSignature);
+                            
+                            // Restore position after verification
+                            inputFile.seek(savePos);
+                            
+                            if (validSignature) {
+                                SECURE_LOG(DEBUG, "EncryptionEngine", "Valid signature found and verified");
+                            } else {
+                                SECURE_LOG(WARNING, "EncryptionEngine", "Digital signature validation failed - file may have been tampered with");
+                            }
+                        } else {
+                            hasSignature = false;
+                            SECURE_LOG(WARNING, "EncryptionEngine", "Invalid signature length: " + QString::number(sigLength));
+                        }
+                    } else {
+                        hasSignature = false;
+                        SECURE_LOG(DEBUG, "EncryptionEngine", "No signature marker found");
+                    }
+                }
+                signatureCheckFile.close();
+            }
+        }
+        
+        // Make sure we're at the correct position for decryption
+        inputFile.seek(decryptionStartPos);
+        
+        // Create a temporary buffer for content without signature if needed
+        if (hasSignature && signatureSize > 0) {
+            // Determine actual encrypted data size (without signature)
+            qint64 encryptedSize = inputFile.size() - decryptionStartPos - signatureSize;
+            
+            if (encryptedSize > 0) {
+                SECURE_LOG(DEBUG, "EncryptionEngine", "Extracting encrypted data without signature: " + 
+                           QString::number(encryptedSize) + " bytes");
+                
+                // Create a temporary file with the proper header and encrypted content
+                // Use a more secure location than default /tmp
+                QString secureDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+                // Create directory if it doesn't exist
+                QDir().mkpath(secureDir);
+                // Create temporary file in our secure app-specific directory
+                QTemporaryFile tempFile(secureDir + QDir::separator() + "opencryptui_XXXXXX");
+                
+                // Set restrictive permissions - only readable by current user
+                tempFile.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner);
+                
+                if (tempFile.open()) {
+                    // Read salt and IV from original file
+                    inputFile.seek(customHeader.size());
+                    QByteArray header = inputFile.read(salt.size() + iv.size());
+                    
+                    // Write header to temporary file
+                    tempFile.write(header);
+                    
+                    // Now read and write the encrypted content without the signature
+                    inputFile.seek(decryptionStartPos);
+                    QByteArray buffer(4096, 0);
+                    qint64 totalBytesRead = 0;
+                    
+                    while (totalBytesRead < encryptedSize) {
+                        qint64 bytesToRead = qMin(encryptedSize - totalBytesRead, static_cast<qint64>(buffer.size()));
+                        qint64 bytesRead = inputFile.read(buffer.data(), bytesToRead);
+                        
+                        if (bytesRead <= 0) {
+                            break;
+                        }
+                        
+                        tempFile.write(buffer.data(), bytesRead);
+                        totalBytesRead += bytesRead;
+                    }
+                    
+                    tempFile.flush();
+                    
+                    if (totalBytesRead == encryptedSize) {
+                        // Seek to the beginning of encrypted data in the temp file (past salt and IV)
+                        tempFile.seek(salt.size() + iv.size());
+                        
+                        // Decrypt from the temp file
+                        success = m_currentProvider->decrypt(tempFile, outputFile, key, iv, algorithm, useHMAC || enforceIntegrity);
+                        
+                        SECURE_LOG(DEBUG, "EncryptionEngine", QString("Decryption %1").arg(success ? "succeeded" : "failed"));
+                    } else {
+                        SECURE_LOG(ERROR, "EncryptionEngine", "Failed to read complete encrypted data: expected " + 
+                                  QString::number(encryptedSize) + " bytes, got " + QString::number(totalBytesRead));
+                        success = false;
+                    }
+                } else {
+                    SECURE_LOG(ERROR, "EncryptionEngine", "Failed to create temporary file for decryption");
+                    success = false;
+                }
+            } else {
+                SECURE_LOG(ERROR, "EncryptionEngine", "Invalid encrypted data size: " + QString::number(encryptedSize));
+                success = false;
+            }
+        } else {
+            // No signature detected, do normal decryption
+            success = m_currentProvider->decrypt(inputFile, outputFile, key, iv, algorithm, useHMAC || enforceIntegrity);
+        }
+        
+        // If signature validation failed, warn but still allow decryption to proceed
+        if (hasSignature && !validSignature && enforceIntegrity) {
+            SECURE_LOG(WARNING, "EncryptionEngine", "Digital signature validation failed - file may have been tampered with");
+        }
     }
 
     inputFile.close();
     outputFile.close();
 
-    // Clear sensitive data
-    for (int i = 0; i < key.size(); i++)
-    {
-        key[i] = 0;
-    }
-
+    // Securely clear sensitive data with constant-time operation
+    sodium_memzero(key.data(), key.size());
+    
     return success;
 }
 

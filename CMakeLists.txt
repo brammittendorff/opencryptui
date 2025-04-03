@@ -70,12 +70,15 @@ set(LIBRARY_SOURCES
     src/mainwindow.cpp
     include/mainwindow.h
     src/mainwindow_disk.cpp
+    src/mainwindow_entropy.cpp
     src/encryptionengine_init.cpp
     src/encryptionengine_fileops.cpp
     src/encryptionengine_keyderivation.cpp
     src/encryptionengine_crypto.cpp
     src/encryptionengine_disk.cpp
     src/encryptionengine_diskops.cpp
+    src/encryptionengine_tamperevidence.cpp
+    src/encryptionengine_securewipe.cpp
     include/encryptionengine.h
     include/encryptionengine_diskops.h
     src/encryptionworker.cpp

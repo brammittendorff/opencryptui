@@ -7,6 +7,7 @@
 #include <QStandardItemModel>
 #include <QComboBox>
 #include <QPushButton>
+#include <QLabel>
 #include "encryptionengine.h"
 #include "encryptionworker.h"
 #include <QThread>
@@ -71,10 +72,22 @@ private slots:
     void on_actionAbout_triggered();
     void on_actionAboutCiphers_triggered();
     void on_actionAboutKDFs_triggered();
-    void on_actionAboutIterations_triggered();  // Add this line
+    void on_actionAboutIterations_triggered();  
     void applyTheme(const QString &theme);
     void on_cryptoProviderComboBox_currentIndexChanged(const QString &providerName);
     void showProviderCapabilities();
+    
+    // Password security and security UI
+    void setupSecurePasswordFields();
+    void checkPasswordStrength(const QString &password);
+    void updateSecurityStatus(const QString &path, QLabel *statusLabel);
+    void showSecurityTips(const QString &context = "");
+    void on_actionSecurityGuide_triggered();
+    
+    // Entropy monitoring slots
+    void updateEntropyHealth();
+    void runEntropyTest();
+    void updateEntropyDisplays();
 
 private:
     Ui::MainWindow *ui;
@@ -84,10 +97,26 @@ private:
     static QTextStream* s_logStream;
     bool m_signalsConnected;
     QString currentTheme;
+    
+    // Security status indicators
+    QLabel *fileSecurityStatusLabel;
+    QLabel *folderSecurityStatusLabel;
+    QLabel *diskSecurityStatusLabel;
+    
+    // Password strength indicators
+    QLabel *filePasswordStrengthLabel;
+    QLabel *folderPasswordStrengthLabel;
+    QLabel *diskPasswordStrengthLabel;
 
     void setupUI();
     void setupComboBoxes();
     void connectSignalsAndSlots();
+    
+    // Entropy monitoring methods
+    void setupEntropyMonitoring();
+    void createEntropyMonitoringUI(QWidget* tabWidget, const QString& prefix);
+    void updateTabEntropyDisplay(const QString& prefix, const QString& status, int score, 
+                              bool hwRng, int bitDist, const QDateTime& lastTest);
     void startWorker(bool encrypt, bool isFile);
 
     // Add these member variables
