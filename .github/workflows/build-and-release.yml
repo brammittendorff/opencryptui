@@ -374,43 +374,40 @@ jobs:
           cmake --build build --target all
           cd build
           mkdir -p Testing/Temporary
-          chmod +x run_tests.sh
+          # Copy macOS-specific test script
+          cp ../scripts/run_tests_mac.sh .
+          chmod +x run_tests_mac.sh
           echo "Running tests with filtered output..."
-          ./run_tests.sh -v2 | tee Testing/Temporary/LastTest.log
+          ./run_tests_mac.sh -v2 | tee Testing/Temporary/LastTest.log
 
-          - name: Run tests (Windows)
-          if: matrix.os == 'windows-latest'
-          shell: cmd
-          run: |
-            cd build
-            
-            echo "Directory contents of build:"
+      - name: Run tests (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: cmd
+        run: |
+          cd build
+          
+          echo "Directory contents of build:"
+          dir
+          
+          if not exist Testing\Temporary mkdir Testing\Temporary
+          
+          echo "Running tests with filtered output..."
+          
+          if exist run_tests.bat (
+            echo "Found run_tests.bat, running tests..."
+            run_tests.bat -v2 > Testing\Temporary\LastTest.log 2>&1
+            type Testing\Temporary\LastTest.log
+          ) else if exist OpenCryptUITest.exe (
+            echo "run_tests.bat not found, running executable directly..."
+            set QT_LOGGING_RULES=*.debug=false
+            set QT_MESSAGE_PATTERN=[%%{type}] %%{message}
+            OpenCryptUITest.exe -v2 > Testing\Temporary\LastTest.log 2>&1
+            type Testing\Temporary\LastTest.log
+          ) else (
+            echo "ERROR: Test executable not found!"
             dir
-            
-            if not exist Testing\Temporary mkdir Testing\Temporary
-            
-            echo "Running tests with full logging..."
-            
-            if exist OpenCryptUITest.exe (
-              echo "Found OpenCryptUITest.exe, running directly..."
-              
-              rem Set environment variables to ENABLE all Qt debug logs
-              set QT_LOGGING_RULES=*.debug=true
-              set QT_MESSAGE_PATTERN=[%%{type}] %%{if} %%{function}%%{endif} %%{message}
-              
-              rem Run tests with full output
-              OpenCryptUITest.exe -v2 > test_output.txt 2>&1
-              
-              rem Display test output
-              type test_output.txt
-              
-              rem Save to log file
-              copy test_output.txt Testing\Temporary\LastTest.log
-            ) else (
-              echo "ERROR: OpenCryptUITest.exe not found!"
-              dir
-              exit 1
-            )
+            exit 1
+          )
 
       # Upload test results
       - name: Upload test results

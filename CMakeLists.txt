@@ -238,6 +238,27 @@ configure_file(
 file(CHMOD ${CMAKE_CURRENT_BINARY_DIR}/run_tests.sh 
      PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 
+# Copy macOS-specific test script
+if(APPLE)
+    configure_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_tests_mac.sh
+        ${CMAKE_CURRENT_BINARY_DIR}/run_tests_mac.sh
+        COPYONLY
+    )
+    # Make the macOS script executable
+    file(CHMOD ${CMAKE_CURRENT_BINARY_DIR}/run_tests_mac.sh 
+         PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+endif()
+
+# Copy Windows-specific test script
+if(WIN32)
+    configure_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_tests.bat
+        ${CMAKE_CURRENT_BINARY_DIR}/run_tests.bat
+        COPYONLY
+    )
+endif()
+
 # Print paths for debugging
 message(STATUS "Qt5_DIR: ${Qt5_DIR}")
 message(STATUS "OPENSSL_ROOT_DIR: ${OPENSSL_ROOT_DIR}")
