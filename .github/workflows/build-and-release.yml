@@ -385,16 +385,18 @@ jobs:
           cmake --build build --target all
           cd build
           mkdir -p Testing/Temporary
-          echo "Running tests with filtered output..."
+          echo "Running tests with minimal output..."
           
           if [ -f "./OpenCryptUITest.exe" ]; then
             chmod +x ./OpenCryptUITest.exe
             
-            # Capture the CMD script output to a file
-            cmd.exe /c "run_tests.bat -v2" > Testing/Temporary/LastTest.log 2>&1
+            # Set environment variables to suppress Qt logging
+            export QT_LOGGING_RULES="qt.*=false"
+            export QT_QPA_PLATFORM="minimal"
+            export QT_MESSAGE_PATTERN="[%{type}] %{message}"
             
-            # Show the test results
-            cat Testing/Temporary/LastTest.log
+            # Run tests directly in bash 
+            ./OpenCryptUITest.exe -v2 | tee Testing/Temporary/LastTest.log
           else
             echo "ERROR: OpenCryptUITest.exe not found!" | tee Testing/Temporary/LastTest.log
             echo "Directory contents: $(ls -la)" | tee -a Testing/Temporary/LastTest.log
