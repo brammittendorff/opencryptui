@@ -143,6 +143,11 @@ set_target_properties(OpenCryptUI PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 target_compile_options(OpenCryptUI PRIVATE -fPIC)
 
+# Disable logging for main application
+target_compile_definitions(OpenCryptUI PRIVATE
+    -DNO_LOGGING
+)
+
 target_include_directories(OpenCryptUI PRIVATE 
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -189,6 +194,12 @@ set_target_properties(OpenCryptUITest PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 target_compile_options(OpenCryptUITest PRIVATE -fPIC)
 
+# Always enable logging for tests
+target_compile_definitions(OpenCryptUITest PRIVATE
+    -DTEST_MODE
+    -DENABLE_LOGGING
+)
+
 target_include_directories(OpenCryptUITest PRIVATE 
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -216,6 +227,16 @@ target_link_libraries(OpenCryptUITest PRIVATE
 # Add test to CTest
 enable_testing()
 add_test(NAME OpenCryptUITest COMMAND OpenCryptUITest)
+
+# Copy test runner script
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_tests.sh
+    ${CMAKE_CURRENT_BINARY_DIR}/run_tests.sh
+    COPYONLY
+)
+# Make the script executable
+file(CHMOD ${CMAKE_CURRENT_BINARY_DIR}/run_tests.sh 
+     PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 
 # Print paths for debugging
 message(STATUS "Qt5_DIR: ${Qt5_DIR}")

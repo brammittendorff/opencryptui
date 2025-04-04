@@ -3,8 +3,8 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QBuffer>
-#include <QDebug>
 #include <QThread>
+#include "logging/secure_logger.h"
 #include <QTextStream>
 #include <QTableWidgetItem>
 #include <QHeaderView>

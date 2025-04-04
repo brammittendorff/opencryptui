@@ -364,8 +364,9 @@ jobs:
           xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" cmake --build build --target all
           cd build
           mkdir -p Testing/Temporary
-          echo "Running tests with minimal output..."
-          xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" ./OpenCryptUITest -v2 | tee Testing/Temporary/LastTest.log
+          chmod +x run_tests.sh
+          echo "Running tests with filtered output..."
+          xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" ./run_tests.sh -v2 | tee Testing/Temporary/LastTest.log
 
       - name: Run tests (macOS)
         if: matrix.os == 'macos-latest'
@@ -373,8 +374,9 @@ jobs:
           cmake --build build --target all
           cd build
           mkdir -p Testing/Temporary
-          echo "Running tests with minimal output..."
-          ./OpenCryptUITest -v2 | tee Testing/Temporary/LastTest.log
+          chmod +x run_tests.sh
+          echo "Running tests with filtered output..."
+          ./run_tests.sh -v2 | tee Testing/Temporary/LastTest.log
 
       - name: Run tests (Windows)
         if: matrix.os == 'windows-latest'
@@ -383,13 +385,25 @@ jobs:
           cmake --build build --target all
           cd build
           mkdir -p Testing/Temporary
-          echo "Running tests with minimal output..."
+          echo "Running tests with filtered output..."
           export QT_QPA_PLATFORM=minimal
           
           if [ -f "./OpenCryptUITest.exe" ]; then
             chmod +x ./OpenCryptUITest.exe
-            # Use -v2 instead of -v4, as -v4 is not a valid option for QtTest
-            ./OpenCryptUITest.exe -v2 | tee Testing/Temporary/LastTest.log
+            # Create a Windows-specific run_tests.bat script
+            cat > run_tests.bat << EOF
+@echo off
+:: Set Qt logging rules to disable Qt internal categories
+set QT_LOGGING_RULES=qt.*=false
+set QT_MESSAGE_PATTERN=[%{type}] %{message}
+
+:: Run the test with filtering
+.\OpenCryptUITest.exe %*
+EOF
+            chmod +x run_tests.bat
+            
+            # Run the tests using our script
+            ./run_tests.bat -v2 | tee Testing/Temporary/LastTest.log
           else
             echo "ERROR: OpenCryptUITest.exe not found!" | tee Testing/Temporary/LastTest.log
             echo "Directory contents: $(ls -la)" | tee -a Testing/Temporary/LastTest.log

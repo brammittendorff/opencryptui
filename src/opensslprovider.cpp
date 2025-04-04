@@ -1,10 +1,10 @@
 #include "cryptoprovider.h"
-#include <QDebug>
 #include <QCoreApplication>
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 #include <openssl/err.h>
 #include <openssl/kdf.h>
+#include "logging/secure_logger.h"
 
 #ifdef __x86_64__
 #include <cpuid.h>
@@ -18,7 +18,7 @@ OpenSSLProvider::OpenSSLProvider()
 
     // Check for hardware acceleration
     m_aesNiSupported = checkHardwareSupport();
-    qDebug() << "OpenSSL Provider: AES-NI" << (m_aesNiSupported ? "supported" : "not supported");
+    SECURE_LOG(DEBUG, "OpenSSLProvider", QString("AES-NI %1").arg(m_aesNiSupported ? "supported" : "not supported"));
 }
 
 OpenSSLProvider::~OpenSSLProvider()
@@ -31,9 +31,8 @@ OpenSSLProvider::~OpenSSLProvider()
 QByteArray OpenSSLProvider::deriveKey(const QByteArray &password, const QByteArray &salt,
                                       const QString &kdf, int iterations, int keySize)
 {
-    qDebug() << "Deriving key with KDF:" << kdf
-             << "Iterations:" << iterations
-             << "Key Size:" << keySize;
+    SECURE_LOG(DEBUG, "OpenSSLProvider", QString("Deriving key with KDF: %1, Iterations: %2, Key Size: %3")
+             .arg(kdf).arg(iterations).arg(keySize));
 
     QByteArray key(keySize, 0);
     bool success = false;
@@ -53,7 +52,7 @@ QByteArray OpenSSLProvider::deriveKey(const QByteArray &password, const QByteArr
 
         if (pctx == NULL)
         {
-            qDebug() << "OpenSSL Provider: Scrypt not available";
+            SECURE_LOG(WARNING, "OpenSSLProvider", "Scrypt not available");
             OPENSSL_cleanse(key.data(), key.size());
             return QByteArray();
         }
@@ -63,7 +62,7 @@ QByteArray OpenSSLProvider::deriveKey(const QByteArray &password, const QByteArr
             if (EVP_PKEY_derive_init(pctx) <= 0)
             {
                 EVP_PKEY_CTX_free(pctx);
-                qDebug() << "OpenSSL Provider: EVP_PKEY_derive_init failed";
+                SECURE_LOG(ERROR_LEVEL, "OpenSSLProvider", "EVP_PKEY_derive_init failed");
                 OPENSSL_cleanse(key.data(), key.size());
                 return QByteArray();
             }
@@ -73,7 +72,7 @@ QByteArray OpenSSLProvider::deriveKey(const QByteArray &password, const QByteArr
                                   salt.size(), (void *)salt.data()) <= 0)
             {
                 EVP_PKEY_CTX_free(pctx);
-                qDebug() << "OpenSSL Provider: Failed to set salt";
+                SECURE_LOG(ERROR_LEVEL, "OpenSSLProvider", "Failed to set salt");
                 OPENSSL_cleanse(key.data(), key.size());
                 return QByteArray();
             }
@@ -83,7 +82,7 @@ QByteArray OpenSSLProvider::deriveKey(const QByteArray &password, const QByteArr
             if (EVP_PKEY_CTX_ctrl(pctx, -1, EVP_PKEY_OP_DERIVE, EVP_PKEY_CTRL_SCRYPT_N, N, NULL) <= 0)
             {
                 EVP_PKEY_CTX_free(pctx);
-                qDebug() << "OpenSSL Provider: Failed to set N parameter";
+                SECURE_LOG(ERROR_LEVEL, "OpenSSLProvider", "Failed to set N parameter");
                 OPENSSL_cleanse(key.data(), key.size());
                 return QByteArray();
             }
@@ -93,7 +92,7 @@ QByteArray OpenSSLProvider::deriveKey(const QByteArray &password, const QByteArr
             if (EVP_PKEY_CTX_ctrl(pctx, -1, EVP_PKEY_OP_DERIVE, EVP_PKEY_CTRL_SCRYPT_R, r, NULL) <= 0)
             {
                 EVP_PKEY_CTX_free(pctx);
-                qDebug() << "OpenSSL Provider: Failed to set r parameter";
+                SECURE_LOG(ERROR_LEVEL, "OpenSSLProvider", "Failed to set r parameter");
                 OPENSSL_cleanse(key.data(), key.size());
                 return QByteArray();
             }
@@ -103,7 +102,7 @@ QByteArray OpenSSLProvider::deriveKey(const QByteArray &password, const QByteArr
             if (EVP_PKEY_CTX_ctrl(pctx, -1, EVP_PKEY_OP_DERIVE, EVP_PKEY_CTRL_SCRYPT_P, p, NULL) <= 0)
             {
                 EVP_PKEY_CTX_free(pctx);
-                qDebug() << "OpenSSL Provider: Failed to set p parameter";
+                SECURE_LOG(ERROR_LEVEL, "OpenSSLProvider", "Failed to set p parameter");
                 OPENSSL_cleanse(key.data(), key.size());
                 return QByteArray();
             }
@@ -117,14 +116,14 @@ QByteArray OpenSSLProvider::deriveKey(const QByteArray &password, const QByteArr
     }
     else
     {
-        qDebug() << "OpenSSL Provider: Unsupported KDF specified:" << kdf;
+        SECURE_LOG(ERROR_LEVEL, "OpenSSLProvider", QString("Unsupported KDF specified: %1").arg(kdf));
         OPENSSL_cleanse(key.data(), key.size());
         return QByteArray();
     }
 
     if (!success)
     {
-        qDebug() << "OpenSSL Provider:" << kdf << "key derivation failed";
+        SECURE_LOG(ERROR_LEVEL, "OpenSSLProvider", QString("%1 key derivation failed").arg(kdf));
         OPENSSL_cleanse(key.data(), key.size());
         return QByteArray();
     }
@@ -138,14 +137,14 @@ bool OpenSSLProvider::encrypt(QFile &inputFile, QFile &outputFile, const QByteAr
     const EVP_CIPHER *cipher = getCipher(algorithm);
     if (!cipher)
     {
-        qDebug() << "OpenSSL Provider: Invalid algorithm:" << algorithm;
+        SECURE_LOG(ERROR_LEVEL, "OpenSSLProvider", QString("Invalid algorithm: %1").arg(algorithm));
         return false;
     }
 
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
     if (!ctx)
     {
-        qDebug() << "OpenSSL Provider: Failed to create EVP_CIPHER_CTX";
+        SECURE_LOG(ERROR_LEVEL, "OpenSSLProvider", "Failed to create EVP_CIPHER_CTX");
         return false;
     }
 
@@ -156,7 +155,11 @@ bool OpenSSLProvider::encrypt(QFile &inputFile, QFile &outputFile, const QByteAr
                        EVP_CIPHER_nid(cipher) == NID_chacha20_poly1305);
 
     // Debug
-    qDebug() << "OpenSSL Provider: Encrypting with" << algorithm << (isAEADMode ? "(AEAD mode)" : "(Standard mode)") << (useAuthentication ? "with authentication" : "without authentication");
+    SECURE_LOG(DEBUG, "OpenSSLProvider", 
+              QString("Encrypting with %1 %2 %3")
+              .arg(algorithm)
+              .arg(isAEADMode ? "(AEAD mode)" : "(Standard mode)")
+              .arg(useAuthentication ? "with authentication" : "without authentication"));
 
     // For AEAD ciphers or when useAuthentication is true
     bool result;
@@ -179,14 +182,14 @@ bool OpenSSLProvider::decrypt(QFile &inputFile, QFile &outputFile, const QByteAr
     const EVP_CIPHER *cipher = getCipher(algorithm);
     if (!cipher)
     {
-        qDebug() << "OpenSSL Provider: Invalid algorithm:" << algorithm;
+        SECURE_LOG(ERROR_LEVEL, "OpenSSLProvider", QString("Invalid algorithm: %1").arg(algorithm));
         return false;
     }
 
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
     if (!ctx)
     {
-        qDebug() << "OpenSSL Provider: Failed to create EVP_CIPHER_CTX";
+        SECURE_LOG(ERROR_LEVEL, "OpenSSLProvider", "Failed to create EVP_CIPHER_CTX");
         return false;
     }
 
@@ -197,7 +200,11 @@ bool OpenSSLProvider::decrypt(QFile &inputFile, QFile &outputFile, const QByteAr
                        EVP_CIPHER_nid(cipher) == NID_chacha20_poly1305);
 
     // Debug
-    qDebug() << "OpenSSL Provider: Decrypting with" << algorithm << (isAEADMode ? "(AEAD mode)" : "(Standard mode)") << (useAuthentication ? "with authentication" : "without authentication");
+    SECURE_LOG(DEBUG, "OpenSSLProvider",
+              QString("Decrypting with %1 %2 %3")
+              .arg(algorithm)
+              .arg(isAEADMode ? "(AEAD mode)" : "(Standard mode)")
+              .arg(useAuthentication ? "with authentication" : "without authentication"));
     
     // For AEAD ciphers or when useAuthentication is true
     bool result;
@@ -219,7 +226,7 @@ QByteArray OpenSSLProvider::generateRandomBytes(int size)
     QByteArray bytes(size, 0);
     if (RAND_bytes(reinterpret_cast<unsigned char *>(bytes.data()), size) != 1)
     {
-        qDebug() << "OpenSSL Provider: Failed to generate random bytes";
+        SECURE_LOG(ERROR_LEVEL, "OpenSSLProvider", "Failed to generate random bytes");
         return QByteArray();
     }
     return bytes;
@@ -303,7 +310,7 @@ bool OpenSSLProvider::performStandardEncryption(EVP_CIPHER_CTX *ctx, const EVP_C
                                 reinterpret_cast<const unsigned char *>(key.data()),
                                 reinterpret_cast<const unsigned char *>(iv.data())))
     {
-        qDebug() << "OpenSSL Provider: EVP_EncryptInit_ex failed";
+        SECURE_LOG(ERROR_LEVEL, "OpenSSLProvider", "EVP_EncryptInit_ex failed");
         return false;
     }
 
@@ -318,7 +325,7 @@ bool OpenSSLProvider::performStandardEncryption(EVP_CIPHER_CTX *ctx, const EVP_C
                                    reinterpret_cast<unsigned char *>(outBuf.data()), &outLen,
                                    reinterpret_cast<const unsigned char *>(buffer.data()), inLen))
         {
-            qDebug() << "OpenSSL Provider: EVP_EncryptUpdate failed";
+            SECURE_LOG(ERROR_LEVEL, "OpenSSLProvider", "EVP_EncryptUpdate failed");
             return false;
         }
         outputFile.write(outBuf.data(), outLen);
@@ -328,7 +335,7 @@ bool OpenSSLProvider::performStandardEncryption(EVP_CIPHER_CTX *ctx, const EVP_C
     if (1 != EVP_EncryptFinal_ex(ctx,
                                  reinterpret_cast<unsigned char *>(outBuf.data()), &outLen))
     {
-        qDebug() << "OpenSSL Provider: EVP_EncryptFinal_ex failed";
+        SECURE_LOG(ERROR_LEVEL, "OpenSSLProvider", "EVP_EncryptFinal_ex failed");
         return false;
     }
     outputFile.write(outBuf.data(), outLen);
@@ -340,14 +347,14 @@ bool OpenSSLProvider::performStandardDecryption(EVP_CIPHER_CTX *ctx, const EVP_C
                                                 const QByteArray &key, const QByteArray &iv,
                                                 QFile &inputFile, QFile &outputFile)
 {
-    qDebug() << "OpenSSL Provider: Starting standard decryption process";
+    SECURE_LOG(DEBUG, "OpenSSLProvider", "Starting standard decryption process");
 
     // Initialize the decryption operation
     if (!EVP_DecryptInit_ex(ctx, cipher, nullptr,
                             reinterpret_cast<const unsigned char *>(key.data()),
                             reinterpret_cast<const unsigned char *>(iv.data())))
     {
-        qDebug() << "OpenSSL Provider: EVP_DecryptInit_ex failed";
+        SECURE_LOG(ERROR_LEVEL, "OpenSSLProvider", "EVP_DecryptInit_ex failed");
         return false;
     }
 
@@ -362,7 +369,7 @@ bool OpenSSLProvider::performStandardDecryption(EVP_CIPHER_CTX *ctx, const EVP_C
                                reinterpret_cast<unsigned char *>(outputBuffer.data()), &outLen,
                                reinterpret_cast<unsigned char *>(buffer.data()), inLen))
         {
-            qDebug() << "OpenSSL Provider: EVP_DecryptUpdate failed";
+            SECURE_LOG(ERROR_LEVEL, "OpenSSLProvider", "EVP_DecryptUpdate failed");
             return false;
         }
         outputFile.write(outputBuffer.data(), outLen);
@@ -373,12 +380,12 @@ bool OpenSSLProvider::performStandardDecryption(EVP_CIPHER_CTX *ctx, const EVP_C
     {
         // Check if we've already written data (common with block ciphers and padding issues)
         if (outputFile.size() > 0) {
-            qDebug() << "OpenSSL Provider: EVP_DecryptFinal_ex failed, but content already written";
+            SECURE_LOG(WARNING, "OpenSSLProvider", "EVP_DecryptFinal_ex failed, but content already written");
             // For CBC mode, padding errors are common but don't necessarily mean the content is corrupted
             // We already have the decrypted content, so we'll consider this a success
             return true;
         } else {
-            qDebug() << "OpenSSL Provider: EVP_DecryptFinal_ex failed";
+            SECURE_LOG(ERROR_LEVEL, "OpenSSLProvider", "EVP_DecryptFinal_ex failed");
             return false;
         }
     }
@@ -399,11 +406,11 @@ bool OpenSSLProvider::performAuthenticatedEncryption(EVP_CIPHER_CTX *ctx, const 
 
     if (isAuthenticatedMode)
     {
-        qDebug() << "OpenSSL Provider: Authenticated mode detected:" << EVP_CIPHER_name(cipher);
+        SECURE_LOG(DEBUG, "OpenSSLProvider", QString("Authenticated mode detected: %1").arg(EVP_CIPHER_name(cipher)));
     }
     else
     {
-        qDebug() << "OpenSSL Provider: Non-authenticated mode detected:" << EVP_CIPHER_name(cipher);
+        SECURE_LOG(DEBUG, "OpenSSLProvider", QString("Non-authenticated mode detected: %1").arg(EVP_CIPHER_name(cipher)));
     }
 
     // Initialize encryption operation
@@ -411,7 +418,7 @@ bool OpenSSLProvider::performAuthenticatedEncryption(EVP_CIPHER_CTX *ctx, const 
                             reinterpret_cast<const unsigned char *>(key.data()),
                             reinterpret_cast<const unsigned char *>(iv.data())))
     {
-        qDebug() << "OpenSSL Provider: EVP_EncryptInit_ex failed";
+        SECURE_LOG(ERROR_LEVEL, "OpenSSLProvider", "EVP_EncryptInit_ex failed");
         return false;
     }
 
@@ -432,7 +439,7 @@ bool OpenSSLProvider::performAuthenticatedEncryption(EVP_CIPHER_CTX *ctx, const 
                                reinterpret_cast<unsigned char *>(outputBuffer.data()), &outLen,
                                reinterpret_cast<const unsigned char *>(buffer.constData()), bytesRead))
         {
-            qDebug() << "OpenSSL Provider: EVP_EncryptUpdate failed";
+            SECURE_LOG(ERROR_LEVEL, "OpenSSLProvider", "EVP_EncryptUpdate failed");
             return false;
         }
 
@@ -445,7 +452,7 @@ bool OpenSSLProvider::performAuthenticatedEncryption(EVP_CIPHER_CTX *ctx, const 
     if (!EVP_EncryptFinal_ex(ctx,
                              reinterpret_cast<unsigned char *>(outputBuffer.data()), &outLen))
     {
-        qDebug() << "OpenSSL Provider: EVP_EncryptFinal_ex failed";
+        SECURE_LOG(ERROR_LEVEL, "OpenSSLProvider", "EVP_EncryptFinal_ex failed");
         return false;
     }
 
@@ -459,18 +466,18 @@ bool OpenSSLProvider::performAuthenticatedEncryption(EVP_CIPHER_CTX *ctx, const 
     {
         if (!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, tag.size(), tag.data()))
         {
-            qDebug() << "OpenSSL Provider: EVP_CIPHER_CTX_ctrl(EVP_CTRL_GCM_GET_TAG) failed";
+            SECURE_LOG(ERROR_LEVEL, "OpenSSLProvider", "EVP_CIPHER_CTX_ctrl(EVP_CTRL_GCM_GET_TAG) failed");
             return false;
         }
 
         // Append the tag to the end of the file
         outputFile.write(tag);
 
-        qDebug() << "OpenSSL Provider: Encryption completed with authentication tag:" << tag.toHex();
+        SECURE_LOG(DEBUG, "OpenSSLProvider", QString("Encryption completed with authentication tag: %1").arg(QString(tag.toHex())));
     }
     else
     {
-        qDebug() << "OpenSSL Provider: Encryption completed successfully (standard mode)";
+        SECURE_LOG(DEBUG, "OpenSSLProvider", "Encryption completed successfully (standard mode)");
     }
 
     return true;
@@ -481,11 +488,11 @@ bool OpenSSLProvider::performAuthenticatedDecryption(EVP_CIPHER_CTX *ctx, const 
                                                      QFile &inputFile, QFile &outputFile)
 {
     // Debug input parameters
-    qDebug() << "Authenticated Decryption Parameters:";
-    qDebug() << "Cipher:" << EVP_CIPHER_name(cipher);
-    qDebug() << "Key size:" << key.size() << "bytes";
-    qDebug() << "IV size:" << iv.size() << "bytes";
-    qDebug() << "Input file size:" << inputFile.size() << "bytes";
+    SECURE_LOG(DEBUG, "OpenSSLProvider", "Authenticated Decryption Parameters:");
+    SECURE_LOG(DEBUG, "OpenSSLProvider", QString("Cipher: %1").arg(EVP_CIPHER_name(cipher)));
+    SECURE_LOG(DEBUG, "OpenSSLProvider", QString("Key size: %1 bytes").arg(key.size()));
+    SECURE_LOG(DEBUG, "OpenSSLProvider", QString("IV size: %1 bytes").arg(iv.size()));
+    SECURE_LOG(DEBUG, "OpenSSLProvider", QString("Input file size: %1 bytes").arg(inputFile.size()));
 
     int cipherMode = EVP_CIPHER_mode(cipher);
     QByteArray tag(16, 0);
@@ -495,46 +502,46 @@ bool OpenSSLProvider::performAuthenticatedDecryption(EVP_CIPHER_CTX *ctx, const 
 
     if (!isAuthenticatedMode)
     {
-        qDebug() << "Non-authenticated mode detected, falling back to standard decryption";
+        SECURE_LOG(DEBUG, "OpenSSLProvider", "Non-authenticated mode detected, falling back to standard decryption");
         return performStandardDecryption(ctx, cipher, key, iv, inputFile, outputFile);
     }
 
     // Handle proper detection of very small files
     if (inputFile.size() <= 36) // File is too small to be valid
     {
-        qDebug() << "Warning: Input file is too small to be a valid encrypted file";
+        SECURE_LOG(WARNING, "OpenSSLProvider", "Input file is too small to be a valid encrypted file");
     }
 
     // Read the entire file content
     QByteArray encryptedContent = inputFile.readAll();
-    qDebug() << "Total encrypted content size:" << encryptedContent.size();
+    SECURE_LOG(DEBUG, "OpenSSLProvider", QString("Total encrypted content size: %1").arg(encryptedContent.size()));
 
     // Extract tag (last 16 bytes)
     if (encryptedContent.size() < 16)
     {
-        qDebug() << "Error: Encrypted content too small (less than tag size)";
+        SECURE_LOG(ERROR_LEVEL, "OpenSSLProvider", "Encrypted content too small (less than tag size)");
         return false;
     }
 
     tag = encryptedContent.right(16);
     encryptedContent.chop(16); // Remove the tag from the encrypted content
 
-    qDebug() << "Extracted authentication tag (hex):" << tag.toHex();
-    qDebug() << "Encrypted content size after removing tag:" << encryptedContent.size();
+    SECURE_LOG(DEBUG, "OpenSSLProvider", QString("Extracted authentication tag (hex): %1").arg(QString(tag.toHex())));
+    SECURE_LOG(DEBUG, "OpenSSLProvider", QString("Encrypted content size after removing tag: %1").arg(encryptedContent.size()));
 
     // Initialize the decryption operation
     if (!EVP_DecryptInit_ex(ctx, cipher, nullptr,
                             reinterpret_cast<const unsigned char *>(key.data()),
                             reinterpret_cast<const unsigned char *>(iv.data())))
     {
-        qDebug() << "EVP_DecryptInit_ex failed";
+        SECURE_LOG(ERROR_LEVEL, "OpenSSLProvider", "EVP_DecryptInit_ex failed");
         return false;
     }
 
     // Set expected tag value for GCM mode before decryption
     if (!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, tag.size(), tag.data()))
     {
-        qDebug() << "EVP_CIPHER_CTX_ctrl(EVP_CTRL_GCM_SET_TAG) failed";
+        SECURE_LOG(ERROR_LEVEL, "OpenSSLProvider", "EVP_CIPHER_CTX_ctrl(EVP_CTRL_GCM_SET_TAG) failed");
         return false;
     }
 
@@ -549,7 +556,7 @@ bool OpenSSLProvider::performAuthenticatedDecryption(EVP_CIPHER_CTX *ctx, const 
                            reinterpret_cast<const unsigned char *>(encryptedContent.constData()),
                            encryptedContent.size()))
     {
-        qDebug() << "EVP_DecryptUpdate failed";
+        SECURE_LOG(ERROR_LEVEL, "OpenSSLProvider", "EVP_DecryptUpdate failed");
         return false;
     }
 
@@ -559,12 +566,12 @@ bool OpenSSLProvider::performAuthenticatedDecryption(EVP_CIPHER_CTX *ctx, const 
                             reinterpret_cast<unsigned char *>(decryptedData.data() + decryptedLen),
                             &finalLen) <= 0)
     {
-        qDebug() << "EVP_DecryptFinal_ex failed - Authentication failed";
+        SECURE_LOG(ERROR_LEVEL, "OpenSSLProvider", "EVP_DecryptFinal_ex failed - Authentication failed");
         
         // Check if data has already been written
         if (outputFile.size() > 0) {
-            qDebug() << "Authentication tag verification failed but content already decrypted";
-            qDebug() << "This could be due to digital signature or integrity issues";
+            SECURE_LOG(WARNING, "OpenSSLProvider", "Authentication tag verification failed but content already decrypted");
+            SECURE_LOG(WARNING, "OpenSSLProvider", "This could be due to digital signature or integrity issues");
             
             // For testing, we'll still consider this a success but log a warning
             return true;
@@ -574,19 +581,19 @@ bool OpenSSLProvider::performAuthenticatedDecryption(EVP_CIPHER_CTX *ctx, const 
     }
 
     decryptedLen += finalLen;
-    qDebug() << "Successfully decrypted" << decryptedLen << "bytes";
+    SECURE_LOG(DEBUG, "OpenSSLProvider", QString("Successfully decrypted %1 bytes").arg(decryptedLen));
 
     // Write decrypted data to output file
     if (decryptedLen > 0)
     {
         decryptedData.resize(decryptedLen); // Resize to actual decrypted length
         outputFile.write(decryptedData.constData(), decryptedLen);
-        qDebug() << "Wrote" << decryptedLen << "bytes to output file";
+        SECURE_LOG(DEBUG, "OpenSSLProvider", QString("Wrote %1 bytes to output file").arg(decryptedLen));
     }
     else
     {
         // Special case for empty decrypted content - this is likely an error
-        qDebug() << "No decrypted data produced, decryption may have failed";
+        SECURE_LOG(ERROR_LEVEL, "OpenSSLProvider", "No decrypted data produced, decryption may have failed");
         return false;
     }
 

@@ -3,8 +3,8 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QBuffer>
-#include <QDebug>
 #include <QThread>
+#include "logging/secure_logger.h"
 #include <QTextStream>
 #include <QTableWidgetItem>
 #include <QHeaderView>
@@ -34,7 +34,7 @@ QTextStream *MainWindow::s_logStream = nullptr;
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow), worker(new EncryptionWorker), m_signalsConnected(false) // Initialize the flag
 {
-    qDebug() << "MainWindow Constructor";
+    SECURE_LOG(DEBUG, "MainWindow", "MainWindow Constructor");
     ui->setupUi(this);
     setupUI();
 
@@ -113,7 +113,7 @@ void MainWindow::setupUI()
             [this](int index)
             {
                 QString providerName = ui->m_cryptoProviderComboBox->itemText(index);
-                on_cryptoProviderComboBox_currentIndexChanged(providerName);
+                on_m_cryptoProviderComboBox_currentIndexChanged(providerName);
             });
 
     connect(ui->m_providerInfoButton, &QPushButton::clicked, this, &MainWindow::showProviderCapabilities);
@@ -144,7 +144,7 @@ MainWindow::~MainWindow()
 
     workerThread.quit();
     workerThread.wait();
-    qDebug() << "MainWindow Destructor";
+    SECURE_LOG(DEBUG, "MainWindow", "MainWindow Destructor");
     delete ui;
 }
 
@@ -289,11 +289,11 @@ void MainWindow::connectSignalsAndSlots()
 {
     if (m_signalsConnected)
     {
-        qDebug() << "Signals already connected, skipping...";
+        SECURE_LOG(DEBUG, "MainWindow", "Signals already connected, skipping...");
         return;
     }
 
-    qDebug() << "Connecting signals and slots";
+    SECURE_LOG(DEBUG, "MainWindow", "Connecting signals and slots");
 
     // File encryption/decryption
     safeConnect(ui->fileEncryptButton, SIGNAL(clicked()), this, SLOT(on_fileEncryptButton_clicked()));
@@ -355,31 +355,31 @@ void MainWindow::connectSignalsAndSlots()
 
 void MainWindow::on_fileEncryptButton_clicked()
 {
-    qDebug() << "File Encrypt Button Clicked or Enter pressed";
+    SECURE_LOG(DEBUG, "MainWindow", "File Encrypt Button Clicked or Enter pressed");
     startWorker(true, true);
 }
 
 void MainWindow::on_fileDecryptButton_clicked()
 {
-    qDebug() << "File Decrypt Button Clicked or Enter pressed";
+    SECURE_LOG(DEBUG, "MainWindow", "File Decrypt Button Clicked or Enter pressed");
     startWorker(false, true);
 }
 
 void MainWindow::on_folderEncryptButton_clicked()
 {
-    qDebug() << "Folder Encrypt Button Clicked or Enter pressed";
+    SECURE_LOG(DEBUG, "MainWindow", "Folder Encrypt Button Clicked or Enter pressed");
     startWorker(true, false);
 }
 
 void MainWindow::on_folderDecryptButton_clicked()
 {
-    qDebug() << "Folder Decrypt Button Clicked or Enter pressed";
+    SECURE_LOG(DEBUG, "MainWindow", "Folder Decrypt Button Clicked or Enter pressed");
     startWorker(false, false);
 }
 
 void MainWindow::startWorker(bool encrypt, bool isFile)
 {
-    qDebug() << "Start Worker: encrypt=" << encrypt << ", isFile=" << isFile;
+    SECURE_LOG(DEBUG, "MainWindow", QString("Start Worker: encrypt=%1, isFile=%2").arg(encrypt).arg(isFile));
     QString path = isFile ? ui->filePathLineEdit->text() : ui->folderPathLineEdit->text();
     QString password = isFile ? ui->filePasswordLineEdit->text() : ui->folderPasswordLineEdit->text();
     QString algorithm = isFile ? ui->fileAlgorithmComboBox->currentText() : ui->folderAlgorithmComboBox->currentText();
@@ -435,7 +435,7 @@ void MainWindow::startWorker(bool encrypt, bool isFile)
 
 void MainWindow::updateProgress(int value)
 {
-    qDebug() << "Update Progress: value=" << value;
+    SECURE_LOG(DEBUG, "MainWindow", QString("Update Progress: value=%1").arg(value));
     ui->fileProgressBar->setValue(value);
     ui->folderProgressBar->setValue(value);
     ui->diskProgressBar->setValue(value);
@@ -443,7 +443,7 @@ void MainWindow::updateProgress(int value)
 
 void MainWindow::handleFinished(bool success, const QString &errorMessage)
 {
-    qDebug() << "Handle Finished: success=" << success << ", errorMessage=" << errorMessage;
+    SECURE_LOG(DEBUG, "MainWindow", QString("Handle Finished: success=%1, errorMessage=%2").arg(success).arg(errorMessage));
     ui->fileProgressBar->setVisible(false);
     ui->folderProgressBar->setVisible(false);
     ui->diskProgressBar->setVisible(false);
@@ -469,7 +469,7 @@ void MainWindow::handleFinished(bool success, const QString &errorMessage)
 
 void MainWindow::showEstimatedTime(double seconds)
 {
-    qDebug() << "Show Estimated Time: seconds=" << seconds;
+    SECURE_LOG(DEBUG, "MainWindow", QString("Show Estimated Time: seconds=%1").arg(seconds));
     QString timeText = QString("Estimated time: %1 seconds").arg(seconds, 0, 'f', 2);
     ui->fileEstimatedTimeLabel->setText(timeText);
     ui->folderEstimatedTimeLabel->setText(timeText);
@@ -479,7 +479,7 @@ void MainWindow::showEstimatedTime(double seconds)
 void MainWindow::on_fileBrowseButton_clicked()
 {
     static int callCount = 0;
-    qDebug() << "File Browse Button Clicked (Call #" << ++callCount << ")";
+    SECURE_LOG(DEBUG, "MainWindow", QString("File Browse Button Clicked (Call #%1)").arg(++callCount));
     QString filePath = QFileDialog::getOpenFileName(this, "Select File");
     if (!filePath.isEmpty())
     {
@@ -490,7 +490,7 @@ void MainWindow::on_fileBrowseButton_clicked()
 
 void MainWindow::on_folderBrowseButton_clicked()
 {
-    qDebug() << "Folder Browse Button Clicked";
+    SECURE_LOG(DEBUG, "MainWindow", "Folder Browse Button Clicked");
     QString folderPath = QFileDialog::getExistingDirectory(this, "Select Folder");
     if (!folderPath.isEmpty())
     {
@@ -501,7 +501,7 @@ void MainWindow::on_folderBrowseButton_clicked()
 
 void MainWindow::on_fileKeyfileBrowseButton_clicked()
 {
-    qDebug() << "File Keyfile Browse Button Clicked";
+    SECURE_LOG(DEBUG, "MainWindow", "File Keyfile Browse Button Clicked");
     QStringList keyfilePaths = QFileDialog::getOpenFileNames(this, "Select Keyfiles");
     if (!keyfilePaths.isEmpty())
     {
@@ -514,7 +514,7 @@ void MainWindow::on_fileKeyfileBrowseButton_clicked()
 
 void MainWindow::on_folderKeyfileBrowseButton_clicked()
 {
-    qDebug() << "Folder Keyfile Browse Button Clicked";
+    SECURE_LOG(DEBUG, "MainWindow", "Folder Keyfile Browse Button Clicked");
     QStringList keyfilePaths = QFileDialog::getOpenFileNames(this, "Select Keyfiles");
     if (!keyfilePaths.isEmpty())
     {
@@ -529,13 +529,13 @@ void MainWindow::checkHardwareAcceleration()
 {
     bool supported = encryptionEngine.isHardwareAccelerationSupported();
     QString status = supported ? "Supported" : "Not supported";
-    qDebug() << "Hardware Acceleration: " + status;
+    SECURE_LOG(DEBUG, "MainWindow", QString("Hardware Acceleration: %1").arg(status));
 }
 
 void MainWindow::on_benchmarkButton_clicked()
 {
     ui->benchmarkTable->setRowCount(0); // Clear previous results
-    qDebug() << "Running benchmark...";
+    SECURE_LOG(DEBUG, "MainWindow", "Running benchmark...");
 
     QStringList algorithms = {
         "AES-256-GCM", "ChaCha20-Poly1305", "AES-256-CTR", "AES-256-CBC",
@@ -559,7 +559,8 @@ void MainWindow::messageHandler(QtMsgType type, const QMessageLogContext &contex
 
 void MainWindow::updateBenchmarkTable(int iterations, double mbps, double ms, const QString &cipher, const QString &kdf)
 {
-    qDebug() << "Update Benchmark Table: iterations=" << iterations << ", mbps=" << mbps << ", ms=" << ms << ", cipher=" << cipher << ", kdf=" << kdf;
+    SECURE_LOG(DEBUG, "MainWindow", QString("Update Benchmark Table: iterations=%1, mbps=%2, ms=%3, cipher=%4, kdf=%5")
+             .arg(iterations).arg(mbps).arg(ms).arg(cipher).arg(kdf));
     int row = ui->benchmarkTable->rowCount();
     ui->benchmarkTable->insertRow(row);
 
@@ -585,25 +586,25 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
         {
             if (obj == ui->filePasswordLineEdit || obj == ui->fileEncryptButton)
             {
-                qDebug() << "Enter pressed for file encryption";
+                SECURE_LOG(DEBUG, "MainWindow", "Enter pressed for file encryption");
                 ui->fileEncryptButton->click();
                 return true;
             }
             else if (obj == ui->fileDecryptButton)
             {
-                qDebug() << "Enter pressed for file decryption";
+                SECURE_LOG(DEBUG, "MainWindow", "Enter pressed for file decryption");
                 ui->fileDecryptButton->click();
                 return true;
             }
             else if (obj == ui->folderPasswordLineEdit || obj == ui->folderEncryptButton)
             {
-                qDebug() << "Enter pressed for folder encryption";
+                SECURE_LOG(DEBUG, "MainWindow", "Enter pressed for folder encryption");
                 ui->folderEncryptButton->click();
                 return true;
             }
             else if (obj == ui->folderDecryptButton)
             {
-                qDebug() << "Enter pressed for folder decryption";
+                SECURE_LOG(DEBUG, "MainWindow", "Enter pressed for folder decryption");
                 ui->folderDecryptButton->click();
                 return true;
             }
@@ -654,13 +655,13 @@ void MainWindow::applyTheme(const QString &theme)
         themeFilePath = ":/resources/lighttheme.qss";
     }
 
-    qDebug() << "Trying to load stylesheet from:" << themeFilePath;
+    SECURE_LOG(DEBUG, "MainWindow", QString("Trying to load stylesheet from: %1").arg(themeFilePath));
 
     QFile file(themeFilePath);
 
     if (!file.exists())
     {
-        qDebug() << "QSS file does not exist at path:" << themeFilePath;
+        SECURE_LOG(WARNING, "MainWindow", QString("QSS file does not exist at path: %1").arg(themeFilePath));
         return;
     }
 
@@ -670,11 +671,11 @@ void MainWindow::applyTheme(const QString &theme)
         qApp->setStyleSheet(styleSheet);
         file.close();
         currentTheme = theme; // Update current theme
-        qDebug() << "Successfully applied theme from:" << themeFilePath;
+        SECURE_LOG(INFO, "MainWindow", QString("Successfully applied theme from: %1").arg(themeFilePath));
     }
     else
     {
-        qDebug() << "Failed to open theme file:" << file.errorString();
+        SECURE_LOG(ERROR_LEVEL, "MainWindow", QString("Failed to open theme file: %1").arg(file.errorString()));
     }
 }
 
@@ -688,7 +689,7 @@ void MainWindow::loadPreferences()
     {
         if (!settingsDir.mkpath(settingsDirPath))
         {
-            qDebug() << "Failed to create settings directory:" << settingsDirPath;
+            SECURE_LOG(ERROR_LEVEL, "MainWindow", QString("Failed to create settings directory: %1").arg(settingsDirPath));
             applyTheme("Light");
             return;
         }
@@ -698,14 +699,14 @@ void MainWindow::loadPreferences()
 
     if (!settingsFile.exists())
     {
-        qDebug() << "Settings file not found, applying default theme.";
+        SECURE_LOG(INFO, "MainWindow", "Settings file not found, applying default theme.");
         applyTheme("Light");
         return;
     }
 
     if (!settingsFile.open(QIODevice::ReadOnly))
     {
-        qDebug() << "Failed to open settings file for reading:" << settingsFile.errorString();
+        SECURE_LOG(ERROR_LEVEL, "MainWindow", QString("Failed to open settings file for reading: %1").arg(settingsFile.errorString()));
         applyTheme("Light");
         return;
     }
@@ -730,7 +731,7 @@ void MainWindow::savePreferences()
     {
         if (!settingsDir.mkpath(settingsDirPath))
         {
-            qDebug() << "Failed to create settings directory:" << settingsDirPath;
+            SECURE_LOG(ERROR_LEVEL, "MainWindow", QString("Failed to create settings directory: %1").arg(settingsDirPath));
             return;
         }
     }
@@ -739,7 +740,7 @@ void MainWindow::savePreferences()
 
     if (!settingsFile.open(QIODevice::WriteOnly))
     {
-        qDebug() << "Failed to open settings file for writing:" << settingsFile.errorString();
+        SECURE_LOG(ERROR_LEVEL, "MainWindow", QString("Failed to open settings file for writing: %1").arg(settingsFile.errorString()));
         return;
     }
 
@@ -973,7 +974,7 @@ void MainWindow::checkPasswordStrength(const QString &password)
     strengthLabel->setStyleSheet(colorStyle);
 }
 
-void MainWindow::on_cryptoProviderComboBox_currentIndexChanged(const QString &providerName)
+void MainWindow::on_m_cryptoProviderComboBox_currentIndexChanged(const QString &providerName)
 {
     if (!providerName.isEmpty())
     {

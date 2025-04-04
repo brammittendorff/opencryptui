@@ -276,8 +276,8 @@ void EncryptionWorker::process()
         double mbps = fileSizeMB / seconds;
         
         SECURE_LOG(INFO, "EncryptionWorker", 
-            QString("Operation completed successfully in %.2f seconds (%.2f MB/s)")
-            .arg(seconds).arg(mbps));
+            QString("Operation completed successfully in %1 seconds (%2 MB/s)")
+            .arg(seconds, 0, 'f', 2).arg(mbps, 0, 'f', 2));
             
         emit finished(true, QString());
         emit benchmarkResultReady(iterations, mbps, seconds * 1000, algorithm, kdf);

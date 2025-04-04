@@ -29,8 +29,18 @@ struct EnableLoggingForTests {
         logger.setLogLevel(SecureLogger::LogLevel::DEBUG);
         logger.setLogToFile(true);
         
-        // Also enable Qt's native logging
-        QLoggingCategory::setFilterRules("*.debug=true\n*.info=true\n*.warning=true");
+        // Suppress Qt internal logging categories
+        QLoggingCategory::setFilterRules(
+            // Disable all Qt internal logs
+            "qt.*=false\n"
+            // But enable our app logs for debugging
+            "*.debug=true\n"
+            "*.info=true\n"
+            "*.warning=true"
+        );
+        
+        // Add a test log message to verify logging is working
+        SECURE_LOG(DEBUG, "TestOpenCryptUI", "Test logging is enabled - this message should always appear in test mode");
     }
 } enableTestLogging;
 
@@ -69,7 +79,7 @@ void TestOpenCryptUI::initTestCase()
     mainWindow->show();
 
     // Logging and debugging setup
-    qDebug() << "Initializing test case";
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Initializing test case");
 
     // Find UI elements for comprehensive verification
     QComboBox *providerComboBox = mainWindow->findChild<QComboBox *>("m_cryptoProviderComboBox");
@@ -97,10 +107,10 @@ void TestOpenCryptUI::initTestCase()
     QStringList providers = mainWindow->encryptionEngine.availableProviders();
 
     // Log available providers
-    qDebug() << "Available Providers:";
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Available Providers:");
     for (const QString &provider : providers)
     {
-        qDebug() << provider;
+        SECURE_LOG(DEBUG, "TestOpenCryptUI", provider);
     }
 
     // Providers to prioritize testing
@@ -114,7 +124,7 @@ void TestOpenCryptUI::initTestCase()
         // Skip if provider not found
         if (providerIndex == -1)
         {
-            qDebug() << "Provider" << providerName << "not found, skipping";
+            SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Provider %1 not found, skipping").arg(providerName));
             continue;
         }
 
@@ -126,17 +136,17 @@ void TestOpenCryptUI::initTestCase()
         QCOMPARE(providerComboBox->currentText(), providerName);
 
         // Log provider details
-        qDebug() << "Testing Provider:" << providerName;
-        qDebug() << "Supported Algorithms:";
+        SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Testing Provider: %1").arg(providerName));
+        SECURE_LOG(DEBUG, "TestOpenCryptUI", "Supported Algorithms:");
         for (int i = 0; i < fileAlgorithmComboBox->count(); ++i)
         {
-            qDebug() << fileAlgorithmComboBox->itemText(i);
+            SECURE_LOG(DEBUG, "TestOpenCryptUI", fileAlgorithmComboBox->itemText(i));
         }
 
-        qDebug() << "Supported KDFs:";
+        SECURE_LOG(DEBUG, "TestOpenCryptUI", "Supported KDFs:");
         for (int i = 0; i < kdfComboBox->count(); ++i)
         {
-            qDebug() << kdfComboBox->itemText(i);
+            SECURE_LOG(DEBUG, "TestOpenCryptUI", kdfComboBox->itemText(i));
         }
 
         // Set default test parameters
@@ -146,8 +156,10 @@ void TestOpenCryptUI::initTestCase()
         hmacCheckBox->setChecked(true);
 
         // Check hardware acceleration status
-        qDebug() << "Hardware Acceleration for" << providerName << ": "
-                 << (mainWindow->encryptionEngine.isHardwareAccelerationSupported() ? "Supported" : "Not Supported");
+        SECURE_LOG(DEBUG, "TestOpenCryptUI", 
+                QString("Hardware Acceleration for %1: %2")
+                .arg(providerName)
+                .arg(mainWindow->encryptionEngine.isHardwareAccelerationSupported() ? "Supported" : "Not Supported"));
     }
 
     // Setup message box timer for auto-closing dialogs
@@ -172,12 +184,12 @@ QString TestOpenCryptUI::createTestFile(const QString &content)
     QFile testFile(testFilePath);
     if (!testFile.open(QIODevice::WriteOnly))
     {
-        qDebug() << "Failed to open test file for writing";
+        SECURE_LOG(ERROR_LEVEL, "TestOpenCryptUI", "Failed to open test file for writing");
         return QString();
     }
     testFile.write(content.toUtf8());
     testFile.close();
-    qDebug() << "Test file created with content '" << content << "' at" << testFilePath;
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Test file created with content '%1' at %2").arg(content, testFilePath));
     return testFilePath;
 }
 
@@ -187,12 +199,12 @@ QString TestOpenCryptUI::createKeyfile(const QString &content)
     QFile keyfile(keyfilePath);
     if (!keyfile.open(QIODevice::WriteOnly))
     {
-        qDebug() << "Failed to open keyfile for writing";
+        SECURE_LOG(ERROR_LEVEL, "TestOpenCryptUI", "Failed to open keyfile for writing");
         return QString();
     }
     keyfile.write(content.toUtf8());
     keyfile.close();
-    qDebug() << "Keyfile created with content '" << content << "' at" << keyfilePath;
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Keyfile created with content '%1' at %2").arg(content, keyfilePath));
     return keyfilePath;
 }
 
@@ -207,14 +219,14 @@ QString TestOpenCryptUI::createVirtualDisk(qint64 sizeInBytes)
     QFile virtualDisk(virtualDiskPath);
     if (!virtualDisk.open(QIODevice::WriteOnly))
     {
-        qDebug() << "Failed to create virtual disk file";
+        SECURE_LOG(ERROR_LEVEL, "TestOpenCryptUI", "Failed to create virtual disk file");
         return QString();
     }
     
     // Create a sparse file of the specified size
     if (!virtualDisk.resize(sizeInBytes))
     {
-        qDebug() << "Failed to resize virtual disk file";
+        SECURE_LOG(ERROR_LEVEL, "TestOpenCryptUI", "Failed to resize virtual disk file");
         virtualDisk.close();
         return QString();
     }
@@ -249,13 +261,13 @@ QString TestOpenCryptUI::createVirtualDisk(qint64 sizeInBytes)
     }
     
     virtualDisk.close();
-    qDebug() << "Virtual disk created with size" << sizeInBytes << "bytes at" << virtualDiskPath;
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Virtual disk created with size %1 bytes at %2").arg(sizeInBytes).arg(virtualDiskPath));
     return virtualDiskPath;
 }
 
 void TestOpenCryptUI::testEncryptDecrypt()
 {
-    qDebug() << "Starting basic encrypt/decrypt test";
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Starting basic encrypt/decrypt test");
 
     QLineEdit *filePathInput = mainWindow->findChild<QLineEdit *>("filePathLineEdit");
     QLineEdit *passwordInput = mainWindow->findChild<QLineEdit *>("filePasswordLineEdit");
@@ -305,14 +317,14 @@ void TestOpenCryptUI::testEncryptDecrypt()
     testFile.write("test");
     testFile.close();
 
-    qDebug() << "Test file created with content 'test' at" << testFilePath;
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Test file created with content 'test' at %1").arg(testFilePath));
 
     // Set up the UI inputs
     filePathInput->setText(testFilePath);
     passwordInput->setText("testpassword");
 
     // Click the encrypt button
-    qDebug() << "Clicking encrypt button";
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Clicking encrypt button");
     QTest::mouseClick(encryptButton, Qt::LeftButton);
 
     // Process events to allow the worker thread to complete
@@ -324,14 +336,14 @@ void TestOpenCryptUI::testEncryptDecrypt()
 
     // Verify the encrypted file was created
     QVERIFY2(QFileInfo::exists(encryptedFilePath), "Encrypted file was not created");
-    qDebug() << "Encrypted file created at" << encryptedFilePath;
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Encrypted file created at %1").arg(encryptedFilePath));
 
     // Attempt to decrypt the file
     QFile::remove(testFilePath); // Remove the original file first
     filePathInput->setText(encryptedFilePath);
     passwordInput->setText("testpassword");
 
-    qDebug() << "Clicking decrypt button";
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Clicking decrypt button");
     QTest::mouseClick(decryptButton, Qt::LeftButton);
 
     // Process events to allow the worker thread to complete
@@ -354,29 +366,29 @@ void TestOpenCryptUI::testEncryptDecrypt()
     // and not any padding that might be added
     QString content = QString::fromUtf8(contentBytes.left(4));
     
-    qDebug() << "Decrypted file content (first 4 bytes):" << content;
-    qDebug() << "Full content length:" << contentBytes.size();
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Decrypted file content (first 4 bytes): %1").arg(content));
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Full content length: %1").arg(contentBytes.size()));
     QCOMPARE(content, QString("test"));
 
     // Clean up
     QFile::remove(testFilePath);
     QFile::remove(encryptedFilePath);
 
-    qDebug() << "Basic encrypt/decrypt test completed successfully";
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Basic encrypt/decrypt test completed successfully");
 }
 
 bool TestOpenCryptUI::encryptAndDecrypt(const QString &cipher, const QString &kdf, bool useKeyfile)
 {
-    qDebug() << "Testing" << cipher << "with" << kdf << (useKeyfile ? "and keyfile" : "");
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Testing %1 with %2 %3").arg(cipher, kdf, useKeyfile ? "and keyfile" : ""));
 
     // Get the list of supported KDFs from the current provider
     QStringList supportedKDFs = mainWindow->encryptionEngine.supportedKDFs();
-    qDebug() << "Supported KDFs for current provider:" << supportedKDFs;
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Supported KDFs for current provider: %1").arg(supportedKDFs.join(", ")));
 
     // If the KDF is not supported, skip the test
     if (!supportedKDFs.contains(kdf))
     {
-        qDebug() << "Skipping test: KDF" << kdf << "not supported by current provider";
+        SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Skipping test: KDF %1 not supported by current provider").arg(kdf));
         return true; // Return true to avoid test failure
     }
 
@@ -436,7 +448,7 @@ bool TestOpenCryptUI::encryptAndDecrypt(const QString &cipher, const QString &kd
 
     if (!encryptionSucceeded)
     {
-        qDebug() << "Encryption failed or timed out for" << cipher << "with" << kdf;
+        SECURE_LOG(ERROR_LEVEL, "TestOpenCryptUI", QString("Encryption failed or timed out for %1 with %2").arg(cipher, kdf));
         return false;
     }
 
@@ -461,7 +473,7 @@ bool TestOpenCryptUI::encryptAndDecrypt(const QString &cipher, const QString &kd
 
     if (!decryptionSucceeded)
     {
-        qDebug() << "Decryption failed or timed out for" << cipher << "with" << kdf;
+        SECURE_LOG(ERROR_LEVEL, "TestOpenCryptUI", QString("Decryption failed or timed out for %1 with %2").arg(cipher, kdf));
         return false;
     }
 
@@ -469,7 +481,7 @@ bool TestOpenCryptUI::encryptAndDecrypt(const QString &cipher, const QString &kd
     QFile decryptedFile(testFilePath);
     if (!decryptedFile.open(QIODevice::ReadOnly))
     {
-        qDebug() << "Failed to open decrypted file";
+        SECURE_LOG(ERROR_LEVEL, "TestOpenCryptUI", "Failed to open decrypted file");
         return false;
     }
     QByteArray contentBytes = decryptedFile.readAll();
@@ -484,8 +496,8 @@ bool TestOpenCryptUI::encryptAndDecrypt(const QString &cipher, const QString &kd
         QFile::remove(keyfilePath);
     }
 
-    qDebug() << "Decrypted content:" << decryptedContent;
-    qDebug() << "Expected content:" << testContent;
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Decrypted content: %1").arg(decryptedContent));
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Expected content: %1").arg(testContent));
 
     return (decryptedContent == testContent);
 }
@@ -506,7 +518,7 @@ void TestOpenCryptUI::switchToTab(const QString &tabName)
     }
     
     if(tabIndex >= 0) {
-        qDebug() << "Switching to tab:" << tabName << "at index" << tabIndex;
+        SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Switching to tab: %1 at index %2").arg(tabName).arg(tabIndex));
         tabWidget->setCurrentIndex(tabIndex);
         QTest::qWait(200); // Wait for tab switch animation
         QCOMPARE(tabWidget->currentIndex(), tabIndex);
@@ -517,18 +529,18 @@ void TestOpenCryptUI::switchToTab(const QString &tabName)
 
 void TestOpenCryptUI::testTabSwitching()
 {
-    qDebug() << "Starting tab switching test";
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Starting tab switching test");
     
     QTabWidget *tabWidget = mainWindow->findChild<QTabWidget*>("tabWidget");
     QVERIFY(tabWidget);
     
     // First verify the tab count and names
-    qDebug() << "Tab count:" << tabWidget->count();
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Tab count: %1").arg(tabWidget->count()));
     QStringList tabNames;
     for(int i = 0; i < tabWidget->count(); i++) {
         tabNames << tabWidget->tabText(i);
     }
-    qDebug() << "Available tabs:" << tabNames;
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Available tabs: %1").arg(tabNames.join(", ")));
     
     // Verify disk encryption is the first tab
     QVERIFY2(tabNames.at(0).contains("Disk", Qt::CaseInsensitive), 
@@ -544,7 +556,7 @@ void TestOpenCryptUI::testTabSwitching()
     QVERIFY(filePathInput);
     QVERIFY(filePasswordInput);
     QVERIFY(fileEncryptButton);
-    qDebug() << "Successfully switched to File tab";
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Successfully switched to File tab");
     
     // 2. Folder Tab
     switchToTab("Folder");
@@ -554,7 +566,7 @@ void TestOpenCryptUI::testTabSwitching()
     QVERIFY(folderPathInput);
     QVERIFY(folderPasswordInput);
     QVERIFY(folderEncryptButton);
-    qDebug() << "Successfully switched to Folder tab";
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Successfully switched to Folder tab");
     
     // 3. Disk Tab
     switchToTab("Disk");
@@ -564,7 +576,7 @@ void TestOpenCryptUI::testTabSwitching()
     QVERIFY(diskPathInput);
     QVERIFY(diskPasswordInput);
     QVERIFY(diskEncryptButton);
-    qDebug() << "Successfully switched to Disk tab";
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Successfully switched to Disk tab");
     
     // 4. Benchmark Tab (if exists)
     for(int i = 0; i < tabWidget->count(); i++) {
@@ -572,7 +584,7 @@ void TestOpenCryptUI::testTabSwitching()
             switchToTab("Benchmark");
             QPushButton *benchmarkButton = mainWindow->findChild<QPushButton*>("benchmarkButton");
             QVERIFY(benchmarkButton);
-            qDebug() << "Successfully switched to Benchmark tab";
+            SECURE_LOG(DEBUG, "TestOpenCryptUI", "Successfully switched to Benchmark tab");
             break;
         }
     }
@@ -582,12 +594,12 @@ void TestOpenCryptUI::testTabSwitching()
     QVERIFY2(tabWidget->tabText(tabWidget->currentIndex()).contains("Disk", Qt::CaseInsensitive),
              "Failed to switch back to Disk tab");
              
-    qDebug() << "Tab switching test completed successfully";
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Tab switching test completed successfully");
 }
 
 void TestOpenCryptUI::testCryptoProviderSwitching()
 {
-    qDebug() << "Starting crypto provider switching test";
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Starting crypto provider switching test");
     
     // Find provider combo box
     QComboBox *providerComboBox = mainWindow->findChild<QComboBox*>("m_cryptoProviderComboBox");
@@ -599,14 +611,14 @@ void TestOpenCryptUI::testCryptoProviderSwitching()
         providers << providerComboBox->itemText(i);
     }
     
-    qDebug() << "Available crypto providers:" << providers;
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Available crypto providers: %1").arg(providers.join(", ")));
     QVERIFY(!providers.isEmpty());
     
     // Test each provider with different tabs
     QStringList tabsToTest = {"File", "Folder", "Disk"};
     
     for(const QString &provider : providers) {
-        qDebug() << "Testing provider:" << provider;
+        SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Testing provider: %1").arg(provider));
         int providerIndex = providerComboBox->findText(provider);
         QVERIFY(providerIndex >= 0);
         
@@ -636,7 +648,7 @@ void TestOpenCryptUI::testCryptoProviderSwitching()
             for(int i = 0; i < algoCombo->count(); i++) {
                 algorithms << algoCombo->itemText(i);
             }
-            qDebug() << "Provider" << provider << "on tab" << tabName << "supports algorithms:" << algorithms;
+            SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Provider %1 on tab %2 supports algorithms: %3").arg(provider, tabName, algorithms.join(", ")));
             QVERIFY(!algorithms.isEmpty());
             
             // Verify KDF options are loaded
@@ -644,7 +656,7 @@ void TestOpenCryptUI::testCryptoProviderSwitching()
             for(int i = 0; i < kdfCombo->count(); i++) {
                 kdfs << kdfCombo->itemText(i);
             }
-            qDebug() << "Provider" << provider << "on tab" << tabName << "supports KDFs:" << kdfs;
+            SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Provider %1 on tab %2 supports KDFs: %3").arg(provider, tabName, kdfs.join(", ")));
             QVERIFY(!kdfs.isEmpty());
             
             // Test a few algorithm selections to make sure they work
@@ -657,12 +669,12 @@ void TestOpenCryptUI::testCryptoProviderSwitching()
                 QTest::qWait(100);
                 QString lastAlgo = algoCombo->currentText();
                 
-                qDebug() << "Successfully switched algorithms from" << firstAlgo << "to" << lastAlgo;
+                SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Successfully switched algorithms from %1 to %2").arg(firstAlgo, lastAlgo));
             }
         }
     }
     
-    qDebug() << "Crypto provider switching test completed successfully";
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Crypto provider switching test completed successfully");
 }
 
 void TestOpenCryptUI::cleanup()
@@ -708,7 +720,7 @@ void TestOpenCryptUI::cleanup()
 
 void TestOpenCryptUI::testEncryptDecryptWithKeyfile()
 {
-    qDebug() << "Starting encrypt/decrypt with keyfile test - using CBC mode";
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Starting encrypt/decrypt with keyfile test - using CBC mode");
 
     // Clean up any existing test files
     QFile::remove(QDir::currentPath() + "/test.txt");
@@ -772,20 +784,20 @@ void TestOpenCryptUI::testEncryptDecryptWithKeyfile()
     keyfile.write("secret key content");
     keyfile.close();
 
-    qDebug() << "Test file created with content 'test with keyfile' at" << testFilePath;
-    qDebug() << "Keyfile created with content 'secret key content' at" << keyfilePath;
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Test file created with content 'test with keyfile' at %1").arg(testFilePath));
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Keyfile created with content 'secret key content' at %1").arg(keyfilePath));
 
     // Add keyfile to the list
     keyfileListWidget->addItem(keyfilePath);
     QTest::qWait(500); // Wait for UI to update
-    qDebug() << "Keyfile added:" << keyfilePath;
-    qDebug() << "Keyfile count:" << keyfileListWidget->count();
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Keyfile added: %1").arg(keyfilePath));
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Keyfile count: %1").arg(keyfileListWidget->count()));
 
     // Encryption with keyfile
     filePathInput->setText(testFilePath);
     passwordInput->setText("testpassword");
     
-    qDebug() << "Clicking encrypt button for keyfile test";
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Clicking encrypt button for keyfile test");
     QTest::mouseClick(encryptButton, Qt::LeftButton);
     
     // Process events to allow the worker thread to complete
@@ -796,7 +808,7 @@ void TestOpenCryptUI::testEncryptDecryptWithKeyfile()
 
     // Verify the encrypted file was created
     QVERIFY2(QFileInfo::exists(encryptedFilePath), "Encrypted file was not created");
-    qDebug() << "Encrypted file created at" << encryptedFilePath;
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Encrypted file created at %1").arg(encryptedFilePath));
 
     // Remove the original file first
     QFile::remove(testFilePath);
@@ -805,7 +817,7 @@ void TestOpenCryptUI::testEncryptDecryptWithKeyfile()
     filePathInput->setText(encryptedFilePath);
     passwordInput->setText("testpassword");
     
-    qDebug() << "Clicking decrypt button for keyfile test";
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Clicking decrypt button for keyfile test");
     QTest::mouseClick(decryptButton, Qt::LeftButton);
     
     // Process events to allow the worker thread to complete
@@ -827,8 +839,8 @@ void TestOpenCryptUI::testEncryptDecryptWithKeyfile()
     QString expectedText = "test with keyfile";
     QString content = QString::fromUtf8(contentBytes.left(expectedText.length()));
     
-    qDebug() << "Decrypted file content (first" << expectedText.length() << "bytes):" << content;
-    qDebug() << "Full content length:" << contentBytes.size();
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Decrypted file content (first %1 bytes): %2").arg(expectedText.length()).arg(content));
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Full content length: %1").arg(contentBytes.size()));
     QCOMPARE(content, expectedText);
 
     // Clean up
@@ -836,12 +848,12 @@ void TestOpenCryptUI::testEncryptDecryptWithKeyfile()
     QFile::remove(encryptedFilePath);
     QFile::remove(keyfilePath);
     
-    qDebug() << "Encrypt/decrypt with keyfile test completed successfully";
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Encrypt/decrypt with keyfile test completed successfully");
 }
 
 void TestOpenCryptUI::testAllCiphersAndKDFs()
 {
-    qDebug() << "Starting simplified cipher and KDF testing (CBC only)";
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Starting simplified cipher and KDF testing (CBC only)");
 
     // Get available providers
     QStringList providers = mainWindow->encryptionEngine.availableProviders();
@@ -861,7 +873,7 @@ void TestOpenCryptUI::testAllCiphersAndKDFs()
         providerComboBox->setCurrentIndex(openSSLIndex);
         QTest::qWait(500); // Give time for provider to initialize
     } else {
-        qDebug() << "OpenSSL provider not found, skipping test";
+        SECURE_LOG(DEBUG, "TestOpenCryptUI", "OpenSSL provider not found, skipping test");
         QSKIP("OpenSSL provider not found");
     }
 
@@ -869,25 +881,25 @@ void TestOpenCryptUI::testAllCiphersAndKDFs()
     QStringList testCiphers = {"AES-256-CBC"};
     QStringList testKDFs = {"PBKDF2"};
 
-    qDebug() << "Testing provider: OpenSSL";
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Testing provider: OpenSSL");
 
     // Get supported ciphers and KDFs
     QStringList supportedCiphers = mainWindow->encryptionEngine.supportedCiphers();
     QStringList supportedKDFs = mainWindow->encryptionEngine.supportedKDFs();
 
-    qDebug() << "Supported Ciphers for OpenSSL:" << supportedCiphers;
-    qDebug() << "Supported KDFs for OpenSSL:" << supportedKDFs;
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Supported Ciphers for OpenSSL: %1").arg(supportedCiphers.join(", ")));
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Supported KDFs for OpenSSL: %1").arg(supportedKDFs.join(", ")));
     
     // Test the basic cipher/KDF combinations
     for (const QString &cipher : testCiphers) {
         for (const QString &kdf : testKDFs) {
             if (supportedCiphers.contains(cipher) && supportedKDFs.contains(kdf)) {
-                qDebug() << "Testing" << cipher << "with" << kdf << "without keyfile";
+                SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Testing %1 with %2 without keyfile").arg(cipher, kdf));
                 QVERIFY2(encryptAndDecrypt(cipher, kdf, false),
                        qPrintable(QString("OpenSSL: Failed for %1 with %2 without keyfile")
                                .arg(cipher, kdf)));
                 
-                qDebug() << "Testing" << cipher << "with" << kdf << "with keyfile";
+                SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Testing %1 with %2 with keyfile").arg(cipher, kdf));
                 QVERIFY2(encryptAndDecrypt(cipher, kdf, true),
                        qPrintable(QString("OpenSSL: Failed for %1 with %2 with keyfile")
                                .arg(cipher, kdf)));
@@ -895,12 +907,12 @@ void TestOpenCryptUI::testAllCiphersAndKDFs()
         }
     }
     
-    qDebug() << "Cipher and KDF testing completed successfully";
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Cipher and KDF testing completed successfully");
 }
 
 void TestOpenCryptUI::testVirtualDiskEncryption()
 {
-    qDebug() << "Starting virtual disk encryption test with real progress tracking";
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Starting virtual disk encryption test with real progress tracking");
     
     // Switch to disk tab
     switchToTab("Disk");
@@ -908,7 +920,7 @@ void TestOpenCryptUI::testVirtualDiskEncryption()
     // Create a dedicated test directory for safety
     QString testDir = QDir::currentPath() + "/disk_test";
     QDir().mkpath(testDir);
-    qDebug() << "Created test directory at:" << testDir;
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Created test directory at: %1").arg(testDir));
 
     // Create a virtual disk image
     QString virtualDiskPath = testDir + "/virtual_disk.img";
@@ -940,7 +952,7 @@ void TestOpenCryptUI::testVirtualDiskEncryption()
     diskFile.write(diskData);
     diskFile.close();
     
-    qDebug() << "Created virtual disk at" << virtualDiskPath << "- Size:" << QFileInfo(virtualDiskPath).size() << "bytes";
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Created virtual disk at %1 - Size: %2 bytes").arg(virtualDiskPath, QFileInfo(virtualDiskPath).size()));
 
     // Find all the necessary UI elements
     QLineEdit *diskPathInput = mainWindow->findChild<QLineEdit*>("diskPathLineEdit");
@@ -1007,7 +1019,7 @@ void TestOpenCryptUI::testVirtualDiskEncryption()
     progressBar->setValue(10); // Set an initial value
     
     // Click encrypt button
-    qDebug() << "Clicking encrypt disk button to start real encryption";
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Clicking encrypt disk button to start real encryption");
     QTest::mouseClick(diskEncryptButton, Qt::LeftButton);
     
     // Verify progress bar and estimated time label are now visible
@@ -1020,12 +1032,12 @@ void TestOpenCryptUI::testVirtualDiskEncryption()
         QTest::qWait(100);
     }
     
-    qDebug() << "Progress bar is visible: " << progressBar->isVisible();
-    qDebug() << "Estimated time label: " << estimatedTimeLabel->text();
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Progress bar is visible: %1").arg(progressBar->isVisible()));
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Estimated time label: %1").arg(estimatedTimeLabel->text()));
     
     // Track progress values and verify we're getting updates
     int initialProgress = progressBar->value();
-    qDebug() << "Initial progress value: " << initialProgress;
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Initial progress value: %1").arg(initialProgress));
     
     // In test mode, we need to simulate the completion ourselves since we might
     // not have a real worker thread updating the progress
@@ -1065,7 +1077,7 @@ void TestOpenCryptUI::testVirtualDiskEncryption()
     progressBar->setValue(5); // Set an initial value
     
     // Click decrypt button
-    qDebug() << "Clicking decrypt disk button to start real decryption";
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Clicking decrypt disk button to start real decryption");
     QTest::mouseClick(diskDecryptButton, Qt::LeftButton);
     
     // Verify progress bar and estimated time label are now visible
@@ -1116,12 +1128,12 @@ void TestOpenCryptUI::testVirtualDiskEncryption()
     QFile::remove(encryptedFilePath);
     QDir().rmdir(testDir);
     
-    qDebug() << "Virtual disk encryption test with progress tracking completed successfully";
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Virtual disk encryption test with progress tracking completed successfully");
 }
 
 void TestOpenCryptUI::testHiddenVolumeEncryption()
 {
-    qDebug() << "Starting hidden volume encryption test";
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Starting hidden volume encryption test");
     
     // Switch to disk tab
     switchToTab("Disk");
@@ -1129,7 +1141,7 @@ void TestOpenCryptUI::testHiddenVolumeEncryption()
     // Create dedicated test directory for safety
     QString testDir = QDir::currentPath() + "/hidden_volume_test";
     QDir().mkpath(testDir);
-    qDebug() << "Created test directory at:" << testDir;
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Created test directory at: %1").arg(testDir));
     
     // Create a virtual disk image for hidden volume testing
     QString virtualDiskPath = testDir + "/hidden_volume.img";
@@ -1176,8 +1188,7 @@ void TestOpenCryptUI::testHiddenVolumeEncryption()
     diskFile.write(diskData);
     diskFile.close();
     
-    qDebug() << "Created virtual disk with hidden volume area at" << virtualDiskPath 
-             << "- Size:" << QFileInfo(virtualDiskPath).size() << "bytes";
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Created virtual disk with hidden volume area at %1 size %2").arg(virtualDiskPath, QFileInfo(virtualDiskPath).size()));
     
     // Find all the necessary UI elements for hidden volume testing
     QTabWidget *diskSecurityTabs = mainWindow->findChild<QTabWidget*>("diskSecurityTabs");
@@ -1193,7 +1204,7 @@ void TestOpenCryptUI::testHiddenVolumeEncryption()
     
     // Verify that hidden volume UI elements exist
     if (!diskSecurityTabs) {
-        qDebug() << "Disk security tabs not found - hidden volume UI may not be properly implemented yet";
+        SECURE_LOG(DEBUG, "TestOpenCryptUI", "Disk security tabs not found - hidden volume UI may not be properly implemented yet");
         QSKIP("Hidden volume UI not implemented");
     }
     
@@ -1201,11 +1212,11 @@ void TestOpenCryptUI::testHiddenVolumeEncryption()
     
     // If we found the disk security tabs, verify other hidden volume elements
     if (diskSecurityTabs) {
-        qDebug() << "Found disk security tabs with" << diskSecurityTabs->count() << "tabs";
+        SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Found disk security tabs with %1 tabs").arg(diskSecurityTabs->count()));
         
         // Switch to hidden volume tab
         if (diskSecurityTabs->count() > 1) {
-            qDebug() << "Switching to hidden volume tab";
+            SECURE_LOG(DEBUG, "TestOpenCryptUI", "Switching to hidden volume tab");
             diskSecurityTabs->setCurrentIndex(1);
             QTest::qWait(200);
         }
@@ -1227,7 +1238,7 @@ void TestOpenCryptUI::testHiddenVolumeEncryption()
     }
     
     // Perform simulated hidden volume encryption and decryption
-    qDebug() << "Performing simulated hidden volume encryption/decryption";
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Performing simulated hidden volume encryption/decryption");
     
     // Create a copy of the original disk for verification later
     QString originalBackup = virtualDiskPath + ".original";
@@ -1264,9 +1275,8 @@ void TestOpenCryptUI::testHiddenVolumeEncryption()
         if (diskIterationsSpinBox) {
             diskIterationsSpinBox->setValue(1);
         }
-        
-        qDebug() << "Hidden volume parameters set: Outer password: 'outer_volume_password', "
-                 << "Hidden password: 'hidden_volume_password', Size: 50%";
+
+        SECURE_LOG(DEBUG, "TestOpenCryptUI", "Hidden password: 'hidden_volume_password', Size: 50%");
     }
     
     // Since we can't directly use the UI to encrypt/decrypt actual volumes in tests,
@@ -1333,7 +1343,7 @@ void TestOpenCryptUI::testHiddenVolumeEncryption()
             encrypted.close();
             
             simulatedEncryptionSuccess = true;
-            qDebug() << "Simulated hidden volume encryption completed";
+            SECURE_LOG(DEBUG, "TestOpenCryptUI", "Simulated hidden volume encryption completed");
         }
     }
     
@@ -1364,7 +1374,7 @@ void TestOpenCryptUI::testHiddenVolumeEncryption()
             outerDecrypted.write(decryptedContent);
             outerDecrypted.close();
             outerDecryptionSuccess = true;
-            qDebug() << "Simulated outer volume decryption completed";
+            SECURE_LOG(DEBUG, "TestOpenCryptUI", "Simulated outer volume decryption completed");
         }
     }
     
@@ -1385,7 +1395,7 @@ void TestOpenCryptUI::testHiddenVolumeEncryption()
     QVERIFY(originalHeader.size() > 20);
     QVERIFY(decryptedHeader.startsWith("OUTER_VOLUME_TEST_DATA_"));
     QVERIFY(originalHeader.startsWith("OUTER_VOLUME_TEST_DATA_"));
-    qDebug() << "Outer volume decryption verification: Success";
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Outer volume decryption verification: Success");
     
     outerDecrypted.close();
     original.close();
@@ -1415,7 +1425,7 @@ void TestOpenCryptUI::testHiddenVolumeEncryption()
             hiddenDecrypted.write(decryptedHiddenContent);
             hiddenDecrypted.close();
             hiddenDecryptionSuccess = true;
-            qDebug() << "Simulated hidden volume decryption completed";
+            SECURE_LOG(DEBUG, "TestOpenCryptUI", "Simulated hidden volume decryption completed");
         }
     }
     
@@ -1441,7 +1451,7 @@ void TestOpenCryptUI::testHiddenVolumeEncryption()
     // Instead of exact comparison, just check if the size is correct and some content is present
     QVERIFY(decryptedHiddenData.size() > 0);
     QCOMPARE(decryptedHiddenData.size(), originalHiddenData.size());
-    qDebug() << "Hidden volume decryption verification: Success";
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Hidden volume decryption verification: Success");
     
     hiddenDecrypted.close();
     originalHidden.close();
@@ -1454,12 +1464,12 @@ void TestOpenCryptUI::testHiddenVolumeEncryption()
     QFile::remove(hiddenDecryptedPath);
     QDir().rmdir(testDir);
     
-    qDebug() << "Hidden volume encryption test completed successfully";
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Hidden volume encryption test completed successfully");
 }
 
 void TestOpenCryptUI::testSecureDiskWiping()
 {
-    qDebug() << "Starting secure disk wiping test";
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Starting secure disk wiping test");
     
     // Switch to disk tab
     switchToTab("Disk");
@@ -1467,7 +1477,7 @@ void TestOpenCryptUI::testSecureDiskWiping()
     // Create a dedicated test directory for safety
     QString testDir = QDir::currentPath() + "/wipe_test";
     QDir().mkpath(testDir);
-    qDebug() << "Created test directory at:" << testDir;
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Created test directory at: %1").arg(testDir));
 
     // Create a small virtual disk file for wiping tests
     QString virtualDiskPath = testDir + "/wipe_test_disk.img";
@@ -1500,8 +1510,7 @@ void TestOpenCryptUI::testSecureDiskWiping()
     diskFile.write(diskData);
     diskFile.close();
     
-    qDebug() << "Created test disk for wiping at" << virtualDiskPath 
-             << "- Size:" << QFileInfo(virtualDiskPath).size() << "bytes";
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Created test disk for wiping at %1 - size: %2").arg(virtualDiskPath, QFileInfo(virtualDiskPath).size()));
     
     // Find the wiping UI elements
     QLineEdit *diskPathInput = mainWindow->findChild<QLineEdit*>("diskPathLineEdit");
@@ -1515,9 +1524,9 @@ void TestOpenCryptUI::testSecureDiskWiping()
     
     // Test will proceed even if UI elements are missing by using direct API test
     if (!secureWipeCheckbox || !wipePatternComboBox || !wipePassesSpinBox || !verifyWipeCheckBox) {
-        qDebug() << "Secure wiping UI elements not found - testing API directly";
+        SECURE_LOG(DEBUG, "TestOpenCryptUI", "Secure wiping UI elements not found - testing API directly");
     } else {
-        qDebug() << "Found secure wiping UI elements";
+        SECURE_LOG(DEBUG, "TestOpenCryptUI", "Found secure wiping UI elements");
         
         // Set the disk path
         diskPathInput->setText(virtualDiskPath);
@@ -1529,9 +1538,7 @@ void TestOpenCryptUI::testSecureDiskWiping()
         
         // Try to verify UI elements are enabled after checkbox is checked
         if (wipePatternComboBox && wipePassesSpinBox && verifyWipeCheckBox) {
-            qDebug() << "Wiping components enabled: Pattern=" << wipePatternComboBox->isEnabled()
-                     << " Passes=" << wipePassesSpinBox->isEnabled()
-                     << " Verify=" << verifyWipeCheckBox->isEnabled();
+            SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Wiping components enabled: Pattern=%1").arg(wipePatternComboBox->isEnabled()));
             
             // Only try to set values if components are enabled
             if (wipePatternComboBox->isEnabled()) {
@@ -1564,7 +1571,7 @@ void TestOpenCryptUI::testSecureDiskWiping()
         "DoD 5220.22-M (3 passes)", "DoD 5220.22-M Full (7 passes)", "Gutmann (35 passes)"
     };
     
-    qDebug() << "Will test direct wiping API (bypassing UI)";
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Will test direct wiping API (bypassing UI)");
     
     // Set disk path if we have UI elements
     if (diskPathInput) {
@@ -1584,7 +1591,7 @@ void TestOpenCryptUI::testSecureDiskWiping()
     
     // If direct wiping not working in test mode, we'll simulate it
     if (!wipeSuccess) {
-        qDebug() << "Direct API call not successful, simulating wipe for test only";
+        SECURE_LOG(DEBUG, "TestOpenCryptUI", "Direct API call not successful, simulating wipe for test only");
         
         // Create a wiped version by overwriting with zeros
         QFile wipeFile(virtualDiskPath);
@@ -1649,7 +1656,7 @@ void TestOpenCryptUI::testSecureDiskWiping()
     QFile::remove(originalCopy);
     QDir().rmdir(testDir);
     
-    qDebug() << "Secure disk wiping test completed successfully";
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Secure disk wiping test completed successfully");
 }
 
 void TestOpenCryptUI::closeMessageBoxes()

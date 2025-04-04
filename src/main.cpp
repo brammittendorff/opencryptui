@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include <QApplication>
+#include <QLoggingCategory>
 #include <openssl/crypto.h>
 #include "version.h"
 #include "logging/secure_logger.h"
@@ -16,10 +17,20 @@ int main(int argc, char *argv[])
     // Configure logging - simplified approach
     SecureLogger& logger = SecureLogger::getInstance();
     
+    // Configure Qt logging rules to disable internal Qt logs
+    QLoggingCategory::setFilterRules(
+        "qt.*.debug=false\n"
+        "qt.*.info=false\n"
+        "qt.*.warning=false"
+    );
+    
     // No logging in the main application (OpenCryptUI)
     // All logging is done in the test version (OpenCryptUITest)
     logger.setLogLevel(SecureLogger::LogLevel::ERROR_LEVEL);
     logger.setLogToFile(false);
+    
+    // This is a test log message to verify logging configuration
+    SECURE_LOG(INFO, "MainApplication", "Application starting - this should only appear in test mode");
 
     QApplication app(argc, argv);
 

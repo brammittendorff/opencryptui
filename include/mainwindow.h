@@ -76,7 +76,7 @@ private slots:
     void on_actionAboutKDFs_triggered();
     void on_actionAboutIterations_triggered();  
     void applyTheme(const QString &theme);
-    void on_cryptoProviderComboBox_currentIndexChanged(const QString &providerName);
+    void on_m_cryptoProviderComboBox_currentIndexChanged(const QString &providerName);
     void showProviderCapabilities();
     
     // Password security and security UI

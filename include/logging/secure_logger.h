@@ -53,28 +53,39 @@ private:
 #include <QProcessEnvironment>
 #include <QCoreApplication>
 
-// Check if we're in release mode (compiled with NDEBUG and not in CI/test)
+// Check if we're in release mode (no logging mode)
 inline bool isReleaseMode() {
     static bool checked = false;
     static bool inRelease = false;
     if (!checked) {
-        // Release mode if:
+        // Release mode (no logging) if:
         // 1. NO_LOGGING environment var exists OR
-        // 2. App was compiled with NDEBUG and we're NOT in CI environment
+        // 2. NO_LOGGING defined at compile time
+        // 3. App was compiled with NDEBUG and we're NOT in CI environment
+        // 4. NOT explicitly ENABLE_LOGGING defined (for tests)
         QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
         bool isCI = env.contains("CI") || env.contains("GITHUB_ACTIONS") || 
                    env.contains("GITLAB_CI") || env.contains("TRAVIS");
         
-        // Explicitly disabled or release build outside CI
-        inRelease = env.contains("NO_LOGGING") || 
-                   (
-                    #ifdef NDEBUG
-                    true &&
-                    #else
-                    false &&
-                    #endif
-                    !isCI
-                   );
+        // Check if logging is explicitly enabled for tests
+        #ifdef ENABLE_LOGGING
+            inRelease = false;
+        #else
+            // Explicitly disabled or release build outside CI
+            #ifdef NO_LOGGING
+                inRelease = true;
+            #else
+                inRelease = env.contains("NO_LOGGING") || 
+                           (
+                            #ifdef NDEBUG
+                                true &&
+                            #else
+                                false &&
+                            #endif
+                            !isCI
+                           );
+            #endif
+        #endif
         checked = true;
     }
     return inRelease;
