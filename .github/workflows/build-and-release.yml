@@ -391,15 +391,15 @@ jobs:
           if [ -f "./OpenCryptUITest.exe" ]; then
             chmod +x ./OpenCryptUITest.exe
             # Create a Windows-specific run_tests.bat script
-            cat > run_tests.bat << EOF
+            cat > run_tests.bat << 'EOFMARKER'
 @echo off
 :: Set Qt logging rules to disable Qt internal categories
 set QT_LOGGING_RULES=qt.*=false
-set QT_MESSAGE_PATTERN=[%{type}] %{message}
+set QT_MESSAGE_PATTERN=[%%{type}] %%{message}
 
 :: Run the test with filtering
 .\OpenCryptUITest.exe %*
-EOF
+EOFMARKER
             chmod +x run_tests.bat
             
             # Run the tests using our script
