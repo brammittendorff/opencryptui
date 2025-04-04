@@ -68,6 +68,11 @@ private slots:
     void testSecureDiskWiping();
     void testTabSwitching();
     void testCryptoProviderSwitching();
+    void testTamperDetection();
+    void testEntropyQuality();
+    void testKeyDerivation();
+    void testDigitalSignatures();
+    void testAuthenticatedEncryptionModes();
     void cleanupTestCase();
     void closeMessageBoxes();
     void cleanup();
@@ -1666,6 +1671,368 @@ void TestOpenCryptUI::testSecureDiskWiping()
     QDir().rmdir(testDir);
 
     SECURE_LOG(DEBUG, "TestOpenCryptUI", "Secure disk wiping test completed successfully");
+}
+
+void TestOpenCryptUI::testTamperDetection()
+{
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Starting tamper detection test");
+
+    // Create a test file with known content
+    QString testContent = "This is a tamper detection test file";
+    QString testFilePath = createTestFile(testContent);
+    QVERIFY(!testFilePath.isEmpty());
+
+    // Set up UI elements for encryption
+    QLineEdit *filePathInput = mainWindow->findChild<QLineEdit *>("filePathLineEdit");
+    QLineEdit *passwordInput = mainWindow->findChild<QLineEdit *>("filePasswordLineEdit");
+    QPushButton *encryptButton = mainWindow->findChild<QPushButton *>("fileEncryptButton");
+    QComboBox *algorithmComboBox = mainWindow->findChild<QComboBox *>("fileAlgorithmComboBox");
+    QComboBox *kdfComboBox = mainWindow->findChild<QComboBox *>("kdfComboBox");
+    QSpinBox *iterationsSpinBox = mainWindow->findChild<QSpinBox *>("iterationsSpinBox");
+    QCheckBox *hmacCheckBox = mainWindow->findChild<QCheckBox *>("hmacCheckBox");
+
+    // Set test parameters
+    filePathInput->setText(testFilePath);
+    passwordInput->setText("tampertest123");
+    algorithmComboBox->setCurrentText("AES-256-GCM"); // Use GCM for authenticated encryption
+    kdfComboBox->setCurrentText("PBKDF2");
+    iterationsSpinBox->setValue(1);
+    hmacCheckBox->setChecked(true); // Enable HMAC/integrity checking
+
+    // Encrypt the file
+    QTest::mouseClick(encryptButton, Qt::LeftButton);
+    QTest::qWait(WAIT_TIME_LONG);
+    QApplication::processEvents();
+
+    // Check that encrypted file exists (.enc extension)
+    QString encryptedFilePath = testFilePath + ".enc";
+    QVERIFY(waitForFileToExist(encryptedFilePath));
+
+    // Tamper with the encrypted file
+    QFile encryptedFile(encryptedFilePath);
+    QVERIFY(encryptedFile.open(QIODevice::ReadWrite));
+    
+    // Get the file size
+    qint64 fileSize = encryptedFile.size();
+    QVERIFY(fileSize > 100); // File should be large enough to tamper with
+
+    // Seek to the middle portion of the file (avoiding header and signature)
+    encryptedFile.seek(fileSize / 2);
+    
+    // Read 8 bytes
+    QByteArray originalBytes = encryptedFile.read(8);
+    QCOMPARE(originalBytes.size(), 8);
+    
+    // Tamper with the bytes (invert them)
+    QByteArray tamperedBytes(8, 0);
+    for (int i = 0; i < 8; i++) {
+        tamperedBytes[i] = ~originalBytes[i]; // Invert the bits
+    }
+    
+    // Write back the tampered bytes
+    encryptedFile.seek(fileSize / 2);
+    encryptedFile.write(tamperedBytes);
+    encryptedFile.close();
+
+    // Set up UI for decryption
+    QPushButton *decryptButton = mainWindow->findChild<QPushButton *>("fileDecryptButton");
+    filePathInput->setText(encryptedFilePath);
+    
+    // Attempt to decrypt the tampered file
+    QTest::mouseClick(decryptButton, Qt::LeftButton);
+    QTest::qWait(WAIT_TIME_LONG);
+    QApplication::processEvents();
+
+    // Decrypt should fail due to tampering - verify decrypted file doesn't exist
+    QString decryptedFilePath = encryptedFilePath.left(encryptedFilePath.lastIndexOf(".enc"));
+    QVERIFY(!QFile::exists(decryptedFilePath));
+
+    // Clean up
+    QFile::remove(testFilePath);
+    QFile::remove(encryptedFilePath);
+    QFile::remove(decryptedFilePath);
+    
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Tamper detection test completed");
+}
+
+void TestOpenCryptUI::testEntropyQuality()
+{
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Starting entropy quality test");
+
+    // Get the entropy test button from any tab
+    QPushButton *testEntropyButton = mainWindow->findChild<QPushButton *>("fileTestEntropyButton");
+    QVERIFY(testEntropyButton);
+
+    // Perform entropy test
+    QTest::mouseClick(testEntropyButton, Qt::LeftButton);
+    QTest::qWait(WAIT_TIME_LONG * 2); // Give more time for entropy test
+    QApplication::processEvents();
+
+    // Verify entropy results
+    int entropyScore = mainWindow->encryptionEngine.getEntropyHealthScore();
+    QVERIFY(entropyScore >= 50); // Expect at least moderate quality
+
+    // Verify bit distribution is reasonable (40-60% range)
+    int bitDistribution = mainWindow->encryptionEngine.getBitDistribution();
+    QVERIFY(bitDistribution >= 40 && bitDistribution <= 60);
+
+    // Generate multiple random samples and verify uniqueness
+    QByteArray sample1 = mainWindow->encryptionEngine.generateSecureRandomBytes(32);
+    QByteArray sample2 = mainWindow->encryptionEngine.generateSecureRandomBytes(32);
+    QByteArray sample3 = mainWindow->encryptionEngine.generateSecureRandomBytes(32);
+    
+    QVERIFY(!sample1.isEmpty());
+    QVERIFY(!sample2.isEmpty());
+    QVERIFY(!sample3.isEmpty());
+    
+    // The samples should be different from each other
+    QVERIFY(sample1 != sample2);
+    QVERIFY(sample1 != sample3);
+    QVERIFY(sample2 != sample3);
+
+    // Run direct entropy test
+    EncryptionEngine::EntropyTestResult result = mainWindow->encryptionEngine.performEntropyTest(2048);
+    QVERIFY(result.passed);
+    
+    // Verify bit frequency is close to 0.5 (ideal)
+    QVERIFY(result.bitFrequency >= 0.45 && result.bitFrequency <= 0.55);
+    
+    // Verify runs test value is reasonable (typically between 0.1 and 5.0)
+    QVERIFY(result.runsValue >= 0.1 && result.runsValue <= 5.0);
+    
+    // Verify serial correlation is close to 0 (ideal)
+    QVERIFY(result.serialCorrelation >= -0.1 && result.serialCorrelation <= 0.1);
+    
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Entropy quality test completed");
+}
+
+void TestOpenCryptUI::testKeyDerivation()
+{
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Starting key derivation test");
+
+    // Test multiple KDF algorithms with the same password and salt
+    QString testPassword = "SecurePassword123!";
+    QByteArray testSalt = QByteArray::fromHex("0123456789ABCDEF0123456789ABCDEF");
+    
+    // Test PBKDF2
+    QByteArray pbkdf2Key = mainWindow->encryptionEngine.deriveKey(
+        testPassword, testSalt, QStringList(), "PBKDF2", 1000);
+    QVERIFY(!pbkdf2Key.isEmpty());
+    QVERIFY(pbkdf2Key.size() >= 32); // Should produce at least a 256-bit key
+    
+    // Test Argon2
+    QByteArray argon2Key = mainWindow->encryptionEngine.deriveKey(
+        testPassword, testSalt, QStringList(), "Argon2", 1);
+    QVERIFY(!argon2Key.isEmpty());
+    QVERIFY(argon2Key.size() >= 32);
+    
+    // Keys derived with different algorithms should be different
+    QVERIFY(pbkdf2Key != argon2Key);
+    
+    // Test with a keyfile
+    QString keyfileContent = "KeyfileContent123!";
+    QString keyfilePath = createKeyfile(keyfileContent);
+    QVERIFY(!keyfilePath.isEmpty());
+    
+    // Derive key with keyfile
+    QByteArray keyWithKeyfile = mainWindow->encryptionEngine.deriveKey(
+        testPassword, testSalt, QStringList() << keyfilePath, "PBKDF2", 1000);
+    QVERIFY(!keyWithKeyfile.isEmpty());
+    
+    // Key with keyfile should be different from key without keyfile
+    QVERIFY(keyWithKeyfile != pbkdf2Key);
+    
+    // Clean up
+    QFile::remove(keyfilePath);
+    
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Key derivation test completed");
+}
+
+void TestOpenCryptUI::testDigitalSignatures()
+{
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Starting digital signature test");
+
+    // Create a test file with known content
+    QString testContent = "This is a digital signature test file with sufficient length to test the signature algorithms properly.";
+    QString testFilePath = createTestFile(testContent);
+    QVERIFY(!testFilePath.isEmpty());
+
+    // Set up UI elements for encryption
+    QLineEdit *filePathInput = mainWindow->findChild<QLineEdit *>("filePathLineEdit");
+    QLineEdit *passwordInput = mainWindow->findChild<QLineEdit *>("filePasswordLineEdit");
+    QPushButton *encryptButton = mainWindow->findChild<QPushButton *>("fileEncryptButton");
+    QComboBox *algorithmComboBox = mainWindow->findChild<QComboBox *>("fileAlgorithmComboBox");
+    QComboBox *kdfComboBox = mainWindow->findChild<QComboBox *>("kdfComboBox");
+    QSpinBox *iterationsSpinBox = mainWindow->findChild<QSpinBox *>("iterationsSpinBox");
+    QCheckBox *hmacCheckBox = mainWindow->findChild<QCheckBox *>("hmacCheckBox");
+
+    // Set test parameters
+    filePathInput->setText(testFilePath);
+    passwordInput->setText("signaturetest123");
+    algorithmComboBox->setCurrentText("AES-256-CBC");
+    kdfComboBox->setCurrentText("PBKDF2");
+    iterationsSpinBox->setValue(1);
+    hmacCheckBox->setChecked(true); // Enable HMAC/integrity checking
+
+    // Encrypt the file
+    QTest::mouseClick(encryptButton, Qt::LeftButton);
+    QTest::qWait(WAIT_TIME_LONG);
+    QApplication::processEvents();
+
+    // Check that encrypted file exists (.enc extension)
+    QString encryptedFilePath = testFilePath + ".enc";
+    QVERIFY(waitForFileToExist(encryptedFilePath));
+
+    // Set up UI for decryption
+    QPushButton *decryptButton = mainWindow->findChild<QPushButton *>("fileDecryptButton");
+    filePathInput->setText(encryptedFilePath);
+    
+    // Attempt to decrypt the file
+    QTest::mouseClick(decryptButton, Qt::LeftButton);
+    QTest::qWait(WAIT_TIME_LONG);
+    QApplication::processEvents();
+
+    // Check that decrypted file exists and has the original content
+    QString decryptedFilePath = encryptedFilePath.left(encryptedFilePath.lastIndexOf(".enc"));
+    QVERIFY(waitForFileToExist(decryptedFilePath));
+    
+    // Verify content of decrypted file
+    QFile decryptedFile(decryptedFilePath);
+    QVERIFY(decryptedFile.open(QIODevice::ReadOnly));
+    QByteArray decryptedContent = decryptedFile.readAll();
+    decryptedFile.close();
+    
+    // Compare with original content
+    QCOMPARE(QString(decryptedContent), testContent);
+    
+    // Now corrupt the signature at the end of the file
+    QFile encryptedFile(encryptedFilePath);
+    QVERIFY(encryptedFile.open(QIODevice::ReadWrite));
+    
+    // Seek to near the end (last 20 bytes which should contain part of the signature)
+    encryptedFile.seek(encryptedFile.size() - 20);
+    QByteArray originalBytes = encryptedFile.read(8);
+    
+    // Corrupt the signature
+    QByteArray tamperedBytes(8, 0);
+    for (int i = 0; i < 8; i++) {
+        tamperedBytes[i] = ~originalBytes[i]; // Invert the bits
+    }
+    
+    // Write back the tampered bytes
+    encryptedFile.seek(encryptedFile.size() - 20);
+    encryptedFile.write(tamperedBytes);
+    encryptedFile.close();
+    
+    // Clean up decrypted file for the next test
+    QFile::remove(decryptedFilePath);
+    
+    // Try to decrypt the file with corrupted signature
+    QTest::mouseClick(decryptButton, Qt::LeftButton);
+    QTest::qWait(WAIT_TIME_LONG);
+    QApplication::processEvents();
+    
+    // Decrypt should fail due to signature corruption
+    QVERIFY(!QFile::exists(decryptedFilePath));
+
+    // Clean up
+    QFile::remove(testFilePath);
+    QFile::remove(encryptedFilePath);
+    QFile::remove(decryptedFilePath); // Just in case
+    
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Digital signature test completed");
+}
+
+void TestOpenCryptUI::testAuthenticatedEncryptionModes()
+{
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Starting authenticated encryption modes test");
+
+    // Create a test file with known content
+    QString testContent = "This is authenticated encryption test content";
+    QString testFilePath = createTestFile(testContent);
+    QVERIFY(!testFilePath.isEmpty());
+
+    // Test these authenticated modes
+    QStringList authenticatedModes = {
+        "AES-256-GCM",      // Galois Counter Mode
+        "ChaCha20-Poly1305" // ChaCha20 with Poly1305 MAC
+    };
+    
+    for (const QString &mode : authenticatedModes) {
+        SECURE_LOG(DEBUG, "TestOpenCryptUI", QString("Testing authenticated mode: %1").arg(mode));
+        
+        // Set up UI elements for encryption
+        QLineEdit *filePathInput = mainWindow->findChild<QLineEdit *>("filePathLineEdit");
+        QLineEdit *passwordInput = mainWindow->findChild<QLineEdit *>("filePasswordLineEdit");
+        QPushButton *encryptButton = mainWindow->findChild<QPushButton *>("fileEncryptButton");
+        QComboBox *algorithmComboBox = mainWindow->findChild<QComboBox *>("fileAlgorithmComboBox");
+        QComboBox *kdfComboBox = mainWindow->findChild<QComboBox *>("kdfComboBox");
+        QSpinBox *iterationsSpinBox = mainWindow->findChild<QSpinBox *>("iterationsSpinBox");
+        QCheckBox *hmacCheckBox = mainWindow->findChild<QCheckBox *>("hmacCheckBox");
+
+        // Skip if this mode is not available
+        if (algorithmComboBox->findText(mode) == -1) {
+            SECURE_LOG(WARNING, "TestOpenCryptUI", QString("Mode %1 not available, skipping test").arg(mode));
+            continue;
+        }
+
+        // Set test parameters
+        filePathInput->setText(testFilePath);
+        passwordInput->setText("authenctest123");
+        algorithmComboBox->setCurrentText(mode);
+        kdfComboBox->setCurrentText("PBKDF2");
+        iterationsSpinBox->setValue(1);
+        hmacCheckBox->setChecked(true); // Enable HMAC/integrity checking
+
+        // Encrypt the file
+        QTest::mouseClick(encryptButton, Qt::LeftButton);
+        QTest::qWait(WAIT_TIME_LONG);
+        QApplication::processEvents();
+
+        // Check that encrypted file exists (.enc extension)
+        QString encryptedFilePath = testFilePath + ".enc";
+        QVERIFY(waitForFileToExist(encryptedFilePath));
+
+        // Tamper with the encrypted file
+        QFile encryptedFile(encryptedFilePath);
+        QVERIFY(encryptedFile.open(QIODevice::ReadWrite));
+        
+        // Seek to the middle of the file (should be ciphertext area)
+        encryptedFile.seek(encryptedFile.size() / 2);
+        QByteArray originalBytes = encryptedFile.read(4);
+        
+        // Corrupt the data
+        QByteArray tamperedBytes(4, 0);
+        for (int i = 0; i < 4; i++) {
+            tamperedBytes[i] = ~originalBytes[i]; // Invert the bits
+        }
+        
+        // Write back the tampered bytes
+        encryptedFile.seek(encryptedFile.size() / 2);
+        encryptedFile.write(tamperedBytes);
+        encryptedFile.close();
+
+        // Set up UI for decryption
+        QPushButton *decryptButton = mainWindow->findChild<QPushButton *>("fileDecryptButton");
+        filePathInput->setText(encryptedFilePath);
+        
+        // Attempt to decrypt the tampered file
+        QTest::mouseClick(decryptButton, Qt::LeftButton);
+        QTest::qWait(WAIT_TIME_LONG);
+        QApplication::processEvents();
+
+        // Decrypt should fail due to authentication failure
+        QString decryptedFilePath = encryptedFilePath.left(encryptedFilePath.lastIndexOf(".enc"));
+        QVERIFY(!QFile::exists(decryptedFilePath));
+
+        // Clean up this iteration
+        QFile::remove(encryptedFilePath);
+    }
+
+    // Clean up
+    QFile::remove(testFilePath);
+    
+    SECURE_LOG(DEBUG, "TestOpenCryptUI", "Authenticated encryption modes test completed");
 }
 
 QTEST_MAIN(TestOpenCryptUI)

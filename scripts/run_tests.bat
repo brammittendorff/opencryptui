@@ -8,7 +8,8 @@ set QT_LOGGING_RULES=qt.*=false
 rem Set a simple message pattern
 set QT_MESSAGE_PATTERN=[%%{type}] %%{message}
 
-rem Run the tests
+rem Run the tests and display output directly to console
+echo ********* Running OpenCryptUI Tests *********
 OpenCryptUITest.exe %*
 
 rem Exit with the test's exit code

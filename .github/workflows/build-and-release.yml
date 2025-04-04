@@ -395,14 +395,16 @@ jobs:
           
           if exist run_tests.bat (
             echo "Found run_tests.bat, running tests..."
+            run_tests.bat -v2
+            rem Save output to a log file for artifacts
             run_tests.bat -v2 > Testing\Temporary\LastTest.log 2>&1
-            type Testing\Temporary\LastTest.log
           ) else if exist OpenCryptUITest.exe (
             echo "run_tests.bat not found, running executable directly..."
             set QT_LOGGING_RULES=*.debug=false
             set QT_MESSAGE_PATTERN=[%%{type}] %%{message}
+            OpenCryptUITest.exe -v2
+            rem Save output to a log file for artifacts
             OpenCryptUITest.exe -v2 > Testing\Temporary\LastTest.log 2>&1
-            type Testing\Temporary\LastTest.log
           ) else (
             echo "ERROR: Test executable not found!"
             dir
