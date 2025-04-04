@@ -386,13 +386,15 @@ jobs:
           cd build
           mkdir -p Testing/Temporary
           echo "Running tests with filtered output..."
-          export QT_QPA_PLATFORM=minimal
           
           if [ -f "./OpenCryptUITest.exe" ]; then
             chmod +x ./OpenCryptUITest.exe
-            chmod +x ./run_tests.bat
-            # Run tests using the pre-built batch script
-            ./run_tests.bat -v2 | tee Testing/Temporary/LastTest.log
+            
+            # Capture the CMD script output to a file
+            cmd.exe /c "run_tests.bat -v2" > Testing/Temporary/LastTest.log 2>&1
+            
+            # Show the test results
+            cat Testing/Temporary/LastTest.log
           else
             echo "ERROR: OpenCryptUITest.exe not found!" | tee Testing/Temporary/LastTest.log
             echo "Directory contents: $(ls -la)" | tee -a Testing/Temporary/LastTest.log
