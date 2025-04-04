@@ -378,34 +378,39 @@ jobs:
           echo "Running tests with filtered output..."
           ./run_tests.sh -v2 | tee Testing/Temporary/LastTest.log
 
-      - name: Run tests (Windows)
-        if: matrix.os == 'windows-latest'
-        shell: cmd
-        run: |
-          cmake --build build --target all
-          cd build
-          echo "Running tests with minimal output..."
-          
-          if exist OpenCryptUITest.exe (
-            rem Set environment variables to suppress Qt log messages
-            set QT_LOGGING_RULES=qt.*=false
-            set QT_QPA_PLATFORM=minimal
-            set QT_MESSAGE_PATTERN=[%%{type}] %%{message}
+          - name: Run tests (Windows)
+          if: matrix.os == 'windows-latest'
+          shell: cmd
+          run: |
+            cd build
             
-            rem Run the tests
-            OpenCryptUITest.exe -v1 > test_output.txt
-            
-            rem Show test results
-            type test_output.txt
-            
-            rem Save to log file
-            if not exist Testing\Temporary mkdir Testing\Temporary
-            copy test_output.txt Testing\Temporary\LastTest.log
-          ) else (
-            echo "ERROR: OpenCryptUITest.exe not found!"
+            echo "Directory contents of build:"
             dir
-            exit 1
-          )
+            
+            if not exist Testing\Temporary mkdir Testing\Temporary
+            
+            echo "Running tests with full logging..."
+            
+            if exist OpenCryptUITest.exe (
+              echo "Found OpenCryptUITest.exe, running directly..."
+              
+              rem Set environment variables to ENABLE all Qt debug logs
+              set QT_LOGGING_RULES=*.debug=true
+              set QT_MESSAGE_PATTERN=[%%{type}] %%{if} %%{function}%%{endif} %%{message}
+              
+              rem Run tests with full output
+              OpenCryptUITest.exe -v2 > test_output.txt 2>&1
+              
+              rem Display test output
+              type test_output.txt
+              
+              rem Save to log file
+              copy test_output.txt Testing\Temporary\LastTest.log
+            ) else (
+              echo "ERROR: OpenCryptUITest.exe not found!"
+              dir
+              exit 1
+            )
 
       # Upload test results
       - name: Upload test results
