@@ -380,28 +380,32 @@ jobs:
 
       - name: Run tests (Windows)
         if: matrix.os == 'windows-latest'
-        shell: msys2 {0}
+        shell: cmd
         run: |
           cmake --build build --target all
           cd build
-          mkdir -p Testing/Temporary
           echo "Running tests with minimal output..."
           
-          if [ -f "./OpenCryptUITest.exe" ]; then
-            chmod +x ./OpenCryptUITest.exe
+          if exist OpenCryptUITest.exe (
+            rem Set environment variables to suppress Qt log messages
+            set QT_LOGGING_RULES=qt.*=false
+            set QT_QPA_PLATFORM=minimal
+            set QT_MESSAGE_PATTERN=[%%{type}] %%{message}
             
-            # Set environment variables to suppress Qt logging
-            export QT_LOGGING_RULES="qt.*=false"
-            export QT_QPA_PLATFORM="minimal"
-            export QT_MESSAGE_PATTERN="[%{type}] %{message}"
+            rem Run the tests
+            OpenCryptUITest.exe -v1 > test_output.txt
             
-            # Run tests directly in bash 
-            ./OpenCryptUITest.exe -v2 | tee Testing/Temporary/LastTest.log
-          else
-            echo "ERROR: OpenCryptUITest.exe not found!" | tee Testing/Temporary/LastTest.log
-            echo "Directory contents: $(ls -la)" | tee -a Testing/Temporary/LastTest.log
+            rem Show test results
+            type test_output.txt
+            
+            rem Save to log file
+            if not exist Testing\Temporary mkdir Testing\Temporary
+            copy test_output.txt Testing\Temporary\LastTest.log
+          ) else (
+            echo "ERROR: OpenCryptUITest.exe not found!"
+            dir
             exit 1
-          fi
+          )
 
       # Upload test results
       - name: Upload test results
