@@ -378,36 +378,20 @@ jobs:
           echo "Running tests with filtered output..."
           ./run_tests.sh -v2 | tee Testing/Temporary/LastTest.log
 
-      - name: Create Windows Test Script
-        if: matrix.os == 'windows-latest'
-        shell: msys2 {0}
-        run: |
-          mkdir -p build/Testing/Temporary
-          
-          # Create a separate Windows-specific test wrapper script
-          echo '@echo off' > build/run_tests.bat
-          echo ':: Set Qt logging rules to disable Qt internal categories' >> build/run_tests.bat
-          echo 'set QT_LOGGING_RULES=qt.*=false' >> build/run_tests.bat
-          echo 'set QT_MESSAGE_PATTERN=[%%{type}] %%{message}' >> build/run_tests.bat
-          echo '' >> build/run_tests.bat
-          echo ':: Run the test with filtering' >> build/run_tests.bat
-          echo '.\OpenCryptUITest.exe %*' >> build/run_tests.bat
-          
-          # Make it executable
-          chmod +x build/run_tests.bat
-
       - name: Run tests (Windows)
         if: matrix.os == 'windows-latest'
         shell: msys2 {0}
         run: |
           cmake --build build --target all
           cd build
+          mkdir -p Testing/Temporary
+          echo "Running tests with filtered output..."
           export QT_QPA_PLATFORM=minimal
           
           if [ -f "./OpenCryptUITest.exe" ]; then
             chmod +x ./OpenCryptUITest.exe
-            echo "Running tests with filtered output..."
-            # Run the tests using our script
+            chmod +x ./run_tests.bat
+            # Run tests using the pre-built batch script
             ./run_tests.bat -v2 | tee Testing/Temporary/LastTest.log
           else
             echo "ERROR: OpenCryptUITest.exe not found!" | tee Testing/Temporary/LastTest.log

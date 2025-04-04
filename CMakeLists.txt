@@ -228,14 +228,21 @@ target_link_libraries(OpenCryptUITest PRIVATE
 enable_testing()
 add_test(NAME OpenCryptUITest COMMAND OpenCryptUITest)
 
-# Copy test runner script
+# Copy test runner scripts
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_tests.sh
     ${CMAKE_CURRENT_BINARY_DIR}/run_tests.sh
     COPYONLY
 )
-# Make the script executable
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_tests.bat
+    ${CMAKE_CURRENT_BINARY_DIR}/run_tests.bat
+    COPYONLY
+)
+# Make the scripts executable
 file(CHMOD ${CMAKE_CURRENT_BINARY_DIR}/run_tests.sh 
+     PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+file(CHMOD ${CMAKE_CURRENT_BINARY_DIR}/run_tests.bat 
      PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 
 # Print paths for debugging
