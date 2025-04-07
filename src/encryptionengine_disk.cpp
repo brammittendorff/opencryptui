@@ -70,7 +70,6 @@ bool EncryptionEngine::encryptDisk(const QString& diskPath, const QString& passw
     
     // Write the encrypted data back to the disk
     tempFile.reset(); // Seek to beginning
-    diskFile.reset();
     diskFile.seek(DISK_HEADER_SIZE);
     
     QByteArray buffer;
@@ -167,7 +166,6 @@ bool EncryptionEngine::decryptDisk(const QString& diskPath, const QString& passw
     
     // Write the decrypted data back to the disk
     tempFile.reset(); // Seek to beginning
-    diskFile.reset();
     diskFile.seek(DISK_HEADER_SIZE);
     
     QByteArray buffer;

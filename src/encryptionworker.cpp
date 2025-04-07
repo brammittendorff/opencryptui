@@ -10,67 +10,67 @@
 using namespace DiskOperations;
 
 EncryptionWorker::EncryptionWorker(QObject *parent)
-    : QObject(parent), isDisk(false), isHiddenVolume(false)
+    : QObject(parent), isDisk(false), m_isHiddenVolume(false)
 {
 }
 
 void EncryptionWorker::setParameters(const QString &path, const QString &password, const QString &algorithm,
                                      const QString &kdf, int iterations, bool useHMAC, bool encrypt, bool isFile, const QString &customHeader, const QStringList &keyfilePaths)
 {
-    this->path = path;
-    this->password = password;
-    this->algorithm = algorithm;
-    this->kdf = kdf;
-    this->iterations = iterations;
-    this->useHMAC = useHMAC;
-    this->encrypt = encrypt;
-    this->isFile = isFile;
+    this->m_path = path;
+    this->m_password = password;
+    this->m_algorithm = algorithm;
+    this->m_kdf = kdf;
+    this->m_iterations = iterations;
+    this->m_useHMAC = useHMAC;
+    this->m_encrypt = encrypt;
+    this->m_isFile = isFile;
     this->isDisk = false;
-    this->customHeader = customHeader;
-    this->keyfilePaths = keyfilePaths;
+    this->m_isHiddenVolume = false;
+    this->m_customHeader = customHeader;
+    this->m_keyfilePaths = keyfilePaths;
 }
 
 void EncryptionWorker::setDiskParameters(const QString &diskPath, const QString &password, const QString &algorithm,
                                       const QString &kdf, int iterations, bool useHMAC, bool encrypt, const QStringList &keyfilePaths)
 {
-    this->path = diskPath;
-    this->password = password;
-    this->algorithm = algorithm;
-    this->kdf = kdf;
-    this->iterations = iterations;
-    this->useHMAC = useHMAC;
-    this->encrypt = encrypt;
-    this->isFile = false;  // Not a file operation
-    this->isDisk = true;   // This is a disk operation
-    this->isHiddenVolume = false; // Not a hidden volume operation
-    this->customHeader = "";  // No custom header for disk encryption
-    this->keyfilePaths = keyfilePaths;
+    this->m_path = diskPath;
+    this->m_password = password;
+    this->m_algorithm = algorithm;
+    this->m_kdf = kdf;
+    this->m_iterations = iterations;
+    this->m_useHMAC = useHMAC;
+    this->m_encrypt = encrypt;
+    this->m_isFile = false;
+    this->isDisk = true;
+    this->m_isHiddenVolume = false;
+    this->m_customHeader = "";
+    this->m_keyfilePaths = keyfilePaths;
 }
 
 void EncryptionWorker::setDiskParametersWithHiddenVolume(const QString &diskPath, const QString &outerPassword, const QString &hiddenPassword, 
                                                       qint64 hiddenVolumeSize, const QString &algorithm, const QString &kdf, 
                                                       int iterations, bool useHMAC, const QStringList &keyfilePaths)
 {
-    // Set the standard disk parameters for the outer volume
-    this->path = diskPath;
-    this->password = outerPassword;
-    this->hiddenPassword = hiddenPassword;
-    this->hiddenVolumeSize = hiddenVolumeSize;
-    this->algorithm = algorithm;
-    this->kdf = kdf;
-    this->iterations = iterations;
-    this->useHMAC = useHMAC;
-    this->encrypt = true; // Hidden volumes are only created during encryption
-    this->isFile = false; // Not a file operation
-    this->isDisk = true;  // This is a disk operation
-    this->isHiddenVolume = true; // This is a hidden volume operation
-    this->customHeader = ""; // No custom header for disk encryption
-    this->keyfilePaths = keyfilePaths;
+    this->m_path = diskPath;
+    this->m_password = outerPassword;
+    this->m_hiddenPassword = hiddenPassword;
+    this->m_hiddenVolumeSize = hiddenVolumeSize;
+    this->m_algorithm = algorithm;
+    this->m_kdf = kdf;
+    this->m_iterations = iterations;
+    this->m_useHMAC = useHMAC;
+    this->m_encrypt = true;
+    this->m_isFile = false;
+    this->isDisk = true;
+    this->m_isHiddenVolume = true;
+    this->m_customHeader = "";
+    this->m_keyfilePaths = keyfilePaths;
 }
 
 void EncryptionWorker::setBenchmarkParameters(const QStringList &algorithms, const QStringList &kdfs) {
-    this->benchmarkAlgorithms = algorithms;
-    this->benchmarkKdfs = kdfs;
+    this->m_benchmarkAlgorithms = algorithms;
+    this->m_benchmarkKDFs = kdfs;
 }
 
 qint64 EncryptionWorker::getFileSizeInBytes(const QString &path) {
@@ -78,223 +78,115 @@ qint64 EncryptionWorker::getFileSizeInBytes(const QString &path) {
     return fileInfo.size();
 }
 
-void EncryptionWorker::process()
+void EncryptionWorker::processDiskOperation()
 {
-    QElapsedTimer timer;
-    timer.start();
-
+    SECURE_LOG(INFO, "EncryptionWorker", QString("Processing disk operation: Encrypt=%1, Path=%2").arg(m_encrypt).arg(m_path));
     bool success = false;
     QString errorMessage;
-    QByteArray salt(32, 0); // Salt for key derivation
 
-    if (encrypt) {
-        SECURE_LOG(DEBUG, "EncryptionWorker", "Generating random salt for encryption");
-        if (RAND_bytes(reinterpret_cast<unsigned char*>(salt.data()), salt.size()) != 1) {
-            SECURE_LOG(ERROR_LEVEL, "EncryptionWorker", "Failed to generate cryptographically secure random salt");
-            emit finished(false, "Failed to generate random salt");
-            return;
+    try
+    {
+        if (m_encrypt) {
+            if (m_isHiddenVolume) {
+                SECURE_LOG(INFO, "EncryptionWorker", "Starting hidden volume encryption.");
+                errorMessage = "Hidden volume encryption not fully implemented in worker yet.";
+                success = false;
+            } else {
+                SECURE_LOG(INFO, "EncryptionWorker", "Starting standard disk encryption.");
+                success = m_engine.encryptDisk(m_path, m_password, m_algorithm, m_kdf, m_iterations, m_useHMAC, m_keyfilePaths);
+                if (!success) errorMessage = "Disk encryption failed in engine.";
+            }
+        } else {
+            SECURE_LOG(INFO, "EncryptionWorker", "Starting standard disk decryption.");
+            success = m_engine.decryptDisk(m_path, m_password, m_algorithm, m_kdf, m_iterations, m_useHMAC, m_keyfilePaths);
+            if (!success) errorMessage = "Disk decryption failed in engine.";
         }
-    } else {
-        SECURE_LOG(DEBUG, "EncryptionWorker", QString("Opening encrypted file to read salt: %1").arg(path));
-        QFile inputFile(path);
-        if (!inputFile.open(QIODevice::ReadOnly)) {
-            SECURE_LOG(ERROR_LEVEL, "EncryptionWorker", QString("Failed to open input file: %1 (error: %2)")
-                .arg(path).arg(inputFile.errorString()));
-            emit finished(false, "Failed to open input file");
-            return;
-        }
-
-        // Read the salt
-        if (inputFile.read(salt.data(), salt.size()) != salt.size()) {
-            SECURE_LOG(ERROR_LEVEL, "EncryptionWorker", 
-                QString("Failed to read salt from file: %1 (corruption possible)").arg(path));
-            emit finished(false, "Failed to read salt from file");
-            return;
-        }
-
-        inputFile.close();
+    }
+    catch (const std::exception& e)
+    {
+        errorMessage = QString("Disk operation failed with exception: %1").arg(e.what());
+        SECURE_LOG(ERROR_LEVEL, "EncryptionWorker", errorMessage);
+        success = false;
+    }
+    catch (...)
+    {
+        errorMessage = "Disk operation failed with unknown exception.";
+        SECURE_LOG(ERROR_LEVEL, "EncryptionWorker", errorMessage);
+        success = false;
     }
 
-    // Derive the key using the password and keyfile(s)
-    SECURE_LOG(DEBUG, "EncryptionWorker", 
-        QString("Deriving key with KDF: %1, iterations: %2, using keyfiles: %3")
-        .arg(kdf)
-        .arg(iterations)
-        .arg(keyfilePaths.isEmpty() ? "No" : "Yes"));
-        
-    QByteArray key = engine.deriveKey(password, salt, keyfilePaths, kdf, iterations);
+    SECURE_LOG(INFO, "EncryptionWorker", QString("Disk operation finished. Success: %1").arg(success));
+    emit finished(success ? QString("Disk operation completed successfully") : errorMessage, success, false);
+}
 
-    if (key.isEmpty()) {
-        SECURE_LOG(ERROR_LEVEL, "EncryptionWorker", 
-            QString("Key derivation failed using KDF: %1").arg(kdf));
-        emit finished(false, "Key derivation failed");
+void EncryptionWorker::process()
+{
+    if (isDisk) {
+        processDiskOperation();
         return;
     }
-    
-    SECURE_LOG(DEBUG, "EncryptionWorker", "Key derivation completed successfully");
 
-    if (isDisk) {
-        // Disk encryption/decryption
-        if (encrypt) {
-            if (isHiddenVolume) {
-                // First, encrypt the outer volume
-                success = engine.encryptDisk(path, password, algorithm, kdf, iterations, useHMAC, keyfilePaths);
+    try
+    {
+        QString result;
+        if (m_encrypt)
+        {
+            if (m_isFile)
+            {
+                bool success = m_engine.encryptFile(m_path, m_password, m_algorithm, m_kdf, m_iterations, m_useHMAC, m_customHeader, m_keyfilePaths);
+                result = success ? m_path + ".encrypted" : "Failed to encrypt file";
+                emit progress(100);
+                emit finished(QString("File encrypted successfully. Output: %1").arg(result), success, true);
+            }
+            else
+            {
+                emit progress(10);
+                emit estimatedTime("Compressing folder... (est: 30 seconds)");
                 
-                if (success) {
-                    // Now create the hidden volume
-                    QByteArray hiddenSalt(32, 0);
-                    QByteArray hiddenIV(16, 0);
-                    
-                    // Generate new random salt and IV for the hidden volume
-                    if (RAND_bytes(reinterpret_cast<unsigned char*>(hiddenSalt.data()), hiddenSalt.size()) != 1 ||
-                        RAND_bytes(reinterpret_cast<unsigned char*>(hiddenIV.data()), hiddenIV.size()) != 1) {
-                        emit finished(false, "Failed to generate random data for hidden volume");
-                        return;
-                    }
-                    
-                    // Create the hidden volume
-                    success = DiskOperations::createHiddenVolume(path, hiddenVolumeSize, algorithm, kdf, 
-                                                               iterations, useHMAC, hiddenSalt, hiddenIV);
-                    
-                    if (!success) {
-                        emit finished(false, "Failed to create hidden volume");
-                        return;
-                    }
-                    
-                    // Now encrypt the hidden volume using the hidden password
-                    success = engine.encryptDiskSection(path, hiddenPassword, algorithm, kdf, iterations, 
-                                                      useHMAC, keyfilePaths, 
-                                                      DISK_HIDDEN_HEADER_OFFSET + DISK_HEADER_SIZE, 
-                                                      hiddenVolumeSize);
-                }
-            } else {
-                // Standard disk encryption
-                success = engine.encryptDisk(path, password, algorithm, kdf, iterations, useHMAC, keyfilePaths);
-            }
-        } else {
-            // Disk decryption - determine if we're using the outer or hidden volume based on the password
-            bool hasHidden;
-            QString detectedAlgorithm, detectedKdf;
-            int detectedIterations;
-            bool detectedUseHMAC;
-            QByteArray detectedSalt, detectedIV;
-            
-            // First try to read the main header
-            if (DiskOperations::readEncryptionHeader(path, detectedAlgorithm, detectedKdf, detectedIterations, 
-                                                  detectedUseHMAC, detectedSalt, detectedIV, hasHidden)) {
-                // Try to decrypt with the main password
-                QByteArray key = engine.deriveKey(password, detectedSalt, keyfilePaths, detectedKdf, detectedIterations);
-                if (!key.isEmpty()) {
-                    // If it's a hidden volume, check if we're trying to decrypt the outer or hidden volume
-                    if (hasHidden) {
-                        // Check if the hidden volume exists
-                        HiddenVolumeInfo hiddenInfo;
-                        if (DiskOperations::readHiddenVolumeHeader(path, hiddenInfo)) {
-                            // Try the current password with the hidden volume as well
-                            QByteArray hiddenKey = engine.deriveKey(password, hiddenInfo.salt, keyfilePaths, hiddenInfo.kdf, hiddenInfo.iterations);
-                            if (!hiddenKey.isEmpty()) {
-                                // If the password works for both, ask the user which one they want to decrypt
-                                QMessageBox msgBox;
-                                msgBox.setIcon(QMessageBox::Question);
-                                msgBox.setText("This disk contains a hidden volume.");
-                                msgBox.setInformativeText("Do you want to decrypt the outer volume or the hidden volume?");
-                                QPushButton *outerButton = msgBox.addButton("Outer Volume", QMessageBox::ActionRole);
-                                msgBox.addButton("Hidden Volume", QMessageBox::ActionRole);
-                                msgBox.exec();
-                                
-                                QAbstractButton* clickedButton = msgBox.clickedButton();
-                                if (clickedButton == outerButton) {
-                                    // Decrypt the outer volume
-                                    success = engine.decryptDisk(path, password, detectedAlgorithm, detectedKdf, 
-                                                              detectedIterations, detectedUseHMAC, keyfilePaths);
-                                } else {
-                                    // Decrypt the hidden volume
-                                    success = engine.decryptDiskSection(path, password, hiddenInfo.algorithm, hiddenInfo.kdf,
-                                                                      hiddenInfo.iterations, hiddenInfo.useHMAC, keyfilePaths,
-                                                                      hiddenInfo.offset, hiddenInfo.size);
-                                }
-                            } else {
-                                // Password only works for outer volume
-                                success = engine.decryptDisk(path, password, detectedAlgorithm, detectedKdf, 
-                                                          detectedIterations, detectedUseHMAC, keyfilePaths);
-                            }
-                        } else {
-                            // Couldn't read hidden volume, just decrypt the outer volume
-                            success = engine.decryptDisk(path, password, detectedAlgorithm, detectedKdf, 
-                                                      detectedIterations, detectedUseHMAC, keyfilePaths);
-                        }
-                    } else {
-                        // No hidden volume, just decrypt the outer volume
-                        success = engine.decryptDisk(path, password, detectedAlgorithm, detectedKdf, 
-                                                  detectedIterations, detectedUseHMAC, keyfilePaths);
-                    }
-                } else {
-                    // Try the hidden volume if it exists
-                    if (hasHidden) {
-                        HiddenVolumeInfo hiddenInfo;
-                        if (DiskOperations::readHiddenVolumeHeader(path, hiddenInfo)) {
-                            success = engine.decryptDiskSection(path, password, hiddenInfo.algorithm, hiddenInfo.kdf,
-                                                              hiddenInfo.iterations, hiddenInfo.useHMAC, keyfilePaths,
-                                                              hiddenInfo.offset, hiddenInfo.size);
-                        } else {
-                            emit finished(false, "Password doesn't match either volume");
-                            return;
-                        }
-                    } else {
-                        emit finished(false, "Invalid password");
-                        return;
-                    }
-                }
-            } else {
-                emit finished(false, "Failed to read disk header");
-                return;
+                bool success = m_engine.encryptFolder(m_path, m_password, m_algorithm, m_kdf, m_iterations, m_useHMAC, m_customHeader, m_keyfilePaths);
+                result = success ? m_path + ".encrypted" : "Failed to encrypt folder";
+                emit progress(100);
+                emit finished(QString("Folder encrypted successfully. Output: %1").arg(result), success, false);
             }
         }
-    } else if (isFile) {
-        // File encryption/decryption
-        if (encrypt) {
-            success = engine.encryptFile(path, password, algorithm, kdf, iterations, useHMAC, customHeader, keyfilePaths);
-        } else {
-            success = engine.decryptFile(path, password, algorithm, kdf, iterations, useHMAC, customHeader, keyfilePaths);
-        }
-    } else {
-        // Folder encryption/decryption
-        if (encrypt) {
-            success = engine.encryptFolder(path, password, algorithm, kdf, iterations, useHMAC, customHeader, keyfilePaths);
-        } else {
-            success = engine.decryptFolder(path, password, algorithm, kdf, iterations, useHMAC, customHeader, keyfilePaths);
+        else
+        {
+            if (m_isFile)
+            {
+                bool success = m_engine.decryptFile(m_path, m_password, m_algorithm, m_kdf, m_iterations, m_useHMAC, m_customHeader, m_keyfilePaths);
+                result = success ? m_path.left(m_path.lastIndexOf(".encrypted")) : "Failed to decrypt file";
+                emit progress(100);
+                emit finished(QString("File decrypted successfully. Output: %1").arg(result), success, true);
+            }
+            else
+            {
+                emit progress(10);
+                emit estimatedTime("Decrypting archive... (est: 15 seconds)");
+                
+                bool success = m_engine.decryptFolder(m_path, m_password, m_algorithm, m_kdf, m_iterations, m_useHMAC, m_customHeader, m_keyfilePaths);
+                result = success ? m_path.left(m_path.lastIndexOf(".encrypted")) : "Failed to decrypt folder";
+                emit progress(100);
+                emit finished(QString("Folder decrypted successfully. Output: %1").arg(result), success, false);
+            }
         }
     }
-
-    double seconds = timer.elapsed() / 1000.0;
-    emit estimatedTime(seconds);
-
-    if (success) {
-        emit progress(100);
-        
-        double fileSizeMB = getFileSizeInBytes(path) / (1024.0 * 1024.0);
-        double mbps = fileSizeMB / seconds;
-        
-        SECURE_LOG(INFO, "EncryptionWorker", 
-            QString("Operation completed successfully in %1 seconds (%2 MB/s)")
-            .arg(seconds, 0, 'f', 2).arg(mbps, 0, 'f', 2));
-            
-        emit finished(true, QString());
-        emit benchmarkResultReady(iterations, mbps, seconds * 1000, algorithm, kdf);
-    } else {
-        SECURE_LOG(ERROR_LEVEL, "EncryptionWorker", 
-            QString("Operation failed for path: %1 (algorithm: %2, KDF: %3)")
-            .arg(path).arg(algorithm).arg(kdf));
-            
-        emit finished(false, "Encryption/Decryption failed");
+    catch (const std::exception &e)
+    {
+        emit progress(0);
+        emit finished(QString("Operation failed: %1").arg(e.what()), false, m_isFile);
+    }
+    catch (...)
+    {
+        emit progress(0);
+        emit finished("Operation failed: Unknown error", false, m_isFile);
     }
 }
 
 void EncryptionWorker::runBenchmark() {
     SECURE_LOG(INFO, "EncryptionWorker", "Starting benchmark...");
 
-    for (const auto &algo : benchmarkAlgorithms) {
-        for (const auto &kdf : benchmarkKdfs) {
+    for (const auto &algo : m_benchmarkAlgorithms) {
+        for (const auto &kdf : m_benchmarkKDFs) {
             benchmarkCipher(algo, kdf, true);
             if (algo == "AES-256-GCM" || algo == "ChaCha20-Poly1305" || 
                 algo == "AES-256-CTR" || algo == "AES-256-CBC" || 
@@ -339,7 +231,7 @@ void EncryptionWorker::benchmarkCipher(const QString &algorithm, const QString &
     QElapsedTimer timer;
     timer.start();
 
-    const EVP_CIPHER *cipher = engine.getCipher(algorithm);
+    const EVP_CIPHER *cipher = m_engine.getCipher(algorithm);
 
     if (!cipher) {
         SECURE_LOG(WARNING, "EncryptionWorker", 
@@ -348,7 +240,7 @@ void EncryptionWorker::benchmarkCipher(const QString &algorithm, const QString &
     }
 
     QStringList keyfilePaths; // If no keyfiles, use an empty QStringList
-    key = engine.deriveKey("password", salt, keyfilePaths, kdf, iterations);
+    key = m_engine.deriveKey("password", salt, keyfilePaths, kdf, iterations);
     if (key.isEmpty()) {
         SECURE_LOG(ERROR_LEVEL, "EncryptionWorker", 
             QString("Key derivation failed for KDF: %1").arg(kdf));
@@ -420,4 +312,28 @@ void EncryptionWorker::benchmarkCipher(const QString &algorithm, const QString &
     double throughput = (dataSize / (1024.0 * 1024.0)) / (elapsed / 1000.0);
 
     emit benchmarkResultReady(iterations, throughput, elapsed, algorithm, kdf);
+}
+
+EncryptionWorker::~EncryptionWorker()
+{
+    // No heap allocations to clean up
+}
+
+void EncryptionWorker::processBenchmark()
+{
+    SECURE_LOG(INFO, "EncryptionWorker", "Processing benchmark operation");
+    
+    try
+    {
+        runBenchmark();
+        emit finished("Benchmark completed successfully", true, false);
+    }
+    catch (const std::exception &e)
+    {
+        emit finished(QString("Benchmark failed: %1").arg(e.what()), false, false);
+    }
+    catch (...)
+    {
+        emit finished("Benchmark failed: Unknown error", false, false);
+    }
 }

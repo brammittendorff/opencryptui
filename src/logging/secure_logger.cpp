@@ -42,27 +42,51 @@ void SecureLogger::log(LogLevel level, const QString& component, const QString& 
     QString sanitizedMessage = sanitizeMessage(message);
 
     // Prepare log entry
-    QString logEntry = QString("[%1] %2 - %3: %4")
+    QString logEntry = QString("[%1] [%2] %3: %4")
         .arg(QDateTime::currentDateTime().toString(Qt::ISODate))
         .arg(logLevelToString(level))
         .arg(component)
         .arg(sanitizedMessage);
 
-    // Console logging (only in debug builds)
+    // Always log to console during tests
+    bool isTest = qgetenv("QT_LOGGING_RULES").contains("*.debug=true") || 
+                  component.startsWith("TestOpenCryptUI") || 
+                  component.startsWith("Test");
+
+    // Always log during debugging, but also always log for tests and OpenSSL provider
+    // regardless of build type to help with debugging tests
+    if (isTest || component.startsWith("OpenSSLProvider") || component == "EncryptionEngine") {
+        switch(level) {
+            case LogLevel::DEBUG:
+                qDebug() << "SECLOG:" << logEntry;
+                break;
+            case LogLevel::INFO:
+                qInfo() << "SECLOG:" << logEntry;
+                break;
+            case LogLevel::WARNING:
+                qWarning() << "SECLOG:" << logEntry;
+                break;
+            case LogLevel::ERROR_LEVEL:
+                qCritical() << "SECLOG:" << logEntry;
+                break;
+        }
+    }
     #ifndef QT_NO_DEBUG
-    switch(level) {
-        case LogLevel::DEBUG:
-            qDebug() << logEntry;
-            break;
-        case LogLevel::INFO:
-            qInfo() << logEntry;
-            break;
-        case LogLevel::WARNING:
-            qWarning() << logEntry;
-            break;
-        case LogLevel::ERROR_LEVEL:
-            qCritical() << logEntry;
-            break;
+    else {
+        switch(level) {
+            case LogLevel::DEBUG:
+                qDebug() << logEntry;
+                break;
+            case LogLevel::INFO:
+                qInfo() << logEntry;
+                break;
+            case LogLevel::WARNING:
+                qWarning() << logEntry;
+                break;
+            case LogLevel::ERROR_LEVEL:
+                qCritical() << logEntry;
+                break;
+        }
     }
     #endif
 

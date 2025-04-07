@@ -22,6 +22,11 @@
 #include <QtConcurrent/QtConcurrent>
 #include <QFuture>
 #include <QFutureWatcher>
+#include <QVBoxLayout>
+#include <QDateTime>
+#include <QProcess>
+#include <QRandomGenerator>
+#include <QDebug>
 
 // Setup entropy monitoring UI in each tab
 void MainWindow::setupEntropyMonitoring()

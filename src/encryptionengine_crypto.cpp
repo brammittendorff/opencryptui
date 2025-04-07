@@ -138,6 +138,19 @@ bool EncryptionEngine::cryptOperation(const QString &inputPath, const QString &o
 
     bool success = false;
 
+    // Special handling for AEAD ciphers (avoid double authentication and potental conflicts)
+    bool isAEADCipher = algorithm.contains("GCM") || algorithm.contains("CCM") || 
+                         algorithm.contains("ChaCha20-Poly1305");
+    if (isAEADCipher) {
+        SECURE_LOG(DEBUG, "EncryptionEngine", 
+            QString("AEAD cipher detected (%1), enabling built-in authentication").arg(algorithm));
+        enforceIntegrity = true;  // Always enable digital signatures for AEAD
+        useHMAC = false;          // Disable separate HMAC for AEAD (they have built-in auth)
+    }
+
+    // If digital signatures or HMAC is required, ensure the file has tamper evidence
+    bool needsTamperEvidence = enforceIntegrity || useHMAC;
+
     if (encrypt)
     {
         // Write header, salt, and IV for encryption

@@ -378,16 +378,9 @@ bool OpenSSLProvider::performStandardDecryption(EVP_CIPHER_CTX *ctx, const EVP_C
     if (!EVP_DecryptFinal_ex(ctx,
                              reinterpret_cast<unsigned char *>(outputBuffer.data()), &outLen))
     {
-        // Check if we've already written data (common with block ciphers and padding issues)
-        if (outputFile.size() > 0) {
-            SECURE_LOG(WARNING, "OpenSSLProvider", "EVP_DecryptFinal_ex failed, but content already written");
-            // For CBC mode, padding errors are common but don't necessarily mean the content is corrupted
-            // We already have the decrypted content, so we'll consider this a success
-            return true;
-        } else {
-            SECURE_LOG(ERROR_LEVEL, "OpenSSLProvider", "EVP_DecryptFinal_ex failed");
-            return false;
-        }
+        // Treat any finalization failure, including padding errors, as a critical error.
+        SECURE_LOG(ERROR_LEVEL, "OpenSSLProvider", "EVP_DecryptFinal_ex failed - potentially incorrect key or padding error");
+        return false;
     }
     outputFile.write(outputBuffer.data(), outLen);
 
@@ -398,6 +391,12 @@ bool OpenSSLProvider::performAuthenticatedEncryption(EVP_CIPHER_CTX *ctx, const 
                                                      const QByteArray &key, const QByteArray &iv,
                                                      QFile &inputFile, QFile &outputFile)
 {
+    SECURE_LOG(DEBUG, "OpenSSLProvider", QString("Starting authenticated encryption with %1, key size: %2, iv size: %3, input file size: %4")
+               .arg(EVP_CIPHER_name(cipher))
+               .arg(key.size())
+               .arg(iv.size())
+               .arg(inputFile.size()));
+
     int cipherMode = EVP_CIPHER_mode(cipher);
     QByteArray tag(16, 0);
     bool isAuthenticatedMode = (cipherMode == EVP_CIPH_GCM_MODE ||
@@ -406,7 +405,7 @@ bool OpenSSLProvider::performAuthenticatedEncryption(EVP_CIPHER_CTX *ctx, const 
 
     if (isAuthenticatedMode)
     {
-        SECURE_LOG(DEBUG, "OpenSSLProvider", QString("Authenticated mode detected: %1").arg(EVP_CIPHER_name(cipher)));
+        SECURE_LOG(DEBUG, "OpenSSLProvider", QString("Authenticated mode confirmed: %1").arg(EVP_CIPHER_name(cipher)));
     }
     else
     {
@@ -418,12 +417,14 @@ bool OpenSSLProvider::performAuthenticatedEncryption(EVP_CIPHER_CTX *ctx, const 
                             reinterpret_cast<const unsigned char *>(key.data()),
                             reinterpret_cast<const unsigned char *>(iv.data())))
     {
-        SECURE_LOG(ERROR_LEVEL, "OpenSSLProvider", "EVP_EncryptInit_ex failed");
+        SECURE_LOG(ERROR_LEVEL, "OpenSSLProvider", QString("EVP_EncryptInit_ex failed for %1").arg(EVP_CIPHER_name(cipher)));
         return false;
     }
 
     QByteArray buffer(4096, 0);
     QByteArray outputBuffer;
+    qint64 totalBytesRead = 0;
+    qint64 totalBytesWritten = 0;
 
     // Encrypt the data in chunks
     while (!inputFile.atEnd())
@@ -431,6 +432,9 @@ bool OpenSSLProvider::performAuthenticatedEncryption(EVP_CIPHER_CTX *ctx, const 
         qint64 bytesRead = inputFile.read(buffer.data(), buffer.size());
         if (bytesRead <= 0)
             break;
+
+        totalBytesRead += bytesRead;
+        SECURE_LOG(DEBUG, "OpenSSLProvider", QString("Read %1 bytes from input file, total: %2").arg(bytesRead).arg(totalBytesRead));
 
         outputBuffer.resize(bytesRead + EVP_CIPHER_block_size(cipher));
         int outLen;
@@ -443,7 +447,9 @@ bool OpenSSLProvider::performAuthenticatedEncryption(EVP_CIPHER_CTX *ctx, const 
             return false;
         }
 
+        SECURE_LOG(DEBUG, "OpenSSLProvider", QString("Generated %1 bytes of encrypted data").arg(outLen));
         outputFile.write(outputBuffer.constData(), outLen);
+        totalBytesWritten += outLen;
     }
 
     // Finalize the encryption
@@ -458,7 +464,9 @@ bool OpenSSLProvider::performAuthenticatedEncryption(EVP_CIPHER_CTX *ctx, const 
 
     if (outLen > 0)
     {
+        SECURE_LOG(DEBUG, "OpenSSLProvider", QString("Final block generated %1 bytes").arg(outLen));
         outputFile.write(outputBuffer.constData(), outLen);
+        totalBytesWritten += outLen;
     }
 
     // Get the tag for AEAD ciphers
@@ -472,12 +480,22 @@ bool OpenSSLProvider::performAuthenticatedEncryption(EVP_CIPHER_CTX *ctx, const 
 
         // Append the tag to the end of the file
         outputFile.write(tag);
+        totalBytesWritten += tag.size();
 
+        SECURE_LOG(DEBUG, "OpenSSLProvider", QString("Added authentication tag: %1, tag size: %2").arg(QString(tag.toHex())).arg(tag.size()));
+        SECURE_LOG(DEBUG, "OpenSSLProvider", QString("Total bytes written to output file: %1").arg(totalBytesWritten));
+        
         SECURE_LOG(DEBUG, "OpenSSLProvider", QString("Encryption completed with authentication tag: %1").arg(QString(tag.toHex())));
     }
     else
     {
-        SECURE_LOG(DEBUG, "OpenSSLProvider", "Encryption completed successfully (standard mode)");
+        SECURE_LOG(DEBUG, "OpenSSLProvider", QString("Standard encryption completed without tag. Total bytes written: %1").arg(totalBytesWritten));
+    }
+
+    // Final verification - check if file was written correctly
+    SECURE_LOG(DEBUG, "OpenSSLProvider", QString("Input file size: %1, Output file size: %2").arg(inputFile.size()).arg(outputFile.size()));
+    if (outputFile.size() == 0) {
+        SECURE_LOG(ERROR_LEVEL, "OpenSSLProvider", "*** ERROR: Output file is empty! ***");
     }
 
     return true;
@@ -488,11 +506,11 @@ bool OpenSSLProvider::performAuthenticatedDecryption(EVP_CIPHER_CTX *ctx, const 
                                                      QFile &inputFile, QFile &outputFile)
 {
     // Debug input parameters
-    SECURE_LOG(DEBUG, "OpenSSLProvider", "Authenticated Decryption Parameters:");
-    SECURE_LOG(DEBUG, "OpenSSLProvider", QString("Cipher: %1").arg(EVP_CIPHER_name(cipher)));
-    SECURE_LOG(DEBUG, "OpenSSLProvider", QString("Key size: %1 bytes").arg(key.size()));
-    SECURE_LOG(DEBUG, "OpenSSLProvider", QString("IV size: %1 bytes").arg(iv.size()));
-    SECURE_LOG(DEBUG, "OpenSSLProvider", QString("Input file size: %1 bytes").arg(inputFile.size()));
+    SECURE_LOG(DEBUG, "OpenSSLProvider", QString("Starting authenticated decryption with %1, key size: %2, iv size: %3, input file size: %4")
+              .arg(EVP_CIPHER_name(cipher))
+              .arg(key.size())
+              .arg(iv.size())
+              .arg(inputFile.size()));
 
     int cipherMode = EVP_CIPHER_mode(cipher);
     QByteArray tag(16, 0);

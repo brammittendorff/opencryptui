@@ -7,13 +7,18 @@
 #include <QStandardItem>
 #include <QDateTime>
 #include <QStorageInfo>
+#include <QProcess>
+#include <QStandardPaths>
+#include <QDebug>
+#include <QSettings>
+#include <QListWidget>
+#include <unistd.h> // For geteuid() on Linux/Unix
 
 // Define the disk header magic strings
 #define DISK_HEADER_MAGIC "OPENCRYPT_DISK_HDR"
 #define DISK_HEADER_MAGIC_V1 "OPENCRYPT_DISK_V1"
 
 // Functions related to disk encryption in MainWindow class
-// Implementation by Claude Code for hidden volume support, secure wiping, and improved UI
 
 // Helper function to check if we have admin privileges
 bool MainWindow::hasAdminPrivileges() 

@@ -447,6 +447,7 @@ bool createEncryptionHeader(const QString& diskPath, const QString& algorithm,
     
     // Write the header at the beginning of the disk
     qint64 bytesWritten = diskFile.write(headerData);
+    diskFile.flush(); // Ensure data is written to disk
     diskFile.close();
     
     if (bytesWritten != DISK_HEADER_SIZE) {

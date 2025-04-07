@@ -185,6 +185,7 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 # Add test source
 set(TEST_SOURCES
+    tests/main.cpp
     tests/test_encryption_app.cpp
 )
 
